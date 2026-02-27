@@ -24,6 +24,7 @@ return new class extends Migration
         Schema::create('professors_masterlist', function (Blueprint $table) {
             $table->id();
             $table->string('employee_id')->unique();
+            $table->enum('title', ['Mr.', 'Mrs.', 'Ms.', 'Dr.', 'Prof.']);
             $table->string('first_name');
             $table->string('last_name');
             $table->string('department');

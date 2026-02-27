@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Masterlist\StudentController;
 use Illuminate\Support\Facades\Route;
 
 Route::redirect('/', '/login')->name('home');
@@ -8,7 +9,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::inertia('dashboard', 'dashboard')->name('dashboard');
 
     // Masterlist
-    Route::inertia('masterlist/students', 'masterlist/students')->name('masterlist.students');
+    Route::get('masterlist/students', [StudentController::class, 'index'])->name('masterlist.students');
+    Route::post('masterlist/students', [StudentController::class, 'store'])->name('masterlist.students.store');
+    Route::put('masterlist/students/{student_masterlist}', [StudentController::class, 'update'])->name('masterlist.students.update');
+    Route::delete('masterlist/students/{student_masterlist}', [StudentController::class, 'destroy'])->name('masterlist.students.destroy');
     Route::inertia('masterlist/professors', 'masterlist/professors')->name('masterlist.professors');
 
     // Users
