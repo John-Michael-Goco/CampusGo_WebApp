@@ -11,12 +11,37 @@ return new class extends Migration
      */
     public function up(): void
     {
+        Schema::create('students_masterlist', function (Blueprint $table) {
+            $table->id();
+            $table->string('student_number')->unique();
+            $table->string('first_name');
+            $table->string('last_name');
+            $table->string('course');
+            $table->unsignedInteger('year_level');
+            $table->boolean('is_registered')->default(false);
+        });
+
+        Schema::create('professors_masterlist', function (Blueprint $table) {
+            $table->id();
+            $table->string('employee_id')->unique();
+            $table->string('first_name');
+            $table->string('last_name');
+            $table->string('department');
+            $table->boolean('is_registered')->default(false);
+        });
+
         Schema::create('users', function (Blueprint $table) {
             $table->id();
             $table->string('name');
             $table->string('email')->unique();
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
+            $table->enum('role', ['student', 'professor', 'admin'])->default('student');
+            $table->foreignId('master_student_id')->nullable()->unique()->constrained('students_masterlist')->nullOnDelete();
+            $table->foreignId('master_professor_id')->nullable()->unique()->constrained('professors_masterlist')->nullOnDelete();
+            $table->unsignedInteger('quests_completed_count')->default(0);
+            $table->unsignedInteger('gm_quest_credit')->default(0);
+            $table->unsignedInteger('total_points')->default(0);
             $table->rememberToken();
             $table->timestamps();
         });
@@ -42,8 +67,10 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('users');
-        Schema::dropIfExists('password_reset_tokens');
         Schema::dropIfExists('sessions');
+        Schema::dropIfExists('password_reset_tokens');
+        Schema::dropIfExists('users');
+        Schema::dropIfExists('professors_masterlist');
+        Schema::dropIfExists('students_masterlist');
     }
 };
