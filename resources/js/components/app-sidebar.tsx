@@ -1,6 +1,11 @@
 import { Link } from '@inertiajs/react';
-import { BookOpen, Folder, LayoutGrid } from 'lucide-react';
-import { NavFooter } from '@/components/nav-footer';
+import {
+    ClipboardList,
+    LayoutGrid,
+    ListTodo,
+    ScrollText,
+    Users,
+} from 'lucide-react';
 import { NavMain } from '@/components/nav-main';
 import { NavUser } from '@/components/nav-user';
 import {
@@ -22,18 +27,33 @@ const mainNavItems: NavItem[] = [
         href: dashboard(),
         icon: LayoutGrid,
     },
-];
-
-const footerNavItems: NavItem[] = [
     {
-        title: 'Repository',
-        href: 'https://github.com/laravel/react-starter-kit',
-        icon: Folder,
+        title: 'Quests',
+        href: '/quests/active',
+        icon: ListTodo,
+        items: [
+            { title: 'Active quests', href: '/quests/active', icon: null },
+            { title: 'History', href: '/quests/history', icon: null },
+        ],
     },
     {
-        title: 'Documentation',
-        href: 'https://laravel.com/docs/starter-kits#react',
-        icon: BookOpen,
+        title: 'Users',
+        href: '/users',
+        icon: Users,
+    },
+    {
+        title: 'Masterlist',
+        href: '/masterlist/students',
+        icon: ClipboardList,
+        items: [
+            { title: 'Students', href: '/masterlist/students', icon: null },
+            { title: 'Professors', href: '/masterlist/professors', icon: null },
+        ],
+    },
+    {
+        title: 'Activity Logs',
+        href: '/logs',
+        icon: ScrollText,
     },
 ];
 
@@ -57,7 +77,6 @@ export function AppSidebar() {
             </SidebarContent>
 
             <SidebarFooter>
-                <NavFooter items={footerNavItems} className="mt-auto" />
                 <NavUser />
             </SidebarFooter>
         </Sidebar>

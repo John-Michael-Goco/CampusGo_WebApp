@@ -25,7 +25,7 @@ export default function Login({
     return (
         <AuthLayout
             title="Log in to your account"
-            description="Enter your email and password below to log in"
+            description="Enter your email and password below to log into admin account."
         >
             <Head title="Log in" />
 
@@ -100,7 +100,7 @@ export default function Login({
 
                         {canRegister && (
                             <div className="text-center text-sm text-muted-foreground">
-                                Don't have an account?{' '}
+                                Don't have an admin account?{' '}
                                 <TextLink href={register()} tabIndex={5}>
                                     Sign up
                                 </TextLink>

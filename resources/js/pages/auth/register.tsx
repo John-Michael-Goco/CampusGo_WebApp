@@ -13,7 +13,7 @@ export default function Register() {
     return (
         <AuthLayout
             title="Create an account"
-            description="Enter your details below to create your account"
+            description="Enter your details below to create your admin account"
         >
             <Head title="Register" />
             <Form
