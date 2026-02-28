@@ -1,5 +1,7 @@
-import { Head, router, useForm } from '@inertiajs/react';
+import { Head, Link, router, useForm } from '@inertiajs/react';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { ArrowLeft, ArrowRight } from 'lucide-react';
+import { sileo } from 'sileo';
 import AppLayout from '@/layouts/app-layout';
 import type {
     MasterlistProfessorsProps,
@@ -15,6 +17,7 @@ export default function MasterlistProfessors({
     professors,
     filters,
 }: MasterlistProfessorsProps) {
+    const professorItems = professors.data ?? [];
     const [search, setSearch] = useState(filters.search);
     const [createOpen, setCreateOpen] = useState(false);
     const [editingProfessor, setEditingProfessor] = useState<Professor | null>(null);
@@ -45,23 +48,72 @@ export default function MasterlistProfessors({
         });
     };
 
+    const filterQuery = () =>
+        new URLSearchParams({
+            search: search || '',
+            title: filters.title || '',
+            sort_by: filters.sort_by,
+            sort_dir: filters.sort_dir,
+        }).toString();
+
+    const toastOptions = {
+        success: {
+            fill: '#166534',
+            styles: {
+                title: 'text-white!',
+                description: 'text-white/90!',
+                badge: 'hidden',
+            },
+        },
+        error: {
+            fill: '#991b1b',
+            styles: {
+                title: 'text-white!',
+                description: 'text-white/90!',
+                badge: 'hidden',
+            },
+        },
+    } as const;
+
     const handleCreateSubmit = () => {
-        createForm.post('/masterlist/professors', {
+        createForm.post(`/masterlist/professors?${filterQuery()}`, {
             preserveScroll: true,
             onSuccess: () => {
                 setCreateOpen(false);
                 createForm.reset();
+                sileo.success({
+                    title: 'Professor added',
+                    description: 'The professor has been added to the masterlist.',
+                    ...toastOptions.success,
+                });
+            },
+            onError: () => {
+                sileo.error({
+                    title: 'Could not add professor',
+                    description: 'Please check the form and try again.',
+                    ...toastOptions.error,
+                });
             },
         });
     };
 
     const handleEditSubmit = () => {
         if (!editingProfessor) return;
-        editForm.put(`/masterlist/professors/${editingProfessor.id}`, {
+        editForm.put(`/masterlist/professors/${editingProfessor.id}?${filterQuery()}`, {
             preserveScroll: true,
             onSuccess: () => {
-                setEditingProfessor(null);
-                editForm.reset();
+                sileo.success({
+                    title: 'Professor updated',
+                    description: 'The professor has been updated.',
+                    ...toastOptions.success,
+                });
+            },
+            onError: () => {
+                sileo.error({
+                    title: 'Could not update professor',
+                    description: 'Please check the form and try again.',
+                    ...toastOptions.error,
+                });
             },
         });
     };
@@ -70,7 +122,21 @@ export default function MasterlistProfessors({
         if (!deletingProfessor) return;
         router.delete(`/masterlist/professors/${deletingProfessor.id}`, {
             preserveScroll: true,
-            onSuccess: () => setDeletingProfessor(null),
+            onSuccess: () => {
+                setDeletingProfessor(null);
+                sileo.success({
+                    title: 'Professor deleted',
+                    description: 'The professor has been removed from the masterlist.',
+                    ...toastOptions.success,
+                });
+            },
+            onError: () => {
+                sileo.error({
+                    title: 'Could not delete professor',
+                    description: 'Something went wrong. Please try again.',
+                    ...toastOptions.error,
+                });
+            },
         });
     };
 
@@ -129,12 +195,59 @@ export default function MasterlistProfessors({
                 />
 
                 <ProfessorsTable
-                    professors={professors}
+                    professors={professorItems}
                     filters={filters}
                     onSort={handleSort}
                     onEdit={openEdit}
                     onDelete={setDeletingProfessor}
                 />
+
+                {professors.total > 0 && (
+                    <div className="flex items-center justify-between gap-4 border-t pt-4">
+                        <p className="text-sm text-muted-foreground">
+                            Showing {(professors.current_page - 1) * professors.per_page + 1} to{' '}
+                            {Math.min(professors.current_page * professors.per_page, professors.total)} of{' '}
+                            {professors.total} entries
+                        </p>
+                        {professors.last_page > 1 && (
+                            <div className="flex items-center gap-2">
+                                {professors.prev_page_url ? (
+                                    <Link
+                                        href={professors.prev_page_url}
+                                        preserveState
+                                        className="inline-flex items-center gap-1 rounded-md border px-3 py-2 text-sm font-medium transition-colors hover:bg-muted"
+                                    >
+                                        <ArrowLeft className="size-4" />
+                                        Previous
+                                    </Link>
+                                ) : (
+                                    <span className="inline-flex cursor-not-allowed items-center gap-1 rounded-md border border-transparent bg-muted/50 px-3 py-2 text-sm font-medium text-muted-foreground">
+                                        <ArrowLeft className="size-4" />
+                                        Previous
+                                    </span>
+                                )}
+                                <span className="text-sm text-muted-foreground">
+                                    Page {professors.current_page} of {professors.last_page}
+                                </span>
+                                {professors.next_page_url ? (
+                                    <Link
+                                        href={professors.next_page_url}
+                                        preserveState
+                                        className="inline-flex items-center gap-1 rounded-md border px-3 py-2 text-sm font-medium transition-colors hover:bg-muted"
+                                    >
+                                        Next
+                                        <ArrowRight className="size-4" />
+                                    </Link>
+                                ) : (
+                                    <span className="inline-flex cursor-not-allowed items-center gap-1 rounded-md border border-transparent bg-muted/50 px-3 py-2 text-sm font-medium text-muted-foreground">
+                                        Next
+                                        <ArrowRight className="size-4" />
+                                    </span>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                )}
 
                 <CreateProfessorDialog
                     open={createOpen}

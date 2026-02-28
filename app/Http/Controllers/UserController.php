@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ActivityLog;
 use App\Models\ProfessorMasterlist;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
@@ -49,7 +50,7 @@ class UserController extends Controller
         }
         $query->orderBy($sortBy, $sortDir);
 
-        $users = $query->get();
+        $users = $query->paginate(15)->withQueryString();
 
         $registeredProfessorIds = User::query()
             ->whereNotNull('master_professor_id')
@@ -100,7 +101,7 @@ class UserController extends Controller
         $professor = ProfessorMasterlist::findOrFail($validated['professor_id']);
         $name = $professor->title . ' ' . $professor->last_name . ', ' . $professor->first_name;
 
-        User::create([
+        $user = User::create([
             'name' => $name,
             'email' => $validated['email'],
             'password' => $validated['password'],
@@ -109,6 +110,13 @@ class UserController extends Controller
         ]);
 
         $professor->update(['is_registered' => true]);
+
+        ActivityLog::log(
+            $request->user()->id,
+            'gamemaster_created',
+            sprintf('Created gamemaster: %s (%s)', $user->name, $user->email),
+            $user->id
+        );
 
         return redirect()
             ->route('users.index', $request->only(['search', 'role', 'sort_by', 'sort_dir']))

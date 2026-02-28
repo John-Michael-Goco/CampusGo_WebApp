@@ -1,5 +1,6 @@
-import { Head, router, useForm } from '@inertiajs/react';
+import { Head, Link, router, useForm } from '@inertiajs/react';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { ArrowLeft, ArrowRight } from 'lucide-react';
 import AppLayout from '@/layouts/app-layout';
 import type { UsersIndexProps } from './types';
 import { CreateGamemasterDialog } from './CreateGamemasterDialog';
@@ -18,6 +19,7 @@ export default function UsersIndex({
     available_professors,
     filters,
 }: UsersIndexProps) {
+    const userItems = users.data ?? [];
     const [search, setSearch] = useState(filters.search);
     const [createOpen, setCreateOpen] = useState(false);
     const isInitialMount = useRef(true);
@@ -91,10 +93,57 @@ export default function UsersIndex({
                 />
 
                 <UsersTable
-                    users={users}
+                    users={userItems}
                     filters={filters}
                     onSort={handleSort}
                 />
+
+                {users.total > 0 && (
+                    <div className="flex items-center justify-between gap-4 border-t pt-4">
+                        <p className="text-sm text-muted-foreground">
+                            Showing {(users.current_page - 1) * users.per_page + 1} to{' '}
+                            {Math.min(users.current_page * users.per_page, users.total)} of{' '}
+                            {users.total} entries
+                        </p>
+                        {users.last_page > 1 && (
+                            <div className="flex items-center gap-2">
+                                {users.prev_page_url ? (
+                                    <Link
+                                        href={users.prev_page_url}
+                                        preserveState
+                                        className="inline-flex items-center gap-1 rounded-md border px-3 py-2 text-sm font-medium transition-colors hover:bg-muted"
+                                    >
+                                        <ArrowLeft className="size-4" />
+                                        Previous
+                                    </Link>
+                                ) : (
+                                    <span className="inline-flex cursor-not-allowed items-center gap-1 rounded-md border border-transparent bg-muted/50 px-3 py-2 text-sm font-medium text-muted-foreground">
+                                        <ArrowLeft className="size-4" />
+                                        Previous
+                                    </span>
+                                )}
+                                <span className="text-sm text-muted-foreground">
+                                    Page {users.current_page} of {users.last_page}
+                                </span>
+                                {users.next_page_url ? (
+                                    <Link
+                                        href={users.next_page_url}
+                                        preserveState
+                                        className="inline-flex items-center gap-1 rounded-md border px-3 py-2 text-sm font-medium transition-colors hover:bg-muted"
+                                    >
+                                        Next
+                                        <ArrowRight className="size-4" />
+                                    </Link>
+                                ) : (
+                                    <span className="inline-flex cursor-not-allowed items-center gap-1 rounded-md border border-transparent bg-muted/50 px-3 py-2 text-sm font-medium text-muted-foreground">
+                                        Next
+                                        <ArrowRight className="size-4" />
+                                    </span>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                )}
 
                 <CreateGamemasterDialog
                     open={createOpen}

@@ -1,5 +1,7 @@
-import { Head, router, useForm } from '@inertiajs/react';
+import { Head, Link, router, useForm } from '@inertiajs/react';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { ArrowLeft, ArrowRight } from 'lucide-react';
+import { sileo } from 'sileo';
 import AppLayout from '@/layouts/app-layout';
 import type { MasterlistStudentsProps, Student } from './students/types';
 import { CreateStudentDialog } from './students/CreateStudentDialog';
@@ -12,6 +14,7 @@ export default function MasterlistStudents({
     students,
     filters,
 }: MasterlistStudentsProps) {
+    const studentItems = students.data ?? [];
     const [search, setSearch] = useState(filters.search);
     const [createOpen, setCreateOpen] = useState(false);
     const [editingStudent, setEditingStudent] = useState<Student | null>(null);
@@ -45,23 +48,73 @@ export default function MasterlistStudents({
         });
     };
 
+    const filterQuery = () =>
+        new URLSearchParams({
+            search: search || '',
+            course: filters.course || '',
+            year_level: filters.year_level || '',
+            sort_by: filters.sort_by,
+            sort_dir: filters.sort_dir,
+        }).toString();
+
+    const toastOptions = {
+        success: {
+            fill: '#166534',
+            styles: {
+                title: 'text-white!',
+                description: 'text-white/90!',
+                badge: 'hidden',
+            },
+        },
+        error: {
+            fill: '#991b1b',
+            styles: {
+                title: 'text-white!',
+                description: 'text-white/90!',
+                badge: 'hidden',
+            },
+        },
+    } as const;
+
     const handleCreateSubmit = () => {
-        createForm.post('/masterlist/students', {
+        createForm.post(`/masterlist/students?${filterQuery()}`, {
             preserveScroll: true,
             onSuccess: () => {
                 setCreateOpen(false);
                 createForm.reset();
+                sileo.success({
+                    title: 'Student added',
+                    description: 'The student has been added to the masterlist.',
+                    ...toastOptions.success,
+                });
+            },
+            onError: () => {
+                sileo.error({
+                    title: 'Could not add student',
+                    description: 'Please check the form and try again.',
+                    ...toastOptions.error,
+                });
             },
         });
     };
 
     const handleEditSubmit = () => {
         if (!editingStudent) return;
-        editForm.put(`/masterlist/students/${editingStudent.id}`, {
+        editForm.put(`/masterlist/students/${editingStudent.id}?${filterQuery()}`, {
             preserveScroll: true,
             onSuccess: () => {
-                setEditingStudent(null);
-                editForm.reset();
+                sileo.success({
+                    title: 'Student updated',
+                    description: 'The student has been updated.',
+                    ...toastOptions.success,
+                });
+            },
+            onError: () => {
+                sileo.error({
+                    title: 'Could not update student',
+                    description: 'Please check the form and try again.',
+                    ...toastOptions.error,
+                });
             },
         });
     };
@@ -70,7 +123,21 @@ export default function MasterlistStudents({
         if (!deletingStudent) return;
         router.delete(`/masterlist/students/${deletingStudent.id}`, {
             preserveScroll: true,
-            onSuccess: () => setDeletingStudent(null),
+            onSuccess: () => {
+                setDeletingStudent(null);
+                sileo.success({
+                    title: 'Student deleted',
+                    description: 'The student has been removed from the masterlist.',
+                    ...toastOptions.success,
+                });
+            },
+            onError: () => {
+                sileo.error({
+                    title: 'Could not delete student',
+                    description: 'Something went wrong. Please try again.',
+                    ...toastOptions.error,
+                });
+            },
         });
     };
 
@@ -131,12 +198,59 @@ export default function MasterlistStudents({
                 />
 
                 <StudentsTable
-                    students={students}
+                    students={studentItems}
                     filters={filters}
                     onSort={handleSort}
                     onEdit={openEdit}
                     onDelete={setDeletingStudent}
                 />
+
+                {students.total > 0 && (
+                    <div className="flex items-center justify-between gap-4 border-t pt-4">
+                        <p className="text-sm text-muted-foreground">
+                            Showing {(students.current_page - 1) * students.per_page + 1} to{' '}
+                            {Math.min(students.current_page * students.per_page, students.total)} of{' '}
+                            {students.total} entries
+                        </p>
+                        {students.last_page > 1 && (
+                            <div className="flex items-center gap-2">
+                                {students.prev_page_url ? (
+                                    <Link
+                                        href={students.prev_page_url}
+                                        preserveState
+                                        className="inline-flex items-center gap-1 rounded-md border px-3 py-2 text-sm font-medium transition-colors hover:bg-muted"
+                                    >
+                                        <ArrowLeft className="size-4" />
+                                        Previous
+                                    </Link>
+                                ) : (
+                                    <span className="inline-flex cursor-not-allowed items-center gap-1 rounded-md border border-transparent bg-muted/50 px-3 py-2 text-sm font-medium text-muted-foreground">
+                                        <ArrowLeft className="size-4" />
+                                        Previous
+                                    </span>
+                                )}
+                                <span className="text-sm text-muted-foreground">
+                                    Page {students.current_page} of {students.last_page}
+                                </span>
+                                {students.next_page_url ? (
+                                    <Link
+                                        href={students.next_page_url}
+                                        preserveState
+                                        className="inline-flex items-center gap-1 rounded-md border px-3 py-2 text-sm font-medium transition-colors hover:bg-muted"
+                                    >
+                                        Next
+                                        <ArrowRight className="size-4" />
+                                    </Link>
+                                ) : (
+                                    <span className="inline-flex cursor-not-allowed items-center gap-1 rounded-md border border-transparent bg-muted/50 px-3 py-2 text-sm font-medium text-muted-foreground">
+                                        Next
+                                        <ArrowRight className="size-4" />
+                                    </span>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                )}
 
                 <CreateStudentDialog
                     open={createOpen}

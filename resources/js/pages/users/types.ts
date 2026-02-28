@@ -26,8 +26,18 @@ export type AvailableProfessor = {
     last_name: string;
 };
 
+export type PaginatedUsers = {
+    data: UserListItem[];
+    current_page: number;
+    last_page: number;
+    per_page: number;
+    total: number;
+    prev_page_url: string | null;
+    next_page_url: string | null;
+};
+
 export type UsersIndexProps = {
-    users: UserListItem[];
+    users: PaginatedUsers;
     available_professors: AvailableProfessor[];
     filters: UsersFilters;
 };

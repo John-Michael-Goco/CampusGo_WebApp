@@ -19,7 +19,9 @@ return new class extends Migration
             $table->string('location_text');
             $table->string('qr_code_value')->unique();
             $table->unsignedInteger('max_survivors');
-            $table->enum('status', ['active', 'locked', 'completed'])->default('active');
+            $table->unsignedInteger('minimum_participants')->default(1);
+            $table->dateTime('stage_deadline')->nullable();
+            $table->enum('status', ['active', 'locked', 'completed', 'failed'])->default('active');
             $table->timestamp('created_at')->useCurrent();
         });
     }

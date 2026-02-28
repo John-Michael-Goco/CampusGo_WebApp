@@ -17,7 +17,17 @@ export type ProfessorsFilters = {
     sort_dir: string;
 };
 
+export type PaginatedProfessors = {
+    data: Professor[];
+    current_page: number;
+    last_page: number;
+    per_page: number;
+    total: number;
+    prev_page_url: string | null;
+    next_page_url: string | null;
+};
+
 export type MasterlistProfessorsProps = {
-    professors: Professor[];
+    professors: PaginatedProfessors;
     filters: ProfessorsFilters;
 };

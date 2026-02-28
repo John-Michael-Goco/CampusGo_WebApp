@@ -33,6 +33,7 @@ const mainNavItems: NavItem[] = [
         icon: ListTodo,
         items: [
             { title: 'Active quests', href: '/quests/active', icon: null },
+            { title: 'Quest approval', href: '/quests/approval', icon: null },
             { title: 'History', href: '/quests/history', icon: null },
         ],
     },

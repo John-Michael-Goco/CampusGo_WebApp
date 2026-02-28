@@ -132,6 +132,14 @@
     --sidebar-ring: oklch(0.439 0 0);
 }
 
+/* Sileo toast: more visible state colors */
+:root {
+    --sileo-state-success: oklch(0.45 0.18 145);
+    --sileo-state-error: oklch(0.55 0.22 25);
+    --sileo-state-warning: oklch(0.75 0.18 85);
+    --sileo-state-info: oklch(0.55 0.18 245);
+}
+
 @layer base {
     * {
         @apply border-border;

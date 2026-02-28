@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Masterlist;
 
 use App\Http\Controllers\Controller;
+use App\Models\ActivityLog;
 use App\Models\StudentMasterlist;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -51,7 +52,9 @@ class StudentController extends Controller
         }
         $query->orderBy($sortBy, $sortDir);
 
-        $students = $query->get(['id', 'student_number', 'first_name', 'last_name', 'course', 'year_level', 'is_registered']);
+        $students = $query->select(['id', 'student_number', 'first_name', 'last_name', 'course', 'year_level', 'is_registered'])
+            ->paginate(15)
+            ->withQueryString();
 
         $courses = StudentMasterlist::query()
             ->select('course')
@@ -85,7 +88,14 @@ class StudentController extends Controller
             'year_level' => ['required', 'integer', 'min:1', 'max:4'],
         ]);
 
-        StudentMasterlist::create([...$validated, 'is_registered' => false]);
+        $student = StudentMasterlist::create([...$validated, 'is_registered' => false]);
+
+        ActivityLog::log(
+            $request->user()->id,
+            'student_created',
+            sprintf('Created student: %s %s (%s)', $student->first_name, $student->last_name, $student->student_number),
+            $student->id
+        );
 
         return redirect()->route('masterlist.students', $request->only(['search', 'course', 'year_level', 'sort_by', 'sort_dir']))
             ->with('status', 'Student created successfully.');

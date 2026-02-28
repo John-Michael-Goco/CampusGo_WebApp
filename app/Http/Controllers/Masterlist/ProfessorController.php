@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Masterlist;
 
 use App\Http\Controllers\Controller;
+use App\Models\ActivityLog;
 use App\Models\ProfessorMasterlist;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -44,10 +45,10 @@ class ProfessorController extends Controller
         }
         $query->orderBy($sortBy, $sortDir);
 
-        $professors = $query->get([
+        $professors = $query->select([
             'id', 'employee_id', 'title', 'first_name', 'last_name',
             'department', 'is_registered',
-        ]);
+        ])->paginate(15)->withQueryString();
 
         return Inertia::render('masterlist/professors', [
             'professors' => $professors,
@@ -69,11 +70,18 @@ class ProfessorController extends Controller
             'last_name' => ['required', 'string', 'max:255'],
         ]);
 
-        ProfessorMasterlist::create([
+        $professor = ProfessorMasterlist::create([
             ...$validated,
             'department' => 'SSITE',
             'is_registered' => false,
         ]);
+
+        ActivityLog::log(
+            $request->user()->id,
+            'professor_created',
+            sprintf('Created professor: %s %s, %s (%s)', $professor->title, $professor->last_name, $professor->first_name, $professor->employee_id),
+            $professor->id
+        );
 
         return redirect()
             ->route('masterlist.professors', $request->only(['search', 'title', 'sort_by', 'sort_dir']))

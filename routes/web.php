@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\LogController;
 use App\Http\Controllers\Masterlist\ProfessorController;
 use App\Http\Controllers\Masterlist\StudentController;
 use App\Http\Controllers\UserController;
@@ -28,9 +29,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Quests
     Route::inertia('quests/active', 'quests/active')->name('quests.active');
     Route::inertia('quests/history', 'quests/history')->name('quests.history');
+    Route::inertia('quests/approval', 'quests/approval')->name('quests.approval');
 
     // Logs
-    Route::inertia('logs', 'logs/index')->name('logs.index');
+    Route::get('logs', [LogController::class, 'index'])->name('logs.index');
 });
 
 require __DIR__.'/settings.php';

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\ActivityLog;
 use App\Models\StudentMasterlist;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
@@ -28,6 +29,12 @@ class AuthController extends Controller
         }
 
         $token = $user->createToken($request->input('device_name', 'api'))->plainTextToken;
+
+        ActivityLog::log(
+            $user->id,
+            'auth_signin',
+            'Signed in via API'
+        );
 
         return response()->json([
             'token' => $token,
@@ -81,6 +88,12 @@ class AuthController extends Controller
 
         $student->update(['is_registered' => true]);
 
+        ActivityLog::log(
+            $user->id,
+            'auth_signup',
+            sprintf('Registered via API (%s)', $user->email)
+        );
+
         $token = $user->createToken($request->input('device_name', 'api'))->plainTextToken;
 
         return response()->json([
@@ -92,7 +105,15 @@ class AuthController extends Controller
 
     public function signout(Request $request): JsonResponse
     {
-        $request->user()->currentAccessToken()->delete();
+        $user = $request->user();
+
+        ActivityLog::log(
+            $user->id,
+            'auth_signout',
+            'Signed out via API'
+        );
+
+        $user->currentAccessToken()->delete();
 
         return response()->json(['message' => 'Signed out successfully.']);
     }

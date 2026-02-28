@@ -1,7 +1,8 @@
 import { createInertiaApp } from '@inertiajs/react';
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
-import { StrictMode } from 'react';
+import { Fragment, StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
+import { Toaster } from 'sileo';
 import '../css/app.css';
 import { initializeTheme } from './hooks/use-appearance';
 
@@ -19,7 +20,21 @@ createInertiaApp({
 
         root.render(
             <StrictMode>
-                <App {...props} />
+                <Fragment>
+                    <Toaster
+                    position="top-right"
+                    options={{
+                        fill: 'var(--card)',
+                        roundness: 16,
+                        styles: {
+                            title: 'font-semibold text-foreground',
+                            description: 'text-muted-foreground',
+                            badge: 'hidden',
+                        },
+                    }}
+                />
+                    <App {...props} />
+                </Fragment>
             </StrictMode>,
         );
     },
