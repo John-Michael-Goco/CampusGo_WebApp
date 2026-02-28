@@ -47,6 +47,8 @@ const mainNavItems: NavItem[] = [
     },
 ];
 
+const rightNavItems: NavItem[] = [];
+
 const activeItemStyles =
     'text-neutral-900 dark:bg-neutral-800 dark:text-neutral-100';
 
@@ -160,7 +162,7 @@ export function AppHeader({ breadcrumbs = [] }: Props) {
                                 <Search className="!size-5 opacity-80 group-hover:opacity-100" />
                             </Button>
                             <div className="ml-1 hidden gap-1 lg:flex">
-                                {rightNavItems.map((item) => (
+                                {rightNavItems.map((item: NavItem) => (
                                     <TooltipProvider
                                         key={item.title}
                                         delayDuration={0}

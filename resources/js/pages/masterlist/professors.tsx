@@ -26,7 +26,6 @@ export default function MasterlistProfessors({
         title: '',
         first_name: '',
         last_name: '',
-        department: '',
     });
 
     const editForm = useForm({
@@ -34,7 +33,6 @@ export default function MasterlistProfessors({
         title: '',
         first_name: '',
         last_name: '',
-        department: '',
     });
 
     const openEdit = (professor: Professor) => {
@@ -44,7 +42,6 @@ export default function MasterlistProfessors({
             title: professor.title,
             first_name: professor.first_name,
             last_name: professor.last_name,
-            department: professor.department,
         });
     };
 

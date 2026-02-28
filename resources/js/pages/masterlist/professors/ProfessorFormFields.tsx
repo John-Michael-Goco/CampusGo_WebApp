@@ -15,7 +15,6 @@ type FormData = {
     title: string;
     first_name: string;
     last_name: string;
-    department: string;
 };
 
 type FormErrors = Partial<Record<keyof FormData, string>>;
@@ -83,16 +82,6 @@ export function ProfessorFormFields({
                     placeholder="Last name"
                 />
                 <InputError message={errors.last_name} />
-            </div>
-            <div className="grid gap-2">
-                <Label htmlFor={`${idPrefix}_department`}>Department</Label>
-                <Input
-                    id={`${idPrefix}_department`}
-                    value={data.department}
-                    onChange={(e) => setData('department', e.target.value)}
-                    placeholder="Department"
-                />
-                <InputError message={errors.department} />
             </div>
         </div>
     );

@@ -67,10 +67,13 @@ class ProfessorController extends Controller
             'title' => ['required', 'string', 'in:Mr.,Mrs.,Ms.,Dr.,Prof.'],
             'first_name' => ['required', 'string', 'max:255'],
             'last_name' => ['required', 'string', 'max:255'],
-            'department' => ['required', 'string', 'max:255'],
         ]);
 
-        ProfessorMasterlist::create([...$validated, 'is_registered' => false]);
+        ProfessorMasterlist::create([
+            ...$validated,
+            'department' => 'SSITE',
+            'is_registered' => false,
+        ]);
 
         return redirect()
             ->route('masterlist.professors', $request->only(['search', 'title', 'sort_by', 'sort_dir']))
@@ -84,10 +87,9 @@ class ProfessorController extends Controller
             'title' => ['required', 'string', 'in:Mr.,Mrs.,Ms.,Dr.,Prof.'],
             'first_name' => ['required', 'string', 'max:255'],
             'last_name' => ['required', 'string', 'max:255'],
-            'department' => ['required', 'string', 'max:255'],
         ]);
 
-        $professor_masterlist->update($validated);
+        $professor_masterlist->update([...$validated, 'department' => 'SSITE']);
 
         return redirect()
             ->route('masterlist.professors', $request->only(['search', 'title', 'sort_by', 'sort_dir']))

@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Masterlist\ProfessorController;
 use App\Http\Controllers\Masterlist\StudentController;
+use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
 
 Route::redirect('/', '/login')->name('home');
@@ -21,7 +22,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::delete('masterlist/professors/{professor_masterlist}', [ProfessorController::class, 'destroy'])->name('masterlist.professors.destroy');
 
     // Users
-    Route::inertia('users', 'users/index')->name('users.index');
+    Route::get('users', [UserController::class, 'index'])->name('users.index');
+    Route::post('users', [UserController::class, 'store'])->name('users.store');
 
     // Quests
     Route::inertia('quests/active', 'quests/active')->name('quests.active');
