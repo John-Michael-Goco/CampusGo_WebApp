@@ -26,11 +26,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('users', [UserController::class, 'index'])->name('users.index');
     Route::post('users', [UserController::class, 'store'])->name('users.store');
 
-    // Quests
-    Route::inertia('quests/active', 'quests/active')->name('quests.active');
-    Route::inertia('quests/history', 'quests/history')->name('quests.history');
-    Route::inertia('quests/approval', 'quests/approval')->name('quests.approval');
-
     // Logs
     Route::get('logs', [LogController::class, 'index'])->name('logs.index');
 });

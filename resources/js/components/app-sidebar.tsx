@@ -2,7 +2,6 @@ import { Link } from '@inertiajs/react';
 import {
     ClipboardList,
     LayoutGrid,
-    ListTodo,
     ScrollText,
     Users,
 } from 'lucide-react';
@@ -26,16 +25,6 @@ const mainNavItems: NavItem[] = [
         title: 'Dashboard',
         href: dashboard(),
         icon: LayoutGrid,
-    },
-    {
-        title: 'Quests',
-        href: '/quests/active',
-        icon: ListTodo,
-        items: [
-            { title: 'Active quests', href: '/quests/active', icon: null },
-            { title: 'Quest approval', href: '/quests/approval', icon: null },
-            { title: 'History', href: '/quests/history', icon: null },
-        ],
     },
     {
         title: 'Users',

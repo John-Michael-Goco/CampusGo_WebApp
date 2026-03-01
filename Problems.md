@@ -14,13 +14,16 @@ WHAT IF THE STUDENT SAVED THE QR AND JUST PASSED IT ON THE OTHER STUDENTS? : xxx
 
 TODO: 
 ADD: View to the students and Professors
-ADD: Quest Approval
 ADD: Minimum participants, if not met the quest will be considered as failed
 ADD: Row Locking to prevent race condition 
 ADD: Validation on the add student and update student. when the ACT course is selected only 1 and 2 year level must be the available option
 ADD: Engr in the title
+ADD: Achievement and Badges
+ADD: is_enrolled on the students table
+ADD: points for game currency
+ADD: 
 
-
+-----------------------
 ADD: Rules and Regulation
-ADD: Application Update when the next clue is given
+ADD: Application NOtification when the next clue is given
 ADD: Optional - Realtime notification for backend (Quest Approval)
