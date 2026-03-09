@@ -180,7 +180,7 @@ Storing multiple sections in one column is bad design. This is a proper many-to-
 | id                   | PK       |             |
 | quest_id             | FK       |             |
 | stage_number         | int      |             |
-| location_name        | varchar  |             |
+| location_hint        | varchar  |             |
 | max_survivors        | int      |             |
 | minimum_participants | int      |             |
 | stage_deadline       | datetime |             |
