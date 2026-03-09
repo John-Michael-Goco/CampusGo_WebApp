@@ -15,10 +15,11 @@ const defaultFilters: LogsFilters = {
     search: '',
     date_from: '',
     date_to: '',
+    user_id: '',
     sort_dir: 'desc',
 };
 
-export default function LogsIndex({ logs, filters: rawFilters }: LogsPageProps) {
+export default function LogsIndex({ logs, activityLogUsers, filters: rawFilters }: LogsPageProps) {
     const filters = { ...defaultFilters, ...rawFilters };
     const [search, setSearch] = useState(filters.search);
     const logItems = logs.data ?? [];
@@ -30,6 +31,7 @@ export default function LogsIndex({ logs, filters: rawFilters }: LogsPageProps) 
             search: next.search || undefined,
             date_from: next.date_from || undefined,
             date_to: next.date_to || undefined,
+            user_id: next.user_id || undefined,
             sort_dir: next.sort_dir,
         }, { preserveState: true });
     };
@@ -65,6 +67,7 @@ export default function LogsIndex({ logs, filters: rawFilters }: LogsPageProps) 
                     search={search}
                     onSearchChange={setSearch}
                     onFiltersChange={applyFilters}
+                    activityLogUsers={activityLogUsers}
                 />
 
                 <LogsTable

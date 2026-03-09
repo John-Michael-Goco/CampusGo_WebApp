@@ -113,6 +113,13 @@ class ActivityLog extends Model
         }
     }
 
+    public function scopeFilterByUser($query, $userId): void
+    {
+        if ($userId !== null && $userId !== '') {
+            $query->where('activity_logs.user_id', $userId);
+        }
+    }
+
     public function scopeOrderByTimestamp($query, string $dir = 'desc'): void
     {
         $query->orderBy('activity_logs.timestamp', $dir === 'asc' ? 'asc' : 'desc');

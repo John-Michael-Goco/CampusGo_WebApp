@@ -10,7 +10,13 @@ export type LogsFilters = {
     search: string;
     date_from: string;
     date_to: string;
+    user_id: string;
     sort_dir: 'asc' | 'desc';
+};
+
+export type ActivityLogUser = {
+    id: number;
+    name: string;
 };
 
 export type PaginatedLogs = {
@@ -25,6 +31,7 @@ export type PaginatedLogs = {
 
 export type LogsPageProps = {
     logs: PaginatedLogs;
+    activityLogUsers: ActivityLogUser[];
     filters: LogsFilters;
 };
 

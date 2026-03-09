@@ -1,18 +1,21 @@
-import { Calendar, Search } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { Calendar, Search, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
     DropdownMenu,
     DropdownMenuContent,
+    DropdownMenuItem,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import type { LogsFilters as LogsFiltersType } from './types';
+import type { ActivityLogUser, LogsFilters as LogsFiltersType } from './types';
 
-type Props = {
+export type LogsFiltersProps = {
     filters: LogsFiltersType;
     search: string;
     onSearchChange: (value: string) => void;
     onFiltersChange: (updates: Partial<LogsFiltersType>) => void;
+    activityLogUsers?: ActivityLogUser[];
 };
 
 export function LogsFilters({
@@ -20,8 +23,30 @@ export function LogsFilters({
     search,
     onSearchChange,
     onFiltersChange,
-}: Props) {
+    activityLogUsers = [],
+}: LogsFiltersProps) {
     const hasDateFilter = Boolean(filters.date_from || filters.date_to);
+    const [userSearch, setUserSearch] = useState('');
+    const [userDropdownOpen, setUserDropdownOpen] = useState(false);
+
+    const filteredUsers = useMemo(() => {
+        const term = userSearch.trim().toLowerCase();
+        if (!term) return activityLogUsers;
+        return activityLogUsers.filter((u) =>
+            u.name.toLowerCase().includes(term)
+        );
+    }, [activityLogUsers, userSearch]);
+
+    const selectedUserName =
+        filters.user_id ?
+            activityLogUsers.find((u) => String(u.id) === filters.user_id)?.name
+        :   null;
+
+    const handleSelectUser = (userId: string) => {
+        onFiltersChange({ user_id: userId });
+        setUserDropdownOpen(false);
+        setUserSearch('');
+    };
 
     return (
         <div className="flex flex-wrap items-center gap-3">
@@ -35,6 +60,62 @@ export function LogsFilters({
                     className="pl-9"
                 />
             </div>
+
+            <DropdownMenu
+                open={userDropdownOpen}
+                onOpenChange={(open) => {
+                    setUserDropdownOpen(open);
+                    if (!open) setUserSearch('');
+                }}
+            >
+                <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm">
+                        <User className="mr-2 size-4" />
+                        {selectedUserName ?? 'Filter by user'}
+                        {filters.user_id ? (
+                            <span className="ml-2 size-2 rounded-full bg-primary" />
+                        ) : null}
+                    </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-64 p-0">
+                    <div
+                        className="border-b p-2"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <Input
+                            type="search"
+                            placeholder="Search name..."
+                            value={userSearch}
+                            onChange={(e) =>
+                                setUserSearch(e.target.value)}
+                            className="h-8"
+                            autoFocus
+                        />
+                    </div>
+                    <div className="max-h-[240px] overflow-y-auto py-1">
+                        <DropdownMenuItem
+                            onClick={() => handleSelectUser('')}
+                        >
+                            All users
+                        </DropdownMenuItem>
+                        {filteredUsers.length === 0 ? (
+                            <div className="px-2 py-4 text-center text-sm text-muted-foreground">
+                                No users match
+                            </div>
+                        ) : (
+                            filteredUsers.map((user) => (
+                                <DropdownMenuItem
+                                    key={user.id}
+                                    onClick={() =>
+                                        handleSelectUser(String(user.id))}
+                                >
+                                    {user.name}
+                                </DropdownMenuItem>
+                            ))
+                        )}
+                    </div>
+                </DropdownMenuContent>
+            </DropdownMenu>
 
             <DropdownMenu>
                 <DropdownMenuTrigger asChild>

@@ -2,7 +2,7 @@ import { Link } from '@inertiajs/react';
 import {
     ClipboardList,
     LayoutGrid,
-    ScrollText,
+    Receipt,
     ShoppingBag,
     Users,
 } from 'lucide-react';
@@ -51,9 +51,13 @@ const mainNavItems: NavItem[] = [
         ],
     },
     {
-        title: 'Activity Logs',
+        title: 'Logs and transactions',
         href: '/logs',
-        icon: ScrollText,
+        icon: Receipt,
+        items: [
+            { title: 'Activity Logs', href: '/logs', icon: null },
+            { title: 'Points transactions', href: '/transactions', icon: null },
+        ],
     },
 ];
 
