@@ -4,6 +4,7 @@ use App\Http\Controllers\AchievementController;
 use App\Http\Controllers\LogController;
 use App\Http\Controllers\Masterlist\ProfessorController;
 use App\Http\Controllers\Masterlist\StudentController;
+use App\Http\Controllers\StoreItemController;
 use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
 
@@ -31,7 +32,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('logs', [LogController::class, 'index'])->name('logs.index');
 
     // Store & Achievements
-    Route::inertia('store', 'store&achievements/store')->name('store.index');
+    Route::get('store', [StoreItemController::class, 'index'])->name('store.index');
+    Route::post('store', [StoreItemController::class, 'store'])->name('store.store');
+    Route::put('store/{storeItem}', [StoreItemController::class, 'update'])->name('store.update');
+    Route::delete('store/{storeItem}', [StoreItemController::class, 'destroy'])->name('store.destroy');
     Route::get('achievements', [AchievementController::class, 'index'])->name('achievements.index');
     Route::post('achievements', [AchievementController::class, 'store'])->name('achievements.store');
     Route::put('achievements/{achievement}', [AchievementController::class, 'update'])->name('achievements.update');

@@ -1,0 +1,197 @@
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
+
+export type StoreItemFormData = {
+    name: string;
+    description: string;
+    cost_points: number;
+    stock: number;
+    start_date: string;
+    end_date: string;
+    is_limited: boolean;
+    is_visible: boolean;
+};
+
+/** Format ISO string for datetime-local input (YYYY-MM-DDTHH:mm) */
+function toDateTimeLocal(iso: string | null): string {
+    if (!iso) return '';
+    try {
+        const d = new Date(iso);
+        const pad = (n: number) => String(n).padStart(2, '0');
+        return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    } catch {
+        return '';
+    }
+}
+
+type Props = {
+    idPrefix: string;
+    data: StoreItemFormData;
+    errors: Partial<Record<keyof StoreItemFormData, string>>;
+    setData: (
+        field: keyof StoreItemFormData,
+        value: string | number | boolean
+    ) => void;
+};
+
+export function StoreItemFormFields({
+    idPrefix,
+    data,
+    errors,
+    setData,
+}: Props) {
+    return (
+        <div className="grid gap-4">
+            <div className="grid gap-2">
+                <Label htmlFor={`${idPrefix}-name`}>Name</Label>
+                <Input
+                    id={`${idPrefix}-name`}
+                    value={data.name}
+                    onChange={(e) => setData('name', e.target.value)}
+                    placeholder="Item name"
+                    autoComplete="off"
+                />
+                {errors.name && (
+                    <p className="text-sm text-destructive">{errors.name}</p>
+                )}
+            </div>
+            <div className="grid gap-2">
+                <Label htmlFor={`${idPrefix}-description`}>
+                    Description (optional)
+                </Label>
+                <Input
+                    id={`${idPrefix}-description`}
+                    value={data.description}
+                    onChange={(e) => setData('description', e.target.value)}
+                    placeholder="Brief description"
+                    autoComplete="off"
+                />
+                {errors.description && (
+                    <p className="text-sm text-destructive">
+                        {errors.description}
+                    </p>
+                )}
+            </div>
+            <div className="grid gap-2">
+                <Label htmlFor={`${idPrefix}-cost_points`}>Cost (points)</Label>
+                <Input
+                    id={`${idPrefix}-cost_points`}
+                    type="number"
+                    min={0}
+                    value={data.cost_points}
+                    onChange={(e) =>
+                        setData(
+                            'cost_points',
+                            parseInt(e.target.value, 10) || 0
+                        )
+                    }
+                    placeholder="0"
+                />
+                {errors.cost_points && (
+                    <p className="text-sm text-destructive">
+                        {errors.cost_points}
+                    </p>
+                )}
+            </div>
+            <div className="grid gap-2">
+                <Label htmlFor={`${idPrefix}-stock`}>Stock</Label>
+                <Input
+                    id={`${idPrefix}-stock`}
+                    type="number"
+                    min={0}
+                    value={data.stock}
+                    onChange={(e) =>
+                        setData('stock', parseInt(e.target.value, 10) || 0)
+                    }
+                    placeholder="0"
+                />
+                {errors.stock && (
+                    <p className="text-sm text-destructive">{errors.stock}</p>
+                )}
+            </div>
+            <div className="grid gap-2">
+                <Label htmlFor={`${idPrefix}-start_date`}>
+                    Start date (optional)
+                </Label>
+                <Input
+                    id={`${idPrefix}-start_date`}
+                    type="datetime-local"
+                    value={toDateTimeLocal(data.start_date || null)}
+                    onChange={(e) =>
+                        setData('start_date', e.target.value || '')
+                    }
+                />
+                {errors.start_date && (
+                    <p className="text-sm text-destructive">
+                        {errors.start_date}
+                    </p>
+                )}
+            </div>
+            <div className="grid gap-2">
+                <Label htmlFor={`${idPrefix}-end_date`}>
+                    End date (optional)
+                </Label>
+                <Input
+                    id={`${idPrefix}-end_date`}
+                    type="datetime-local"
+                    value={toDateTimeLocal(data.end_date || null)}
+                    onChange={(e) =>
+                        setData('end_date', e.target.value || '')
+                    }
+                />
+                {errors.end_date && (
+                    <p className="text-sm text-destructive">
+                        {errors.end_date}
+                    </p>
+                )}
+            </div>
+            <div className="flex flex-wrap items-center gap-6">
+                <div className="flex items-center gap-2">
+                    <Checkbox
+                        id={`${idPrefix}-is_limited`}
+                        checked={data.is_limited}
+                        onCheckedChange={(checked) =>
+                            setData('is_limited', checked === true)
+                        }
+                    />
+                    <Label
+                        htmlFor={`${idPrefix}-is_limited`}
+                        className="cursor-pointer font-normal"
+                    >
+                        Limited availability
+                    </Label>
+                </div>
+                <div className="flex items-center gap-2">
+                    <Checkbox
+                        id={`${idPrefix}-is_visible`}
+                        checked={data.is_visible}
+                        onCheckedChange={(checked) =>
+                            setData('is_visible', checked === true)
+                        }
+                    />
+                    <Label
+                        htmlFor={`${idPrefix}-is_visible`}
+                        className="cursor-pointer font-normal"
+                    >
+                        Visible in store
+                    </Label>
+                </div>
+            </div>
+            {(errors.is_limited || errors.is_visible) && (
+                <div className="space-y-1">
+                    {errors.is_limited && (
+                        <p className="text-sm text-destructive">
+                            {errors.is_limited}
+                        </p>
+                    )}
+                    {errors.is_visible && (
+                        <p className="text-sm text-destructive">
+                            {errors.is_visible}
+                        </p>
+                    )}
+                </div>
+            )}
+        </div>
+    );
+}
