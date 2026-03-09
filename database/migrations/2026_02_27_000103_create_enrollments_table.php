@@ -11,8 +11,9 @@ return new class extends Migration
         Schema::create('enrollments', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->constrained('users')->cascadeOnDelete();
-            $table->string('semester');
+            $table->string('semester'); // matches semesters.name; one enrollment per user per semester
             $table->boolean('is_enrolled')->default(true);
+            $table->unique(['user_id', 'semester']);
         });
     }
 
