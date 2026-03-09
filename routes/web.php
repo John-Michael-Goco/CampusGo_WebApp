@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AchievementController;
 use App\Http\Controllers\LogController;
 use App\Http\Controllers\Masterlist\ProfessorController;
 use App\Http\Controllers\Masterlist\StudentController;
@@ -28,6 +29,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // Logs
     Route::get('logs', [LogController::class, 'index'])->name('logs.index');
+
+    // Store & Achievements
+    Route::inertia('store', 'store&achievements/store')->name('store.index');
+    Route::get('achievements', [AchievementController::class, 'index'])->name('achievements.index');
+    Route::post('achievements', [AchievementController::class, 'store'])->name('achievements.store');
+    Route::put('achievements/{achievement}', [AchievementController::class, 'update'])->name('achievements.update');
+    Route::delete('achievements/{achievement}', [AchievementController::class, 'destroy'])->name('achievements.destroy');
 });
 
 require __DIR__.'/settings.php';

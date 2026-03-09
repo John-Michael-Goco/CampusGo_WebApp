@@ -1,18 +1,9 @@
 import InputError from '@/components/input-error';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from '@/components/ui/select';
-import { TITLE_OPTIONS } from './types';
 
 type FormData = {
     employee_id: string;
-    title: string;
     first_name: string;
     last_name: string;
 };
@@ -43,25 +34,6 @@ export function ProfessorFormFields({
                     placeholder="e.g. EMP-001"
                 />
                 <InputError message={errors.employee_id} />
-            </div>
-            <div className="grid gap-2">
-                <Label htmlFor={`${idPrefix}_title`}>Title</Label>
-                <Select
-                    value={data.title || ''}
-                    onValueChange={(v) => setData('title', v)}
-                >
-                    <SelectTrigger id={`${idPrefix}_title`}>
-                        <SelectValue placeholder="Select title" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        {TITLE_OPTIONS.map((t) => (
-                            <SelectItem key={t} value={t}>
-                                {t}
-                            </SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
-                <InputError message={errors.title} />
             </div>
             <div className="grid gap-2">
                 <Label htmlFor={`${idPrefix}_first_name`}>First name</Label>

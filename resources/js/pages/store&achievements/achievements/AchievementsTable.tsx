@@ -1,6 +1,10 @@
 import { ArrowDown, ArrowUp, ArrowUpDown, Pencil, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import type { Professor, ProfessorsFilters } from './types';
+import {
+    REQUIREMENT_TYPE_OPTIONS,
+    type Achievement,
+    type AchievementsFilters,
+} from './types';
 
 function SortIcon({
     column,
@@ -21,16 +25,23 @@ function SortIcon({
     );
 }
 
+function requirementTypeLabel(value: string): string {
+    const opt = REQUIREMENT_TYPE_OPTIONS.find((o) => o.value === value);
+    return opt?.label ?? value;
+}
+
 type Props = {
-    professors: Professor[];
-    filters: ProfessorsFilters;
-    onSort: (column: 'employee_id' | 'last_name') => void;
-    onEdit: (professor: Professor) => void;
-    onDelete: (professor: Professor) => void;
+    achievements: Achievement[];
+    filters: AchievementsFilters;
+    onSort: (
+        column: 'name' | 'requirement_type' | 'requirement_value'
+    ) => void;
+    onEdit: (achievement: Achievement) => void;
+    onDelete: (achievement: Achievement) => void;
 };
 
-export function ProfessorsTable({
-    professors,
+export function AchievementsTable({
+    achievements,
     filters,
     onSort,
     onEdit,
@@ -46,11 +57,28 @@ export function ProfessorsTable({
                                 <button
                                     type="button"
                                     className="inline-flex items-center hover:underline"
-                                    onClick={() => onSort('employee_id')}
+                                    onClick={() => onSort('name')}
                                 >
-                                    Employee ID
+                                    Name
                                     <SortIcon
-                                        column="employee_id"
+                                        column="name"
+                                        currentSort={filters.sort_by}
+                                        sortDir={filters.sort_dir}
+                                    />
+                                </button>
+                            </th>
+                            <th className="h-11 px-4 text-left font-medium">
+                                Description
+                            </th>
+                            <th className="h-11 px-4 text-left font-medium">
+                                <button
+                                    type="button"
+                                    className="inline-flex items-center hover:underline"
+                                    onClick={() => onSort('requirement_type')}
+                                >
+                                    Requirement type
+                                    <SortIcon
+                                        column="requirement_type"
                                         currentSort={filters.sort_by}
                                         sortDir={filters.sort_dir}
                                     />
@@ -60,21 +88,15 @@ export function ProfessorsTable({
                                 <button
                                     type="button"
                                     className="inline-flex items-center hover:underline"
-                                    onClick={() => onSort('last_name')}
+                                    onClick={() => onSort('requirement_value')}
                                 >
-                                    Last name
+                                    Requirement value
                                     <SortIcon
-                                        column="last_name"
+                                        column="requirement_value"
                                         currentSort={filters.sort_by}
                                         sortDir={filters.sort_dir}
                                     />
                                 </button>
-                            </th>
-                            <th className="h-11 px-4 text-left font-medium">
-                                First name
-                            </th>
-                            <th className="h-11 px-4 text-left font-medium">
-                                Is registered
                             </th>
                             <th className="h-11 px-4 text-right font-medium">
                                 Actions
@@ -82,40 +104,34 @@ export function ProfessorsTable({
                         </tr>
                     </thead>
                     <tbody>
-                        {professors.length === 0 ? (
+                        {achievements.length === 0 ? (
                             <tr>
                                 <td
                                     colSpan={5}
                                     className="h-24 px-4 text-center text-muted-foreground"
                                 >
-                                    No professors found.
+                                    No achievements found.
                                 </td>
                             </tr>
                         ) : (
-                            professors.map((professor) => (
+                            achievements.map((achievement) => (
                                 <tr
-                                    key={professor.id}
+                                    key={achievement.id}
                                     className="border-b transition-colors hover:bg-muted/30"
                                 >
-                                    <td className="px-4 py-3 font-mono text-muted-foreground">
-                                        {professor.employee_id}
+                                    <td className="px-4 py-3 font-medium">
+                                        {achievement.name}
+                                    </td>
+                                    <td className="max-w-[280px] truncate px-4 py-3 text-muted-foreground">
+                                        {achievement.description ?? '—'}
                                     </td>
                                     <td className="px-4 py-3">
-                                        {professor.last_name}
-                                    </td>
-                                    <td className="px-4 py-3">
-                                        {professor.first_name}
-                                    </td>
-                                    <td className="px-4 py-3">
-                                        {professor.is_registered ? (
-                                            <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800 dark:bg-green-900/30 dark:text-green-400">
-                                                Yes
-                                            </span>
-                                        ) : (
-                                            <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
-                                                No
-                                            </span>
+                                        {requirementTypeLabel(
+                                            achievement.requirement_type
                                         )}
+                                    </td>
+                                    <td className="px-4 py-3">
+                                        {achievement.requirement_value}
                                     </td>
                                     <td className="px-4 py-3 text-right">
                                         <div className="flex justify-end gap-2">
@@ -124,7 +140,9 @@ export function ProfessorsTable({
                                                 variant="ghost"
                                                 size="icon"
                                                 className="size-8"
-                                                onClick={() => onEdit(professor)}
+                                                onClick={() =>
+                                                    onEdit(achievement)
+                                                }
                                                 aria-label="Edit"
                                             >
                                                 <Pencil className="size-4" />
@@ -134,7 +152,9 @@ export function ProfessorsTable({
                                                 variant="ghost"
                                                 size="icon"
                                                 className="size-8 text-destructive hover:text-destructive"
-                                                onClick={() => onDelete(professor)}
+                                                onClick={() =>
+                                                    onDelete(achievement)
+                                                }
                                                 aria-label="Delete"
                                             >
                                                 <Trash2 className="size-4" />

@@ -3,7 +3,13 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { ArrowLeft, ArrowRight } from 'lucide-react';
 import { sileo } from 'sileo';
 import AppLayout from '@/layouts/app-layout';
+import type { BreadcrumbItem } from '@/types';
 import type { MasterlistStudentsProps, Student } from './students/types';
+
+const breadcrumbs: BreadcrumbItem[] = [
+    { title: 'Masterlist', href: '/masterlist/students' },
+    { title: 'Students', href: '/masterlist/students' },
+];
 import { CreateStudentDialog } from './students/CreateStudentDialog';
 import { DeleteStudentDialog } from './students/DeleteStudentDialog';
 import { EditStudentDialog } from './students/EditStudentDialog';
@@ -12,6 +18,7 @@ import { StudentsTable } from './students/StudentsTable';
 
 export default function MasterlistStudents({
     students,
+    sections = [],
     filters,
 }: MasterlistStudentsProps) {
     const studentItems = students.data ?? [];
@@ -27,6 +34,7 @@ export default function MasterlistStudents({
         last_name: '',
         course: '',
         year_level: 1,
+        section: '',
     });
 
     const editForm = useForm({
@@ -35,6 +43,7 @@ export default function MasterlistStudents({
         last_name: '',
         course: '',
         year_level: 1,
+        section: '',
     });
 
     const openEdit = (student: Student) => {
@@ -45,6 +54,7 @@ export default function MasterlistStudents({
             last_name: student.last_name,
             course: student.course,
             year_level: student.year_level,
+            section: student.section ?? '',
         });
     };
 
@@ -53,6 +63,7 @@ export default function MasterlistStudents({
             search: search || '',
             course: filters.course || '',
             year_level: filters.year_level || '',
+            section: filters.section || '',
             sort_by: filters.sort_by,
             sort_dir: filters.sort_dir,
         }).toString();
@@ -155,6 +166,7 @@ export default function MasterlistStudents({
                 search: search || undefined,
                 course: filters.course || undefined,
                 year_level: filters.year_level || undefined,
+                section: filters.section || undefined,
                 sort_by: filters.sort_by,
                 sort_dir: filters.sort_dir,
             }, { preserveState: true });
@@ -168,14 +180,15 @@ export default function MasterlistStudents({
                 search: ('search' in updates ? updates.search : search) || undefined,
                 course: ('course' in updates ? updates.course : filters.course) || undefined,
                 year_level: ('year_level' in updates ? updates.year_level : filters.year_level) || undefined,
+                section: ('section' in updates ? updates.section : filters.section) || undefined,
                 sort_by: updates.sort_by ?? filters.sort_by,
                 sort_dir: updates.sort_dir ?? filters.sort_dir,
             }, { preserveState: true });
         },
-        [search, filters.course, filters.year_level, filters.sort_by, filters.sort_dir]
+        [search, filters.course, filters.year_level, filters.section, filters.sort_by, filters.sort_dir]
     );
 
-    const handleSort = (column: 'student_number' | 'last_name') => {
+    const handleSort = (column: 'student_number' | 'last_name' | 'section') => {
         const nextDir =
             filters.sort_by === column && filters.sort_dir === 'asc'
                 ? 'desc'
@@ -184,7 +197,7 @@ export default function MasterlistStudents({
     };
 
     return (
-        <AppLayout>
+        <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Students Masterlist" />
             <div className="flex h-full flex-1 flex-col gap-4 rounded-xl p-4">
                 <h1 className="text-xl font-semibold">Students Masterlist</h1>
@@ -193,6 +206,7 @@ export default function MasterlistStudents({
                     search={search}
                     onSearchChange={setSearch}
                     filters={filters}
+                    sections={sections}
                     onFiltersChange={updateFilters}
                     onOpenCreate={() => setCreateOpen(true)}
                 />

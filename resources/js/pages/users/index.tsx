@@ -2,7 +2,13 @@ import { Head, Link, router, useForm } from '@inertiajs/react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ArrowLeft, ArrowRight } from 'lucide-react';
 import AppLayout from '@/layouts/app-layout';
+import type { BreadcrumbItem } from '@/types';
 import type { UsersIndexProps } from './types';
+
+const breadcrumbs: BreadcrumbItem[] = [
+    { title: 'Users', href: '/users' },
+    { title: 'All Users', href: '/users' },
+];
 import { CreateGamemasterDialog } from './CreateGamemasterDialog';
 import { UsersFilters } from './UsersFilters';
 import { UsersTable } from './UsersTable';
@@ -70,7 +76,7 @@ export default function UsersIndex({
         [search, filters.role, filters.sort_by, filters.sort_dir]
     );
 
-    const handleSort = (column: 'name' | 'role') => {
+    const handleSort = (column: 'name' | 'role' | 'points_balance' | 'level') => {
         const nextDir =
             filters.sort_by === column && filters.sort_dir === 'asc'
                 ? 'desc'
@@ -79,7 +85,7 @@ export default function UsersIndex({
     };
 
     return (
-        <AppLayout>
+        <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Users" />
             <div className="flex h-full flex-1 flex-col gap-4 rounded-xl p-4">
                 <h1 className="text-xl font-semibold">Users</h1>

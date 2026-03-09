@@ -8,7 +8,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import { COURSE_OPTIONS, YEAR_LEVEL_OPTIONS } from './types';
+import { ACT_YEAR_LEVEL_OPTIONS, COURSE_OPTIONS, YEAR_LEVEL_OPTIONS } from './types';
 
 type FormData = {
     student_number: string;
@@ -16,6 +16,7 @@ type FormData = {
     last_name: string;
     course: string;
     year_level: number;
+    section: string;
 };
 
 type FormErrors = Partial<Record<keyof FormData, string>>;
@@ -71,7 +72,12 @@ export function StudentFormFields({
                 <Label htmlFor={`${idPrefix}_course`}>Course</Label>
                 <Select
                     value={data.course || ''}
-                    onValueChange={(v) => setData('course', v)}
+                    onValueChange={(v) => {
+                        setData('course', v);
+                        if (v === 'ACT' && data.year_level > 2) {
+                            setData('year_level', 1);
+                        }
+                    }}
                 >
                     <SelectTrigger id={`${idPrefix}_course`}>
                         <SelectValue placeholder="Select course" />
@@ -89,7 +95,17 @@ export function StudentFormFields({
             <div className="grid gap-2">
                 <Label htmlFor={`${idPrefix}_year_level`}>Year level</Label>
                 <Select
-                    value={String(data.year_level)}
+                    value={
+                        data.course === 'ACT'
+                            ? String(
+                                  ACT_YEAR_LEVEL_OPTIONS.includes(
+                                      data.year_level as 1 | 2
+                                  )
+                                      ? data.year_level
+                                      : 1
+                              )
+                            : String(data.year_level)
+                    }
                     onValueChange={(v) =>
                         setData('year_level', parseInt(v, 10))
                     }
@@ -98,7 +114,10 @@ export function StudentFormFields({
                         <SelectValue placeholder="Select year level" />
                     </SelectTrigger>
                     <SelectContent>
-                        {YEAR_LEVEL_OPTIONS.map((y) => (
+                        {(data.course === 'ACT'
+                            ? ACT_YEAR_LEVEL_OPTIONS
+                            : YEAR_LEVEL_OPTIONS
+                        ).map((y) => (
                             <SelectItem key={y} value={String(y)}>
                                 {y}
                             </SelectItem>
@@ -106,6 +125,17 @@ export function StudentFormFields({
                     </SelectContent>
                 </Select>
                 <InputError message={errors.year_level} />
+            </div>
+            <div className="grid gap-2">
+                <Label htmlFor={`${idPrefix}_section`}>Section</Label>
+                <Input
+                    id={`${idPrefix}_section`}
+                    value={data.section ?? ''}
+                    onChange={(e) => setData('section', e.target.value)}
+                    placeholder="e.g. A, B, 1"
+                    required
+                />
+                <InputError message={errors.section} />
             </div>
         </div>
     );

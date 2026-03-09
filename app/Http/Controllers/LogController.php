@@ -15,30 +15,30 @@ class LogController extends Controller
     public function index(Request $request): Response
     {
         $query = ActivityLog::query()
-            ->with('user:id,name');
+            ->with('user:id,name,email');
 
         if ($search = $request->query('search')) {
             $query->where(function ($q) use ($search) {
                 $q->where('activity_logs.action', 'like', "%{$search}%")
-                    ->orWhere('activity_logs.description', 'like', "%{$search}%")
                     ->orWhereHas('user', function ($uq) use ($search) {
-                        $uq->where('name', 'like', "%{$search}%");
+                        $uq->where('name', 'like', "%{$search}%")
+                            ->orWhere('email', 'like', "%{$search}%");
                     });
             });
         }
 
         if ($dateFrom = $request->query('date_from')) {
-            $query->whereDate('activity_logs.created_at', '>=', $dateFrom);
+            $query->whereDate('activity_logs.timestamp', '>=', $dateFrom);
         }
         if ($dateTo = $request->query('date_to')) {
-            $query->whereDate('activity_logs.created_at', '<=', $dateTo);
+            $query->whereDate('activity_logs.timestamp', '<=', $dateTo);
         }
 
         $sortDir = $request->query('sort_dir', 'desc');
         if (! in_array($sortDir, ['asc', 'desc'], true)) {
             $sortDir = 'desc';
         }
-        $query->orderBy('activity_logs.created_at', $sortDir);
+        $query->orderBy('activity_logs.timestamp', $sortDir);
 
         $logs = $query->paginate(15)->withQueryString();
 

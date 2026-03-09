@@ -7,51 +7,31 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Spinner } from '@/components/ui/spinner';
-import { StudentFormFields } from './StudentFormFields';
-
-type FormData = {
-    student_number: string;
-    first_name: string;
-    last_name: string;
-    course: string;
-    year_level: number;
-    section: string;
-};
+import type { Achievement } from './types';
 
 type Props = {
+    achievement: Achievement | null;
     open: boolean;
     onOpenChange: (open: boolean) => void;
-    form: {
-        data: FormData;
-        errors: Partial<Record<keyof FormData, string>>;
-        setData: (field: keyof FormData, value: string | number) => void;
-        processing: boolean;
-    };
-    onSubmit: () => void;
+    onConfirm: () => void;
 };
 
-export function EditStudentDialog({
+export function DeleteAchievementDialog({
+    achievement,
     open,
     onOpenChange,
-    form,
-    onSubmit,
+    onConfirm,
 }: Props) {
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-md">
                 <DialogHeader>
-                    <DialogTitle>Edit Student</DialogTitle>
+                    <DialogTitle>Delete achievement</DialogTitle>
                     <DialogDescription>
-                        Update student details.
+                        Are you sure you want to delete &quot;
+                        {achievement?.name}&quot;? This action cannot be undone.
                     </DialogDescription>
                 </DialogHeader>
-                <StudentFormFields
-                    idPrefix="edit"
-                    data={form.data}
-                    errors={form.errors}
-                    setData={form.setData}
-                />
                 <DialogFooter>
                     <Button
                         type="button"
@@ -62,11 +42,10 @@ export function EditStudentDialog({
                     </Button>
                     <Button
                         type="button"
-                        onClick={onSubmit}
-                        disabled={form.processing}
+                        variant="destructive"
+                        onClick={onConfirm}
                     >
-                        {form.processing && <Spinner />}
-                        Save changes
+                        Delete
                     </Button>
                 </DialogFooter>
             </DialogContent>

@@ -28,8 +28,8 @@ export function DeleteProfessorDialog({
                 <DialogHeader>
                     <DialogTitle>Delete Professor</DialogTitle>
                     <DialogDescription>
-                        Are you sure you want to delete {professor?.title}{' '}
-                        {professor?.first_name} {professor?.last_name} (
+                        Are you sure you want to delete {professor?.first_name}{' '}
+                        {professor?.last_name} (
                         {professor?.employee_id})? This action cannot be undone.
                     </DialogDescription>
                 </DialogHeader>

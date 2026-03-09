@@ -7,8 +7,8 @@ export type UserListItem = {
     name: string;
     email: string;
     role: string;
-    gm_quest_credit: number;
-    total_points: number;
+    points_balance: number;
+    level: number;
 };
 
 export type UsersFilters = {
@@ -21,7 +21,6 @@ export type UsersFilters = {
 export type AvailableProfessor = {
     id: number;
     employee_id: string;
-    title: string;
     first_name: string;
     last_name: string;
 };
@@ -43,7 +42,7 @@ export type UsersIndexProps = {
 };
 
 export function formatProfessorName(p: AvailableProfessor): string {
-    return `${p.title} ${p.last_name}, ${p.first_name}`;
+    return `${p.last_name}, ${p.first_name}`;
 }
 
 /**

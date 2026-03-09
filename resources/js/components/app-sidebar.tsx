@@ -3,6 +3,7 @@ import {
     ClipboardList,
     LayoutGrid,
     ScrollText,
+    ShoppingBag,
     Users,
 } from 'lucide-react';
 import { NavMain } from '@/components/nav-main';
@@ -25,6 +26,15 @@ const mainNavItems: NavItem[] = [
         title: 'Dashboard',
         href: dashboard(),
         icon: LayoutGrid,
+    },
+    {
+        title: 'Store & Achievements',
+        href: '/store',
+        icon: ShoppingBag,
+        items: [
+            { title: 'Store', href: '/store', icon: null },
+            { title: 'Achievements', href: '/achievements', icon: null },
+        ],
     },
     {
         title: 'Users',

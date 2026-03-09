@@ -23,11 +23,13 @@ return new class extends Migration
             $table->string('section')->nullable();
             $table->boolean('is_active')->default(true);
             $table->boolean('is_registered')->default(false);
+            $table->timestamps();
         });
 
         Schema::create('users', function (Blueprint $table) {
             $table->id();
             $table->foreignId('master_user_id')->nullable()->constrained('master_users')->nullOnDelete();
+            $table->string('name')->nullable();
             $table->enum('role', ['admin', 'student', 'professor'])->default('student');
             $table->string('email')->unique();
             $table->timestamp('email_verified_at')->nullable();

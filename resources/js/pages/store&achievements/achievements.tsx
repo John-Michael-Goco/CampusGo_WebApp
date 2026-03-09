@@ -5,49 +5,55 @@ import { sileo } from 'sileo';
 import AppLayout from '@/layouts/app-layout';
 import type { BreadcrumbItem } from '@/types';
 import type {
-    MasterlistProfessorsProps,
-    Professor,
-} from './professors/types';
+    Achievement,
+    AchievementsPageProps,
+} from './achievements/types';
+import { AchievementsFilters } from './achievements/AchievementsFilters';
+import { AchievementsTable } from './achievements/AchievementsTable';
+import { CreateAchievementDialog } from './achievements/CreateAchievementDialog';
+import { EditAchievementDialog } from './achievements/EditAchievementDialog';
+import { DeleteAchievementDialog } from './achievements/DeleteAchievementDialog';
+import type { AchievementFormData } from './achievements/AchievementFormFields';
 
 const breadcrumbs: BreadcrumbItem[] = [
-    { title: 'Masterlist', href: '/masterlist/students' },
-    { title: 'Professors', href: '/masterlist/professors' },
+    { title: 'Store & Achievements', href: '/store' },
+    { title: 'Achievements', href: '/achievements' },
 ];
-import { CreateProfessorDialog } from './professors/CreateProfessorDialog';
-import { DeleteProfessorDialog } from './professors/DeleteProfessorDialog';
-import { EditProfessorDialog } from './professors/EditProfessorDialog';
-import { ProfessorsFilters } from './professors/ProfessorsFilters';
-import { ProfessorsTable } from './professors/ProfessorsTable';
 
-export default function MasterlistProfessors({
-    professors,
+export default function AchievementsPage({
+    achievements,
     filters,
-}: MasterlistProfessorsProps) {
-    const professorItems = professors.data ?? [];
+}: AchievementsPageProps) {
+    const achievementItems = achievements.data ?? [];
     const [search, setSearch] = useState(filters.search);
     const [createOpen, setCreateOpen] = useState(false);
-    const [editingProfessor, setEditingProfessor] = useState<Professor | null>(null);
-    const [deletingProfessor, setDeletingProfessor] = useState<Professor | null>(null);
+    const [editingAchievement, setEditingAchievement] =
+        useState<Achievement | null>(null);
+    const [deletingAchievement, setDeletingAchievement] =
+        useState<Achievement | null>(null);
     const isInitialMount = useRef(true);
 
-    const createForm = useForm({
-        employee_id: '',
-        first_name: '',
-        last_name: '',
+    const createForm = useForm<AchievementFormData>({
+        name: '',
+        description: '',
+        requirement_type: 'quest_count',
+        requirement_value: 0,
     });
 
-    const editForm = useForm({
-        employee_id: '',
-        first_name: '',
-        last_name: '',
+    const editForm = useForm<AchievementFormData>({
+        name: '',
+        description: '',
+        requirement_type: 'quest_count',
+        requirement_value: 0,
     });
 
-    const openEdit = (professor: Professor) => {
-        setEditingProfessor(professor);
+    const openEdit = (achievement: Achievement) => {
+        setEditingAchievement(achievement);
         editForm.setData({
-            employee_id: professor.employee_id,
-            first_name: professor.first_name,
-            last_name: professor.last_name,
+            name: achievement.name,
+            description: achievement.description ?? '',
+            requirement_type: achievement.requirement_type,
+            requirement_value: achievement.requirement_value,
         });
     };
 
@@ -78,20 +84,20 @@ export default function MasterlistProfessors({
     } as const;
 
     const handleCreateSubmit = () => {
-        createForm.post(`/masterlist/professors?${filterQuery()}`, {
+        createForm.post(`/achievements?${filterQuery()}`, {
             preserveScroll: true,
             onSuccess: () => {
                 setCreateOpen(false);
                 createForm.reset();
                 sileo.success({
-                    title: 'Professor added',
-                    description: 'The professor has been added to the masterlist.',
+                    title: 'Achievement added',
+                    description: 'The achievement has been created.',
                     ...toastOptions.success,
                 });
             },
             onError: () => {
                 sileo.error({
-                    title: 'Could not add professor',
+                    title: 'Could not add achievement',
                     description: 'Please check the form and try again.',
                     ...toastOptions.error,
                 });
@@ -100,46 +106,52 @@ export default function MasterlistProfessors({
     };
 
     const handleEditSubmit = () => {
-        if (!editingProfessor) return;
-        editForm.put(`/masterlist/professors/${editingProfessor.id}?${filterQuery()}`, {
-            preserveScroll: true,
-            onSuccess: () => {
-                sileo.success({
-                    title: 'Professor updated',
-                    description: 'The professor has been updated.',
-                    ...toastOptions.success,
-                });
-            },
-            onError: () => {
-                sileo.error({
-                    title: 'Could not update professor',
-                    description: 'Please check the form and try again.',
-                    ...toastOptions.error,
-                });
-            },
-        });
+        if (!editingAchievement) return;
+        editForm.put(
+            `/achievements/${editingAchievement.id}?${filterQuery()}`,
+            {
+                preserveScroll: true,
+                onSuccess: () => {
+                    sileo.success({
+                        title: 'Achievement updated',
+                        description: 'The achievement has been updated.',
+                        ...toastOptions.success,
+                    });
+                },
+                onError: () => {
+                    sileo.error({
+                        title: 'Could not update achievement',
+                        description: 'Please check the form and try again.',
+                        ...toastOptions.error,
+                    });
+                },
+            }
+        );
     };
 
     const handleDeleteConfirm = () => {
-        if (!deletingProfessor) return;
-        router.delete(`/masterlist/professors/${deletingProfessor.id}`, {
-            preserveScroll: true,
-            onSuccess: () => {
-                setDeletingProfessor(null);
-                sileo.success({
-                    title: 'Professor deleted',
-                    description: 'The professor has been removed from the masterlist.',
-                    ...toastOptions.success,
-                });
-            },
-            onError: () => {
-                sileo.error({
-                    title: 'Could not delete professor',
-                    description: 'Something went wrong. Please try again.',
-                    ...toastOptions.error,
-                });
-            },
-        });
+        if (!deletingAchievement) return;
+        router.delete(
+            `/achievements/${deletingAchievement.id}?${filterQuery()}`,
+            {
+                preserveScroll: true,
+                onSuccess: () => {
+                    setDeletingAchievement(null);
+                    sileo.success({
+                        title: 'Achievement deleted',
+                        description: 'The achievement has been removed.',
+                        ...toastOptions.success,
+                    });
+                },
+                onError: () => {
+                    sileo.error({
+                        title: 'Could not delete achievement',
+                        description: 'Something went wrong. Please try again.',
+                        ...toastOptions.error,
+                    });
+                },
+            }
+        );
     };
 
     useEffect(() => {
@@ -152,9 +164,8 @@ export default function MasterlistProfessors({
             return;
         }
         const t = setTimeout(() => {
-            router.get('/masterlist/professors', {
+            router.get('/achievements', {
                 search: search || undefined,
-                title: filters.title || undefined,
                 sort_by: filters.sort_by,
                 sort_dir: filters.sort_dir,
             }, { preserveState: true });
@@ -163,18 +174,19 @@ export default function MasterlistProfessors({
     }, [search]);
 
     const updateFilters = useCallback(
-        (updates: Partial<MasterlistProfessorsProps['filters']>) => {
-            router.get('/masterlist/professors', {
+        (updates: Partial<AchievementsPageProps['filters']>) => {
+            router.get('/achievements', {
                 search: ('search' in updates ? updates.search : search) || undefined,
-                title: ('title' in updates ? updates.title : filters.title) || undefined,
                 sort_by: updates.sort_by ?? filters.sort_by,
                 sort_dir: updates.sort_dir ?? filters.sort_dir,
             }, { preserveState: true });
         },
-        [search, filters.title, filters.sort_by, filters.sort_dir]
+        [search, filters.sort_by, filters.sort_dir]
     );
 
-    const handleSort = (column: 'employee_id' | 'last_name') => {
+    const handleSort = (
+        column: 'name' | 'requirement_type' | 'requirement_value'
+    ) => {
         const nextDir =
             filters.sort_by === column && filters.sort_dir === 'asc'
                 ? 'desc'
@@ -184,38 +196,44 @@ export default function MasterlistProfessors({
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
-            <Head title="Professors Masterlist" />
+            <Head title="Achievements" />
             <div className="flex h-full flex-1 flex-col gap-4 rounded-xl p-4">
-                <h1 className="text-xl font-semibold">Professors Masterlist</h1>
+                <h1 className="text-xl font-semibold">Achievements</h1>
 
-                <ProfessorsFilters
+                <AchievementsFilters
                     search={search}
                     onSearchChange={setSearch}
-                    filters={filters}
-                    onFiltersChange={updateFilters}
                     onOpenCreate={() => setCreateOpen(true)}
                 />
 
-                <ProfessorsTable
-                    professors={professorItems}
+                <AchievementsTable
+                    achievements={achievementItems}
                     filters={filters}
                     onSort={handleSort}
                     onEdit={openEdit}
-                    onDelete={setDeletingProfessor}
+                    onDelete={setDeletingAchievement}
                 />
 
-                {professors.total > 0 && (
+                {achievements.total > 0 && (
                     <div className="flex items-center justify-between gap-4 border-t pt-4">
                         <p className="text-sm text-muted-foreground">
-                            Showing {(professors.current_page - 1) * professors.per_page + 1} to{' '}
-                            {Math.min(professors.current_page * professors.per_page, professors.total)} of{' '}
-                            {professors.total} entries
+                            Showing{' '}
+                            {(achievements.current_page - 1) *
+                                achievements.per_page +
+                                1}{' '}
+                            to{' '}
+                            {Math.min(
+                                achievements.current_page *
+                                    achievements.per_page,
+                                achievements.total
+                            )}{' '}
+                            of {achievements.total} entries
                         </p>
-                        {professors.last_page > 1 && (
+                        {achievements.last_page > 1 && (
                             <div className="flex items-center gap-2">
-                                {professors.prev_page_url ? (
+                                {achievements.prev_page_url ? (
                                     <Link
-                                        href={professors.prev_page_url}
+                                        href={achievements.prev_page_url}
                                         preserveState
                                         className="inline-flex items-center gap-1 rounded-md border px-3 py-2 text-sm font-medium transition-colors hover:bg-muted"
                                     >
@@ -229,11 +247,12 @@ export default function MasterlistProfessors({
                                     </span>
                                 )}
                                 <span className="text-sm text-muted-foreground">
-                                    Page {professors.current_page} of {professors.last_page}
+                                    Page {achievements.current_page} of{' '}
+                                    {achievements.last_page}
                                 </span>
-                                {professors.next_page_url ? (
+                                {achievements.next_page_url ? (
                                     <Link
-                                        href={professors.next_page_url}
+                                        href={achievements.next_page_url}
                                         preserveState
                                         className="inline-flex items-center gap-1 rounded-md border px-3 py-2 text-sm font-medium transition-colors hover:bg-muted"
                                     >
@@ -251,24 +270,28 @@ export default function MasterlistProfessors({
                     </div>
                 )}
 
-                <CreateProfessorDialog
+                <CreateAchievementDialog
                     open={createOpen}
                     onOpenChange={setCreateOpen}
                     form={createForm}
                     onSubmit={handleCreateSubmit}
                 />
 
-                <EditProfessorDialog
-                    open={!!editingProfessor}
-                    onOpenChange={(open) => !open && setEditingProfessor(null)}
+                <EditAchievementDialog
+                    open={!!editingAchievement}
+                    onOpenChange={(open) =>
+                        !open && setEditingAchievement(null)
+                    }
                     form={editForm}
                     onSubmit={handleEditSubmit}
                 />
 
-                <DeleteProfessorDialog
-                    professor={deletingProfessor}
-                    open={!!deletingProfessor}
-                    onOpenChange={(open) => !open && setDeletingProfessor(null)}
+                <DeleteAchievementDialog
+                    achievement={deletingAchievement}
+                    open={!!deletingAchievement}
+                    onOpenChange={(open) =>
+                        !open && setDeletingAchievement(null)
+                    }
                     onConfirm={handleDeleteConfirm}
                 />
             </div>

@@ -65,8 +65,7 @@ export function CreateGamemasterDialog({
             (p) =>
                 p.first_name.toLowerCase().includes(q) ||
                 p.last_name.toLowerCase().includes(q) ||
-                p.employee_id.toLowerCase().includes(q) ||
-                p.title.toLowerCase().includes(q)
+                p.employee_id.toLowerCase().includes(q)
         );
     }, [availableProfessors, professorSearch]);
 
@@ -90,7 +89,7 @@ export function CreateGamemasterDialog({
                     <DialogDescription>
                         Select a professor from the masterlist to create their
                         gamemaster account. Only professors in the list can be
-                        added. Name will be saved as &quot;Title Last name, First
+                        added. Name will be saved as &quot;Last name, First
                         name&quot;.
                     </DialogDescription>
                 </DialogHeader>

@@ -12,7 +12,6 @@ import { ProfessorFormFields } from './ProfessorFormFields';
 
 type FormData = {
     employee_id: string;
-    title: string;
     first_name: string;
     last_name: string;
 };

@@ -2,9 +2,11 @@
 
 namespace App\Providers;
 
+use App\Models\MasterUser;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
 
@@ -23,6 +25,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        Route::bind('student_masterlist', fn (string $value) => MasterUser::where('role', 'student')->findOrFail($value));
+        Route::bind('professor_masterlist', fn (string $value) => MasterUser::where('role', 'professor')->findOrFail($value));
         $this->configureDefaults();
     }
 

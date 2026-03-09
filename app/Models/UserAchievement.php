@@ -5,22 +5,22 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-class ActivityLog extends Model
+class UserAchievement extends Model
 {
-    protected $table = 'activity_logs';
+    protected $table = 'user_achievements';
 
     public $timestamps = false;
 
     protected $fillable = [
         'user_id',
-        'action',
-        'timestamp',
+        'achievement_id',
+        'earned_at',
     ];
 
     protected function casts(): array
     {
         return [
-            'timestamp' => 'datetime',
+            'earned_at' => 'datetime',
         ];
     }
 
@@ -29,12 +29,8 @@ class ActivityLog extends Model
         return $this->belongsTo(User::class);
     }
 
-    public static function log(int $userId, string $action): self
+    public function achievement(): BelongsTo
     {
-        return self::create([
-            'user_id' => $userId,
-            'action' => $action,
-            'timestamp' => now(),
-        ]);
+        return $this->belongsTo(Achievement::class);
     }
 }

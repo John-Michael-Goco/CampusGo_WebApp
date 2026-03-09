@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\ActivityLog;
-use App\Models\ProfessorMasterlist;
+use App\Models\MasterUser;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -23,7 +23,7 @@ class UserController extends Controller
         $query = User::query()
             ->select([
                 'id', 'name', 'email', 'role',
-                'gm_quest_credit', 'total_points',
+                'points_balance', 'level',
             ])
             ->whereKeyNot($request->user()->id);
 
@@ -42,7 +42,7 @@ class UserController extends Controller
 
         $sortBy = $request->query('sort_by', 'name');
         $sortDir = $request->query('sort_dir', 'asc');
-        if (! in_array($sortBy, ['name', 'role'], true)) {
+        if (! in_array($sortBy, ['name', 'role', 'points_balance', 'level'], true)) {
             $sortBy = 'name';
         }
         if (! in_array($sortDir, ['asc', 'desc'], true)) {
@@ -52,15 +52,17 @@ class UserController extends Controller
 
         $users = $query->paginate(15)->withQueryString();
 
-        $registeredProfessorIds = User::query()
-            ->whereNotNull('master_professor_id')
-            ->pluck('master_professor_id');
-
-        $availableProfessors = ProfessorMasterlist::query()
-            ->whereNotIn('id', $registeredProfessorIds)
+        $availableProfessors = MasterUser::query()
+            ->where('role', 'professor')
+            ->where('is_registered', false)
             ->orderBy('last_name')
             ->orderBy('first_name')
-            ->get(['id', 'employee_id', 'title', 'first_name', 'last_name']);
+            ->get(['id', 'school_id', 'first_name', 'last_name']);
+
+        $availableProfessors->transform(function ($row) {
+            $row->employee_id = $row->school_id;
+            return $row;
+        });
 
         return Inertia::render('users/index', [
             'users' => $users,
@@ -75,21 +77,18 @@ class UserController extends Controller
     }
 
     /**
-     * Store a new gamemaster (admin) user for a professor.
+     * Store a new user account for a professor (gamemaster).
      */
     public function store(Request $request): RedirectResponse
     {
-        $registeredProfessorIds = User::query()
-            ->whereNotNull('master_professor_id')
-            ->pluck('master_professor_id');
-
         $validated = $request->validate([
             'professor_id' => [
                 'required',
                 'integer',
-                'exists:professors_masterlist,id',
-                function ($attribute, $value, $fail) use ($registeredProfessorIds) {
-                    if ($registeredProfessorIds->contains($value)) {
+                'exists:master_users,id',
+                function (string $attribute, int $value, \Closure $fail) {
+                    $master = MasterUser::find($value);
+                    if ($master && $master->is_registered) {
                         $fail('This professor already has a user account.');
                     }
                 },
@@ -98,24 +97,22 @@ class UserController extends Controller
             'password' => ['required', 'string', 'confirmed', Password::default()],
         ]);
 
-        $professor = ProfessorMasterlist::findOrFail($validated['professor_id']);
-        $name = $professor->title . ' ' . $professor->last_name . ', ' . $professor->first_name;
+        $professor = MasterUser::where('role', 'professor')->findOrFail($validated['professor_id']);
+        $name = trim($professor->first_name . ' ' . $professor->last_name);
 
         $user = User::create([
+            'master_user_id' => $professor->id,
             'name' => $name,
             'email' => $validated['email'],
             'password' => $validated['password'],
-            'role' => 'admin',
-            'master_professor_id' => $professor->id,
+            'role' => 'professor',
         ]);
 
         $professor->update(['is_registered' => true]);
 
         ActivityLog::log(
             $request->user()->id,
-            'gamemaster_created',
-            sprintf('Created gamemaster: %s (%s)', $user->name, $user->email),
-            $user->id
+            sprintf('gamemaster_created: %s (%s)', $user->name, $user->email)
         );
 
         return redirect()

@@ -24,7 +24,7 @@ function SortIcon({
 type Props = {
     students: Student[];
     filters: StudentsFilters;
-    onSort: (column: 'student_number' | 'last_name') => void;
+    onSort: (column: 'student_number' | 'last_name' | 'section') => void;
     onEdit: (student: Student) => void;
     onDelete: (student: Student) => void;
 };
@@ -80,7 +80,24 @@ export function StudentsTable({
                                 Year level
                             </th>
                             <th className="h-11 px-4 text-left font-medium">
+                                <button
+                                    type="button"
+                                    className="inline-flex items-center hover:underline"
+                                    onClick={() => onSort('section')}
+                                >
+                                    Section
+                                    <SortIcon
+                                        column="section"
+                                        currentSort={filters.sort_by}
+                                        sortDir={filters.sort_dir}
+                                    />
+                                </button>
+                            </th>
+                            <th className="h-11 px-4 text-left font-medium">
                                 Is registered
+                            </th>
+                            <th className="h-11 px-4 text-left font-medium">
+                                Is enrolled
                             </th>
                             <th className="h-11 px-4 text-right font-medium">
                                 Actions
@@ -91,7 +108,7 @@ export function StudentsTable({
                         {students.length === 0 ? (
                             <tr>
                                 <td
-                                    colSpan={7}
+                                    colSpan={9}
                                     className="h-24 px-4 text-center text-muted-foreground"
                                 >
                                     No students found.
@@ -119,7 +136,21 @@ export function StudentsTable({
                                         {student.year_level}
                                     </td>
                                     <td className="px-4 py-3">
+                                        {student.section ?? '—'}
+                                    </td>
+                                    <td className="px-4 py-3">
                                         {student.is_registered ? (
+                                            <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800 dark:bg-green-900/30 dark:text-green-400">
+                                                Yes
+                                            </span>
+                                        ) : (
+                                            <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+                                                No
+                                            </span>
+                                        )}
+                                    </td>
+                                    <td className="px-4 py-3">
+                                        {student.is_enrolled ? (
                                             <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800 dark:bg-green-900/30 dark:text-green-400">
                                                 Yes
                                             </span>

@@ -8,30 +8,27 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
-import { StudentFormFields } from './StudentFormFields';
-
-type FormData = {
-    student_number: string;
-    first_name: string;
-    last_name: string;
-    course: string;
-    year_level: number;
-    section: string;
-};
+import {
+    AchievementFormFields,
+    type AchievementFormData,
+} from './AchievementFormFields';
 
 type Props = {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     form: {
-        data: FormData;
-        errors: Partial<Record<keyof FormData, string>>;
-        setData: (field: keyof FormData, value: string | number) => void;
+        data: AchievementFormData;
+        errors: Partial<Record<keyof AchievementFormData, string>>;
+        setData: (
+            field: keyof AchievementFormData,
+            value: string | number
+        ) => void;
         processing: boolean;
     };
     onSubmit: () => void;
 };
 
-export function CreateStudentDialog({
+export function CreateAchievementDialog({
     open,
     onOpenChange,
     form,
@@ -41,12 +38,13 @@ export function CreateStudentDialog({
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-md">
                 <DialogHeader>
-                    <DialogTitle>Add Student</DialogTitle>
+                    <DialogTitle>Add achievement</DialogTitle>
                     <DialogDescription>
-                        Add a new student to the masterlist.
+                        Create a new achievement badge. Users earn it when they
+                        meet the requirement.
                     </DialogDescription>
                 </DialogHeader>
-                <StudentFormFields
+                <AchievementFormFields
                     idPrefix="create"
                     data={form.data}
                     errors={form.errors}
@@ -66,7 +64,7 @@ export function CreateStudentDialog({
                         disabled={form.processing}
                     >
                         {form.processing && <Spinner />}
-                        Add Student
+                        Create
                     </Button>
                 </DialogFooter>
             </DialogContent>

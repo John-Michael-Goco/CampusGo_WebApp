@@ -2,7 +2,13 @@ import { Head, Link, router } from '@inertiajs/react';
 import { useEffect, useRef, useState } from 'react';
 import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Calendar, Search } from 'lucide-react';
 import AppLayout from '@/layouts/app-layout';
+import type { BreadcrumbItem } from '@/types';
 import { Button } from '@/components/ui/button';
+
+const breadcrumbs: BreadcrumbItem[] = [
+    { title: 'Activity Logs', href: '/logs' },
+    { title: 'Logs', href: '/logs' },
+];
 import { Input } from '@/components/ui/input';
 import {
     DropdownMenu,
@@ -14,9 +20,7 @@ type LogEntry = {
     id: number;
     user_id: number;
     action: string;
-    description: string | null;
-    reference_id: number | null;
-    created_at: string;
+    timestamp: string;
     user: { id: number; name: string } | null;
 };
 
@@ -42,23 +46,17 @@ type Props = {
     filters?: Partial<LogsFilters>;
 };
 
-function actionLabel(action: string): string {
-    switch (action) {
-        case 'student_created':
-            return 'Student created';
-        case 'professor_created':
-            return 'Professor created';
-        case 'gamemaster_created':
-            return 'Gamemaster created';
-        case 'auth_signin':
-            return 'Signed in (API)';
-        case 'auth_signup':
-            return 'Registered (API)';
-        case 'auth_signout':
-            return 'Signed out (API)';
-        default:
-            return action;
-    }
+function actionDisplay(action: string): string {
+    const prefix = action.split(':')[0]?.trim() ?? action;
+    const labels: Record<string, string> = {
+        student_created: 'Student created',
+        professor_created: 'Professor created',
+        gamemaster_created: 'Gamemaster created',
+        auth_signin: 'Signed in (API)',
+        auth_signup: 'Registered (API)',
+        auth_signout: 'Signed out (API)',
+    };
+    return labels[prefix] ?? action;
 }
 
 function SortIcon({ sortDir }: { sortDir: 'asc' | 'desc' }) {
@@ -120,7 +118,7 @@ export default function LogsIndex({ logs, filters: rawFilters }: Props) {
     const hasDateFilter = filters.date_from || filters.date_to;
 
     return (
-        <AppLayout>
+        <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Logs" />
             <div className="flex h-full flex-1 flex-col gap-4 rounded-xl p-4">
                 <h1 className="text-xl font-semibold">Activity Logs</h1>
@@ -130,7 +128,7 @@ export default function LogsIndex({ logs, filters: rawFilters }: Props) {
                         <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
                         <Input
                             type="search"
-                            placeholder="Search by action, description, or user..."
+                            placeholder="Search by action or user..."
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
                             className="pl-9"
@@ -214,9 +212,6 @@ export default function LogsIndex({ logs, filters: rawFilters }: Props) {
                                         Action
                                     </th>
                                     <th className="h-11 px-4 text-left font-medium">
-                                        Description
-                                    </th>
-                                    <th className="h-11 px-4 text-left font-medium">
                                         By
                                     </th>
                                 </tr>
@@ -225,7 +220,7 @@ export default function LogsIndex({ logs, filters: rawFilters }: Props) {
                                 {logItems.length === 0 ? (
                                     <tr>
                                         <td
-                                            colSpan={4}
+                                            colSpan={3}
                                             className="h-24 px-4 text-center text-muted-foreground"
                                         >
                                             No logs yet.
@@ -238,17 +233,17 @@ export default function LogsIndex({ logs, filters: rawFilters }: Props) {
                                             className="border-b transition-colors hover:bg-muted/30"
                                         >
                                             <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">
-                                                {log.created_at
-                                                    ? new Date(
-                                                          log.created_at
-                                                      ).toLocaleString()
+                                                {log.timestamp
+                                                    ? new Date(log.timestamp).toLocaleString()
                                                     : '—'}
                                             </td>
                                             <td className="px-4 py-3">
-                                                {actionLabel(log.action)}
-                                            </td>
-                                            <td className="px-4 py-3">
-                                                {log.description ?? '—'}
+                                                {actionDisplay(log.action)}
+                                                {log.action.includes(':') && (
+                                                    <span className="ml-1 text-muted-foreground">
+                                                        — {log.action.split(':').slice(1).join(':').trim()}
+                                                    </span>
+                                                )}
                                             </td>
                                             <td className="px-4 py-3">
                                                 {log.user?.name ?? '—'}

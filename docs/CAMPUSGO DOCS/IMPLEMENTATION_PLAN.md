@@ -272,12 +272,14 @@ To enforce a single attempt, record correctness, and determine survivors. Requir
 | stock        | int      |             |
 | start_date   | datetime |             |
 | end_date     | datetime |             |
-| is_limited   | boolean  |             |
+| is_limited   | boolean  | If true, enforce stock: decrement on redeem; when stock = 0, no more redemptions. If false, item is unlimited (stock not enforced). |
 
 *(Redeemable with points.)*
 
 **What it is**  
 Items students can redeem using points (event or permanent; limited or unlimited).
+
+**is_limited** — When **true**, the item has finite **stock**: each redemption decrements `stock`; when `stock` reaches 0, no one can redeem until restocked (or never). When **false**, the item is **unlimited**: redemptions do not decrement stock (or stock is ignored); anyone with enough points can always redeem.
 
 **Why separate**  
 Part of the in-game economy: items have cost, stock, and time windows.
@@ -508,6 +510,10 @@ Use this when creating or altering migrations to match the design above.
 7. **Points sharing** — Add **transfer_in** and **transfer_out** to `point_transactions.transaction_type`. Only **students** can send points. **Min 10 pts, max 100 pts** per transfer. One transfer = two rows (sender: transfer_out negative; receiver: transfer_in positive); `reference_id` = counterparty user_id. Transferred points do **not** count for XP/leaderboard.
 
 8. **Quest creator funding reward** — **Yes.** When a student creates a quest, they can fund **reward_points** from their own balance (the prize the winner gets). Deduct from creator's balance when the quest is approved (or when it goes live). So the creator "gives away" their points as the quest prize. “how fast they answered,” use time between stage start and each submission: derive from `submissions.submitted_at` order per participant, or optionally add a `stage_entered_at` (or `question_revealed_at`) on a participant–stage table if you want explicit “time to answer.” Current tables are enough if you derive stage start from previous submissions or `quest_participants.joined_at`.
+
+9. **Multiple "scan the QR" stages and revealing the next location** — **Supported.** A quest can have multiple stages that are each "just scan the QR" (each stage has one or more `quest_questions` with `question_type = 'qr_scan'`). The **next location is revealed only after the participant scans the current stage's QR.**  
+   - **Flow:** Participant has `quest_participants.current_stage` (e.g. 1). App shows only **that stage's** `location_hint` and the QR/camera for that stage's qr_scan question. When they scan and submit, create a `submissions` row and **advance** `current_stage` (e.g. to 2). On the next load, the app returns the **new** current stage — so the participant now sees the **next** stage's `location_hint` and the next QR. Repeat for each stage.  
+   - **Rule:** Only expose the current stage's location and QR to the participant; advance `current_stage` only after a valid submission for the current stage's qr_scan question. No schema change required.
 
 ---
 

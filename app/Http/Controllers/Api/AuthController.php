@@ -4,7 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\ActivityLog;
-use App\Models\StudentMasterlist;
+use App\Models\MasterUser;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -30,11 +30,7 @@ class AuthController extends Controller
 
         $token = $user->createToken($request->input('device_name', 'api'))->plainTextToken;
 
-        ActivityLog::log(
-            $user->id,
-            'auth_signin',
-            'Signed in via API'
-        );
+        ActivityLog::log($user->id, 'auth_signin: Signed in via API');
 
         return response()->json([
             'token' => $token,
@@ -55,7 +51,9 @@ class AuthController extends Controller
             'password' => 'required|string|min:8',
         ]);
 
-        $student = StudentMasterlist::where('student_number', $validated['student_number'])->first();
+        $student = MasterUser::where('role', 'student')
+            ->where('school_id', $validated['student_number'])
+            ->first();
 
         if (! $student) {
             throw ValidationException::withMessages([
@@ -71,7 +69,7 @@ class AuthController extends Controller
 
         if (strcasecmp(trim($student->first_name), trim($validated['first_name'])) !== 0
             || strcasecmp(trim($student->last_name), trim($validated['last_name'])) !== 0
-            || strcasecmp(trim($student->course), trim($validated['course'])) !== 0
+            || strcasecmp(trim($student->course ?? ''), trim($validated['course'])) !== 0
             || (int) $student->year_level !== (int) $validated['year_level']) {
             throw ValidationException::withMessages([
                 'student_number' => ['Student details do not match the masterlist.'],
@@ -79,20 +77,16 @@ class AuthController extends Controller
         }
 
         $user = User::create([
-            'name' => $validated['last_name'] . ', ' . $validated['first_name'],
+            'master_user_id' => $student->id,
+            'name' => trim($validated['last_name'] . ', ' . $validated['first_name']),
             'email' => $validated['email'],
             'password' => $validated['password'],
             'role' => 'student',
-            'master_student_id' => $student->id,
         ]);
 
         $student->update(['is_registered' => true]);
 
-        ActivityLog::log(
-            $user->id,
-            'auth_signup',
-            sprintf('Registered via API (%s)', $user->email)
-        );
+        ActivityLog::log($user->id, sprintf('auth_signup: Registered via API (%s)', $user->email));
 
         $token = $user->createToken($request->input('device_name', 'api'))->plainTextToken;
 
@@ -107,11 +101,7 @@ class AuthController extends Controller
     {
         $user = $request->user();
 
-        ActivityLog::log(
-            $user->id,
-            'auth_signout',
-            'Signed out via API'
-        );
+        ActivityLog::log($user->id, 'auth_signout: Signed out via API');
 
         $user->currentAccessToken()->delete();
 

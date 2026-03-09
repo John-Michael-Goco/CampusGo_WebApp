@@ -15,6 +15,7 @@ type Props = {
     search: string;
     onSearchChange: (value: string) => void;
     filters: StudentsFilters;
+    sections: string[];
     onFiltersChange: (updates: Partial<StudentsFilters>) => void;
     onOpenCreate: () => void;
 };
@@ -23,6 +24,7 @@ export function StudentsFilters({
     search,
     onSearchChange,
     filters,
+    sections,
     onFiltersChange,
     onOpenCreate,
 }: Props) {
@@ -78,6 +80,26 @@ export function StudentsFilters({
                     ))}
                 </SelectContent>
             </Select>
+            {sections.length > 0 && (
+                <Select
+                    value={filters.section || 'all'}
+                    onValueChange={(v) =>
+                        onFiltersChange({ section: v === 'all' ? '' : v })
+                    }
+                >
+                    <SelectTrigger className="w-[140px]">
+                        <SelectValue placeholder="All sections" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="all">All sections</SelectItem>
+                        {sections.map((s) => (
+                            <SelectItem key={s} value={s}>
+                                {s}
+                            </SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
+            )}
         </div>
     );
 }

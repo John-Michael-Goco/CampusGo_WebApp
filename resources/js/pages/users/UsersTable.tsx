@@ -20,24 +20,14 @@ function SortIcon({
     );
 }
 
-function questCreditDisplay(user: UserListItem): string {
-    if (user.role === 'admin' || user.role === 'professor') {
-        return 'Unlimited';
-    }
-    return String(user.gm_quest_credit ?? 0);
-}
-
-function totalPointsDisplay(user: UserListItem): string {
-    if (user.role !== 'student') {
-        return '—';
-    }
-    return String(user.total_points ?? 0);
+function pointsDisplay(user: UserListItem): string {
+    return String(user.points_balance ?? 0);
 }
 
 type Props = {
     users: UserListItem[];
     filters: UsersFilters;
-    onSort: (column: 'name' | 'role') => void;
+    onSort: (column: 'name' | 'role' | 'points_balance' | 'level') => void;
 };
 
 export function UsersTable({ users, filters, onSort }: Props) {
@@ -79,10 +69,32 @@ export function UsersTable({ users, filters, onSort }: Props) {
                                 </button>
                             </th>
                             <th className="h-11 px-4 text-left font-medium">
-                                Quest Credit
+                                <button
+                                    type="button"
+                                    className="inline-flex items-center hover:underline"
+                                    onClick={() => onSort('points_balance')}
+                                >
+                                    Points
+                                    <SortIcon
+                                        column="points_balance"
+                                        currentSort={filters.sort_by}
+                                        sortDir={filters.sort_dir}
+                                    />
+                                </button>
                             </th>
                             <th className="h-11 px-4 text-left font-medium">
-                                Total points
+                                <button
+                                    type="button"
+                                    className="inline-flex items-center hover:underline"
+                                    onClick={() => onSort('level')}
+                                >
+                                    Level
+                                    <SortIcon
+                                        column="level"
+                                        currentSort={filters.sort_by}
+                                        sortDir={filters.sort_dir}
+                                    />
+                                </button>
                             </th>
                         </tr>
                     </thead>
@@ -110,10 +122,10 @@ export function UsersTable({ users, filters, onSort }: Props) {
                                         {user.role}
                                     </td>
                                     <td className="px-4 py-3">
-                                        {questCreditDisplay(user)}
+                                        {pointsDisplay(user)}
                                     </td>
                                     <td className="px-4 py-3">
-                                        {totalPointsDisplay(user)}
+                                        {user.level ?? 1}
                                     </td>
                                 </tr>
                             ))
