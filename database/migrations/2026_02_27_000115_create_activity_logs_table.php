@@ -7,26 +7,20 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration
 {
     /**
-     * Run the migrations.
+     * Implementation plan: action (text), timestamp. Admin audit trail.
      */
     public function up(): void
     {
         Schema::create('activity_logs', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->constrained('users')->cascadeOnDelete();
-            $table->string('action');
-            $table->string('description')->nullable();
-            $table->unsignedBigInteger('reference_id')->nullable();
-            $table->timestamp('created_at')->useCurrent();
+            $table->text('action');
+            $table->timestamp('timestamp')->useCurrent();
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::dropIfExists('activity_logs');
     }
 };
-

@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration
 {
     /**
-     * Run the migrations.
+     * Implementation plan: quests with approval, creation payment, rewards, participants.
      */
     public function up(): void
     {
@@ -15,22 +15,26 @@ return new class extends Migration
             $table->id();
             $table->string('title');
             $table->text('description')->nullable();
+            $table->enum('quest_type', ['daily', 'event', 'custom', 'enrollment']);
+            $table->boolean('is_elimination')->default(true);
+            $table->unsignedInteger('buy_in_points')->default(0);
+            $table->unsignedInteger('reward_points')->default(0);
+            $table->string('reward_custom_prize')->nullable();
+            $table->unsignedInteger('max_participants');
+            $table->unsignedInteger('current_participants')->default(0);
             $table->foreignId('created_by')->constrained('users')->cascadeOnDelete();
-            $table->enum('quest_type', ['normal', 'event']);
-            $table->enum('status', ['draft', 'pending', 'approved', 'active', 'completed', 'cancelled'])
-                ->default('draft');
+            $table->enum('approval_status', ['draft', 'pending', 'approved', 'rejected'])->default('draft');
+            $table->enum('creation_payment_status', ['pending', 'locked', 'paid', 'refunded'])->nullable();
+            $table->unsignedInteger('creation_cost_points')->nullable();
             $table->dateTime('start_date')->nullable();
             $table->dateTime('end_date')->nullable();
-            $table->timestamp('created_at')->useCurrent();
+            $table->timestamps();
+            $table->softDeletes();
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::dropIfExists('quests');
     }
 };
-

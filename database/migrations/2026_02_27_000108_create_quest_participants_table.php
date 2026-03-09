@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration
 {
     /**
-     * Run the migrations.
+     * Implementation plan: current_stage, status (active, eliminated, quit, winner).
      */
     public function up(): void
     {
@@ -15,22 +15,15 @@ return new class extends Migration
             $table->id();
             $table->foreignId('quest_id')->constrained('quests')->cascadeOnDelete();
             $table->foreignId('user_id')->constrained('users')->cascadeOnDelete();
-            $table->unsignedInteger('current_task_order')->default(1);
-            $table->enum('status', ['active', 'eliminated', 'completed'])->default('active');
-            $table->unsignedInteger('total_time_seconds')->default(0);
+            $table->unsignedInteger('current_stage')->default(1);
+            $table->enum('status', ['active', 'eliminated', 'quit', 'winner'])->default('active');
             $table->timestamp('joined_at')->useCurrent();
-            $table->timestamp('finished_at')->nullable();
-
             $table->unique(['quest_id', 'user_id']);
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::dropIfExists('quest_participants');
     }
 };
-

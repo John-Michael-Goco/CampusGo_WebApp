@@ -8,41 +8,34 @@ return new class extends Migration
 {
     /**
      * Run the migrations.
+     * Implementation plan: master_users + users (auth & game stats).
      */
     public function up(): void
     {
-        Schema::create('students_masterlist', function (Blueprint $table) {
+        Schema::create('master_users', function (Blueprint $table) {
             $table->id();
-            $table->string('student_number')->unique();
+            $table->string('school_id')->unique();
             $table->string('first_name');
             $table->string('last_name');
-            $table->string('course');
-            $table->unsignedInteger('year_level');
-            $table->boolean('is_registered')->default(false);
-        });
-
-        Schema::create('professors_masterlist', function (Blueprint $table) {
-            $table->id();
-            $table->string('employee_id')->unique();
-            $table->enum('title', ['Mr.', 'Mrs.', 'Ms.', 'Dr.', 'Prof.']);
-            $table->string('first_name');
-            $table->string('last_name');
-            $table->string('department');
+            $table->enum('role', ['student', 'professor']);
+            $table->string('course')->nullable();
+            $table->unsignedInteger('year_level')->nullable();
+            $table->string('section')->nullable();
+            $table->boolean('is_active')->default(true);
             $table->boolean('is_registered')->default(false);
         });
 
         Schema::create('users', function (Blueprint $table) {
             $table->id();
-            $table->string('name');
+            $table->foreignId('master_user_id')->nullable()->constrained('master_users')->nullOnDelete();
+            $table->enum('role', ['admin', 'student', 'professor'])->default('student');
             $table->string('email')->unique();
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
-            $table->enum('role', ['student', 'professor', 'admin'])->default('student');
-            $table->foreignId('master_student_id')->nullable()->unique()->constrained('students_masterlist')->nullOnDelete();
-            $table->foreignId('master_professor_id')->nullable()->unique()->constrained('professors_masterlist')->nullOnDelete();
-            $table->unsignedInteger('quests_completed_count')->default(0);
-            $table->unsignedInteger('gm_quest_credit')->default(0);
-            $table->unsignedInteger('total_points')->default(0);
+            $table->unsignedInteger('points_balance')->default(0);
+            $table->unsignedInteger('level')->default(1);
+            $table->unsignedInteger('total_completed_quests')->default(0);
+            $table->unsignedInteger('total_xp_earned')->default(0);
             $table->rememberToken();
             $table->timestamps();
         });
@@ -63,15 +56,11 @@ return new class extends Migration
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::dropIfExists('sessions');
         Schema::dropIfExists('password_reset_tokens');
         Schema::dropIfExists('users');
-        Schema::dropIfExists('professors_masterlist');
-        Schema::dropIfExists('students_masterlist');
+        Schema::dropIfExists('master_users');
     }
 };

@@ -7,26 +7,23 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration
 {
     /**
-     * Run the migrations.
+     * Implementation plan: item_id nullable for custom prizes; optional custom_prize_description, source_quest_id.
      */
     public function up(): void
     {
         Schema::create('user_inventory', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->constrained('users')->cascadeOnDelete();
-            $table->foreignId('reward_id')->constrained('rewards')->cascadeOnDelete();
-            $table->foreignId('quest_id')->constrained('quests')->cascadeOnDelete();
-            $table->enum('status', ['unclaimed', 'claimed'])->default('unclaimed');
-            $table->timestamp('earned_at')->useCurrent();
+            $table->foreignId('item_id')->nullable()->constrained('store_items')->nullOnDelete();
+            $table->unsignedInteger('quantity')->default(1);
+            $table->timestamp('acquired_at')->useCurrent();
+            $table->text('custom_prize_description')->nullable();
+            $table->foreignId('source_quest_id')->nullable()->constrained('quests')->nullOnDelete();
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::dropIfExists('user_inventory');
     }
 };
-

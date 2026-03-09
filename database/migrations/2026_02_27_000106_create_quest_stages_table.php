@@ -7,31 +7,24 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration
 {
     /**
-     * Run the migrations.
+     * Implementation plan: quest_stages (replaces tasks). Stage closes when max_survivors reached OR stage_deadline passed.
      */
     public function up(): void
     {
-        Schema::create('tasks', function (Blueprint $table) {
+        Schema::create('quest_stages', function (Blueprint $table) {
             $table->id();
             $table->foreignId('quest_id')->constrained('quests')->cascadeOnDelete();
-            $table->unsignedInteger('task_order');
-            $table->string('title');
-            $table->string('location_text');
-            $table->string('qr_code_value')->unique();
+            $table->unsignedInteger('stage_number');
+            $table->string('location_hint');
             $table->unsignedInteger('max_survivors');
             $table->unsignedInteger('minimum_participants')->default(1);
             $table->dateTime('stage_deadline')->nullable();
-            $table->enum('status', ['active', 'locked', 'completed', 'failed'])->default('active');
-            $table->timestamp('created_at')->useCurrent();
+            $table->enum('status', ['active', 'locked', 'completed'])->default('active');
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
-        Schema::dropIfExists('tasks');
+        Schema::dropIfExists('quest_stages');
     }
 };
-
