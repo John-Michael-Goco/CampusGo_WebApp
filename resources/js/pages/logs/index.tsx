@@ -1,71 +1,15 @@
-import { Head, Link, router } from '@inertiajs/react';
+import { Head, router } from '@inertiajs/react';
 import { useEffect, useRef, useState } from 'react';
-import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Calendar, Search } from 'lucide-react';
 import AppLayout from '@/layouts/app-layout';
 import type { BreadcrumbItem } from '@/types';
-import { Button } from '@/components/ui/button';
+import type { LogsFilters, LogsPageProps } from './types';
+import { LogsFilters as LogsFiltersComponent } from './LogsFilters';
+import { LogsTable } from './LogsTable';
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Activity Logs', href: '/logs' },
     { title: 'Logs', href: '/logs' },
 ];
-import { Input } from '@/components/ui/input';
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-
-type LogEntry = {
-    id: number;
-    user_id: number;
-    action: string;
-    timestamp: string;
-    user: { id: number; name: string } | null;
-};
-
-export type LogsFilters = {
-    search: string;
-    date_from: string;
-    date_to: string;
-    sort_dir: 'asc' | 'desc';
-};
-
-type PaginatedLogs = {
-    data: LogEntry[];
-    current_page: number;
-    last_page: number;
-    per_page: number;
-    total: number;
-    prev_page_url: string | null;
-    next_page_url: string | null;
-};
-
-type Props = {
-    logs: PaginatedLogs;
-    filters?: Partial<LogsFilters>;
-};
-
-function actionDisplay(action: string): string {
-    const prefix = action.split(':')[0]?.trim() ?? action;
-    const labels: Record<string, string> = {
-        student_created: 'Student created',
-        professor_created: 'Professor created',
-        gamemaster_created: 'Gamemaster created',
-        auth_signin: 'Signed in (API)',
-        auth_signup: 'Registered (API)',
-        auth_signout: 'Signed out (API)',
-    };
-    return labels[prefix] ?? action;
-}
-
-function SortIcon({ sortDir }: { sortDir: 'asc' | 'desc' }) {
-    return sortDir === 'asc' ? (
-        <ArrowUp className="ml-1 size-4" />
-    ) : (
-        <ArrowDown className="ml-1 size-4" />
-    );
-}
 
 const defaultFilters: LogsFilters = {
     search: '',
@@ -74,24 +18,20 @@ const defaultFilters: LogsFilters = {
     sort_dir: 'desc',
 };
 
-export default function LogsIndex({ logs, filters: rawFilters }: Props) {
+export default function LogsIndex({ logs, filters: rawFilters }: LogsPageProps) {
     const filters = { ...defaultFilters, ...rawFilters };
     const [search, setSearch] = useState(filters.search);
     const logItems = logs.data ?? [];
     const isInitialMount = useRef(true);
 
-    const buildQuery = (overrides: Partial<LogsFilters> = {}) => {
-        const f = { ...filters, ...overrides };
-        return {
-            search: f.search || undefined,
-            date_from: f.date_from || undefined,
-            date_to: f.date_to || undefined,
-            sort_dir: f.sort_dir,
-        };
-    };
-
     const applyFilters = (overrides: Partial<LogsFilters> = {}) => {
-        router.get('/logs', buildQuery(overrides), { preserveState: true });
+        const next = { ...filters, ...overrides };
+        router.get('/logs', {
+            search: next.search || undefined,
+            date_from: next.date_from || undefined,
+            date_to: next.date_to || undefined,
+            sort_dir: next.sort_dir,
+        }, { preserveState: true });
     };
 
     useEffect(() => {
@@ -110,12 +50,9 @@ export default function LogsIndex({ logs, filters: rawFilters }: Props) {
     }, [search]);
 
     const handleSortByDate = () => {
-        const nextDir =
-            filters.sort_dir === 'asc' ? 'desc' : 'asc';
+        const nextDir = filters.sort_dir === 'asc' ? 'desc' : 'asc';
         applyFilters({ sort_dir: nextDir });
     };
-
-    const hasDateFilter = filters.date_from || filters.date_to;
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -123,185 +60,26 @@ export default function LogsIndex({ logs, filters: rawFilters }: Props) {
             <div className="flex h-full flex-1 flex-col gap-4 rounded-xl p-4">
                 <h1 className="text-xl font-semibold">Activity Logs</h1>
 
-                <div className="flex flex-wrap items-center gap-3">
-                    <div className="relative flex-1 min-w-[200px]">
-                        <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                        <Input
-                            type="search"
-                            placeholder="Search by action or user..."
-                            value={search}
-                            onChange={(e) => setSearch(e.target.value)}
-                            className="pl-9"
-                        />
-                    </div>
+                <LogsFiltersComponent
+                    filters={filters}
+                    search={search}
+                    onSearchChange={setSearch}
+                    onFiltersChange={applyFilters}
+                />
 
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <Button variant="outline" size="sm">
-                                <Calendar className="mr-2 size-4" />
-                                Calendar
-                                {hasDateFilter && (
-                                    <span className="ml-2 size-2 rounded-full bg-primary" />
-                                )}
-                            </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-64 p-3">
-                            <div className="space-y-3">
-                                <div>
-                                    <label className="mb-1 block text-xs font-medium text-muted-foreground">
-                                        From
-                                    </label>
-                                    <Input
-                                        type="date"
-                                        value={filters.date_from}
-                                        onChange={(e) =>
-                                            applyFilters({ date_from: e.target.value })
-                                        }
-                                        className="relative w-full pr-10 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:right-3 [&::-webkit-calendar-picker-indicator]:top-1/2 [&::-webkit-calendar-picker-indicator]:-translate-y-1/2"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="mb-1 block text-xs font-medium text-muted-foreground">
-                                        To
-                                    </label>
-                                    <Input
-                                        type="date"
-                                        value={filters.date_to}
-                                        onChange={(e) =>
-                                            applyFilters({ date_to: e.target.value })
-                                        }
-                                        className="relative w-full pr-10 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:right-3 [&::-webkit-calendar-picker-indicator]:top-1/2 [&::-webkit-calendar-picker-indicator]:-translate-y-1/2"
-                                    />
-                                </div>
-                                {hasDateFilter && (
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        className="w-full"
-                                        onClick={() =>
-                                            applyFilters({
-                                                date_from: '',
-                                                date_to: '',
-                                            })
-                                        }
-                                    >
-                                        Clear dates
-                                    </Button>
-                                )}
-                            </div>
-                        </DropdownMenuContent>
-                    </DropdownMenu>
-                </div>
-
-                <div className="rounded-lg border bg-card overflow-hidden">
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-sm">
-                            <thead>
-                                <tr className="border-b bg-muted/50">
-                                    <th className="h-11 px-4 text-left font-medium">
-                                        <button
-                                            type="button"
-                                            className="inline-flex items-center hover:underline"
-                                            onClick={handleSortByDate}
-                                        >
-                                            Date & time
-                                            <SortIcon sortDir={filters.sort_dir} />
-                                        </button>
-                                    </th>
-                                    <th className="h-11 px-4 text-left font-medium">
-                                        Action
-                                    </th>
-                                    <th className="h-11 px-4 text-left font-medium">
-                                        By
-                                    </th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {logItems.length === 0 ? (
-                                    <tr>
-                                        <td
-                                            colSpan={3}
-                                            className="h-24 px-4 text-center text-muted-foreground"
-                                        >
-                                            No logs yet.
-                                        </td>
-                                    </tr>
-                                ) : (
-                                    logItems.map((log) => (
-                                        <tr
-                                            key={log.id}
-                                            className="border-b transition-colors hover:bg-muted/30"
-                                        >
-                                            <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">
-                                                {log.timestamp
-                                                    ? new Date(log.timestamp).toLocaleString()
-                                                    : '—'}
-                                            </td>
-                                            <td className="px-4 py-3">
-                                                {actionDisplay(log.action)}
-                                                {log.action.includes(':') && (
-                                                    <span className="ml-1 text-muted-foreground">
-                                                        — {log.action.split(':').slice(1).join(':').trim()}
-                                                    </span>
-                                                )}
-                                            </td>
-                                            <td className="px-4 py-3">
-                                                {log.user?.name ?? '—'}
-                                            </td>
-                                        </tr>
-                                    ))
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-
-                {logs.total > 0 && (
-                    <div className="flex items-center justify-between gap-4 border-t pt-4">
-                        <p className="text-sm text-muted-foreground">
-                            Showing {(logs.current_page - 1) * logs.per_page + 1} to{' '}
-                            {Math.min(logs.current_page * logs.per_page, logs.total)} of{' '}
-                            {logs.total} entries
-                        </p>
-                        {logs.last_page > 1 && (
-                            <div className="flex items-center gap-2">
-                                {logs.prev_page_url ? (
-                                    <Link
-                                        href={logs.prev_page_url}
-                                        preserveState
-                                        className="inline-flex items-center gap-1 rounded-md border px-3 py-2 text-sm font-medium transition-colors hover:bg-muted"
-                                    >
-                                        <ArrowLeft className="size-4" />
-                                        Previous
-                                    </Link>
-                                ) : (
-                                    <span className="inline-flex cursor-not-allowed items-center gap-1 rounded-md border border-transparent bg-muted/50 px-3 py-2 text-sm font-medium text-muted-foreground">
-                                        <ArrowLeft className="size-4" />
-                                        Previous
-                                    </span>
-                                )}
-                                <span className="text-sm text-muted-foreground">
-                                    Page {logs.current_page} of {logs.last_page}
-                                </span>
-                                {logs.next_page_url ? (
-                                    <Link
-                                        href={logs.next_page_url}
-                                        preserveState
-                                        className="inline-flex items-center gap-1 rounded-md border px-3 py-2 text-sm font-medium transition-colors hover:bg-muted"
-                                    >
-                                        Next
-                                        <ArrowRight className="size-4" />
-                                    </Link>
-                                ) : (
-                                    <span className="inline-flex cursor-not-allowed items-center gap-1 rounded-md border border-transparent bg-muted/50 px-3 py-2 text-sm font-medium text-muted-foreground">
-                                        Next
-                                        <ArrowRight className="size-4" />
-                                    </span>
-                                )}
-                            </div>
-                        )}
-                    </div>
-                )}
+                <LogsTable
+                    logs={logItems}
+                    pagination={{
+                        total: logs.total,
+                        current_page: logs.current_page,
+                        per_page: logs.per_page,
+                        last_page: logs.last_page,
+                        prev_page_url: logs.prev_page_url,
+                        next_page_url: logs.next_page_url,
+                    }}
+                    filters={filters}
+                    onSortByDate={handleSortByDate}
+                />
             </div>
         </AppLayout>
     );

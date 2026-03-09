@@ -144,7 +144,8 @@ class StudentController extends Controller
 
         ActivityLog::log(
             $request->user()->id,
-            sprintf('student_created: %s %s (%s)', $student->first_name, $student->last_name, $student->school_id)
+            ActivityLog::ACTION_STUDENT_CREATED,
+            sprintf('%s %s (%s)', $student->first_name, $student->last_name, $student->school_id)
         );
 
         return redirect()->route('masterlist.students', $request->only(['search', 'course', 'year_level', 'section', 'sort_by', 'sort_dir']))

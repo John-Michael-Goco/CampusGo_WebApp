@@ -14,33 +14,19 @@ class LogController extends Controller
      */
     public function index(Request $request): Response
     {
-        $query = ActivityLog::query()
-            ->with('user:id,name,email');
-
-        if ($search = $request->query('search')) {
-            $query->where(function ($q) use ($search) {
-                $q->where('activity_logs.action', 'like', "%{$search}%")
-                    ->orWhereHas('user', function ($uq) use ($search) {
-                        $uq->where('name', 'like', "%{$search}%")
-                            ->orWhere('email', 'like', "%{$search}%");
-                    });
-            });
-        }
-
-        if ($dateFrom = $request->query('date_from')) {
-            $query->whereDate('activity_logs.timestamp', '>=', $dateFrom);
-        }
-        if ($dateTo = $request->query('date_to')) {
-            $query->whereDate('activity_logs.timestamp', '<=', $dateTo);
-        }
-
         $sortDir = $request->query('sort_dir', 'desc');
         if (! in_array($sortDir, ['asc', 'desc'], true)) {
             $sortDir = 'desc';
         }
-        $query->orderBy('activity_logs.timestamp', $sortDir);
 
-        $logs = $query->paginate(15)->withQueryString();
+        $logs = ActivityLog::query()
+            ->with('user:id,name,email')
+            ->filterSearch($request->query('search'))
+            ->filterDateFrom($request->query('date_from'))
+            ->filterDateTo($request->query('date_to'))
+            ->orderByTimestamp($sortDir)
+            ->paginate(15)
+            ->withQueryString();
 
         return Inertia::render('logs/index', [
             'logs' => $logs,

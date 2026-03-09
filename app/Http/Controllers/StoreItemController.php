@@ -80,7 +80,8 @@ class StoreItemController extends Controller
 
         ActivityLog::log(
             $request->user()->id,
-            sprintf('store_item_created: %s (id %s)', $storeItem->name, $storeItem->id)
+            ActivityLog::ACTION_STORE_ITEM_CREATED,
+            sprintf('%s (id %s)', $storeItem->name, $storeItem->id)
         );
 
         return redirect()
@@ -121,7 +122,8 @@ class StoreItemController extends Controller
 
         ActivityLog::log(
             $request->user()->id,
-            sprintf('store_item_updated: %s (id %s)', $storeItem->name, $storeItem->id)
+            ActivityLog::ACTION_STORE_ITEM_UPDATED,
+            sprintf('%s (id %s)', $storeItem->name, $storeItem->id)
         );
 
         return redirect()
@@ -137,7 +139,8 @@ class StoreItemController extends Controller
 
         ActivityLog::log(
             $request->user()->id,
-            sprintf('store_item_deleted: %s (id %s)', $name, $id)
+            ActivityLog::ACTION_STORE_ITEM_DELETED,
+            sprintf('%s (id %s)', $name, $id)
         );
 
         return redirect()

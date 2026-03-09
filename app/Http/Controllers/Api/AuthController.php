@@ -30,7 +30,7 @@ class AuthController extends Controller
 
         $token = $user->createToken($request->input('device_name', 'api'))->plainTextToken;
 
-        ActivityLog::log($user->id, 'auth_signin: Signed in via API');
+        ActivityLog::log($user->id, ActivityLog::ACTION_AUTH_SIGNIN, 'Signed in via API');
 
         return response()->json([
             'token' => $token,
@@ -86,7 +86,7 @@ class AuthController extends Controller
 
         $student->update(['is_registered' => true]);
 
-        ActivityLog::log($user->id, sprintf('auth_signup: Registered via API (%s)', $user->email));
+        ActivityLog::log($user->id, ActivityLog::ACTION_AUTH_SIGNUP, sprintf('Registered via API (%s)', $user->email));
 
         $token = $user->createToken($request->input('device_name', 'api'))->plainTextToken;
 
@@ -101,7 +101,7 @@ class AuthController extends Controller
     {
         $user = $request->user();
 
-        ActivityLog::log($user->id, 'auth_signout: Signed out via API');
+        ActivityLog::log($user->id, ActivityLog::ACTION_AUTH_SIGNOUT, 'Signed out via API');
 
         $user->currentAccessToken()->delete();
 

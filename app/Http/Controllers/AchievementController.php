@@ -63,7 +63,8 @@ class AchievementController extends Controller
 
         ActivityLog::log(
             $request->user()->id,
-            sprintf('achievement_created: %s (id %s)', $achievement->name, $achievement->id)
+            ActivityLog::ACTION_ACHIEVEMENT_CREATED,
+            sprintf('%s (id %s)', $achievement->name, $achievement->id)
         );
 
         return redirect()
@@ -84,7 +85,8 @@ class AchievementController extends Controller
 
         ActivityLog::log(
             $request->user()->id,
-            sprintf('achievement_updated: %s (id %s)', $achievement->name, $achievement->id)
+            ActivityLog::ACTION_ACHIEVEMENT_UPDATED,
+            sprintf('%s (id %s)', $achievement->name, $achievement->id)
         );
 
         return redirect()
@@ -100,7 +102,8 @@ class AchievementController extends Controller
 
         ActivityLog::log(
             $request->user()->id,
-            sprintf('achievement_deleted: %s (id %s)', $name, $id)
+            ActivityLog::ACTION_ACHIEVEMENT_DELETED,
+            sprintf('%s (id %s)', $name, $id)
         );
 
         return redirect()

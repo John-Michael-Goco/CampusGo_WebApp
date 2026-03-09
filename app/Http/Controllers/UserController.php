@@ -112,7 +112,8 @@ class UserController extends Controller
 
         ActivityLog::log(
             $request->user()->id,
-            sprintf('gamemaster_created: %s (%s)', $user->name, $user->email)
+            ActivityLog::ACTION_GAMEMASTER_CREATED,
+            sprintf('%s (%s)', $user->name, $user->email)
         );
 
         return redirect()

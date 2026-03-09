@@ -77,7 +77,8 @@ class ProfessorController extends Controller
 
         ActivityLog::log(
             $request->user()->id,
-            sprintf('professor_created: %s %s (%s)', $professor->first_name, $professor->last_name, $professor->school_id)
+            ActivityLog::ACTION_PROFESSOR_CREATED,
+            sprintf('%s %s (%s)', $professor->first_name, $professor->last_name, $professor->school_id)
         );
 
         return redirect()
