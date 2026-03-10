@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AchievementController;
+use App\Http\Controllers\LeaderboardController;
 use App\Http\Controllers\LogController;
 use App\Http\Controllers\PointTransactionController;
 use App\Http\Controllers\Masterlist\ProfessorController;
@@ -96,6 +97,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Logs & Point Transactions
     Route::get('logs', [LogController::class, 'index'])->name('logs.index');
     Route::get('transactions', [PointTransactionController::class, 'index'])->name('transactions.index');
+
+    // Leaderboards
+    Route::get('leaderboards', [LeaderboardController::class, 'index'])->name('leaderboards.index');
 
     // Store & Achievements
     Route::get('store', [StoreItemController::class, 'index'])->name('store.index');

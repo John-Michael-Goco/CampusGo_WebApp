@@ -4,6 +4,7 @@ import {
     LayoutGrid,
     Receipt,
     ShoppingBag,
+    Trophy,
     Users,
 } from 'lucide-react';
 import { NavMain } from '@/components/nav-main';
@@ -28,6 +29,16 @@ const mainNavItems: NavItem[] = [
         icon: LayoutGrid,
     },
     {
+        title: 'Users',
+        href: '/users',
+        icon: Users,
+    },
+    {
+        title: 'Leaderboards',
+        href: '/leaderboards',
+        icon: Trophy,
+    },
+    {
         title: 'Store & Achievements',
         href: '/store',
         icon: ShoppingBag,
@@ -35,11 +46,6 @@ const mainNavItems: NavItem[] = [
             { title: 'Store', href: '/store', icon: null },
             { title: 'Achievements', href: '/achievements', icon: null },
         ],
-    },
-    {
-        title: 'Users',
-        href: '/users',
-        icon: Users,
     },
     {
         title: 'Academic Management',

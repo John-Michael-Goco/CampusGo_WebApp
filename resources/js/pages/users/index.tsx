@@ -7,7 +7,6 @@ import type { UsersIndexProps } from './types';
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Users', href: '/users' },
-    { title: 'All Users', href: '/users' },
 ];
 import { CreateGamemasterDialog } from './CreateGamemasterDialog';
 import { DeleteUserDialog } from './DeleteUserDialog';
