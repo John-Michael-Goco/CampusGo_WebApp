@@ -99,20 +99,18 @@ class QuestController extends Controller
      */
     public function store(Request $request): RedirectResponse
     {
-        $request->validate([
-            'quest.title' => 'required|string|max:255',
-            'quest.quest_type' => 'required|in:daily,event,custom,enrollment',
-            'quest.reward_points' => 'required|integer|min:1|max:150',
-            'quest.start_date' => 'nullable|date',
-            'quest.end_date' => 'nullable|date|after_or_equal:quest.start_date',
-            'stages' => 'required|array|min:1',
-            'stages.*.location_hint' => 'required|string|max:255',
-            'stages.*.question_type' => 'required|in:multiple_choice,qr_scan',
-        ]);
+        $request->validate(
+            $this->questValidationRules($request),
+            $this->questValidationMessages(),
+        );
 
         $user = $request->user();
         $isAdmin = $user->role === 'admin';
         $questInput = $request->input('quest');
+
+        if ($questInput['quest_type'] === 'enrollment' && $questInput['question_type'] !== 'qr_scan') {
+            return back()->withErrors(['quest.question_type' => 'Enrollment quests must use QR scan only.']);
+        }
 
         $semesterId = null;
         if ($questInput['quest_type'] === 'enrollment') {
@@ -123,11 +121,14 @@ class QuestController extends Controller
             $semesterId = $semester['id'];
         }
 
-        return DB::transaction(function () use ($questInput, $request, $user, $isAdmin, $semesterId) {
+        $questQuestionType = $questInput['question_type'];
+
+        return DB::transaction(function () use ($questInput, $request, $user, $isAdmin, $semesterId, $questQuestionType) {
             $quest = Quest::create([
                 'title' => $questInput['title'],
                 'description' => $questInput['description'] ?? null,
                 'quest_type' => $questInput['quest_type'],
+                'question_type' => $questInput['question_type'],
                 'is_elimination' => (bool) ($questInput['is_elimination'] ?? false),
                 'buy_in_points' => (int) ($questInput['buy_in_points'] ?? 0),
                 'reward_points' => (int) ($questInput['reward_points'] ?? 0),
@@ -156,12 +157,13 @@ class QuestController extends Controller
                     'stage_number' => $idx + 1,
                     'location_hint' => $stageInput['location_hint'],
                     'max_survivors' => $stageInput['max_survivors'] ? (int) $stageInput['max_survivors'] : 0,
+                    'passing_score' => $stageInput['passing_score'] ? (int) $stageInput['passing_score'] : null,
                     'minimum_participants' => $stageInput['minimum_participants'] ? (int) $stageInput['minimum_participants'] : 1,
                     'stage_deadline' => $stageInput['stage_deadline'] ?: null,
                     'status' => 'locked',
                 ]);
 
-                if ($stageInput['question_type'] === 'multiple_choice') {
+                if ($questQuestionType === 'multiple_choice') {
                     foreach ($stageInput['questions'] ?? [] as $qInput) {
                         $question = $stage->questions()->create([
                             'question_text' => $qInput['question_text'] ?? '',
@@ -214,6 +216,7 @@ class QuestController extends Controller
             'title' => $quest->title,
             'description' => $quest->description ?? '',
             'quest_type' => $quest->quest_type,
+            'question_type' => $quest->question_type ?? 'multiple_choice',
             'num_stages' => $quest->stages->count() ?: 1,
             'is_elimination' => $quest->is_elimination,
             'buy_in_points' => $quest->buy_in_points ?: '',
@@ -250,6 +253,7 @@ class QuestController extends Controller
                 'stage_number' => $stage->stage_number,
                 'location_hint' => $stage->location_hint,
                 'max_survivors' => $stage->max_survivors ?: '',
+                'passing_score' => $stage->passing_score ?: '',
                 'minimum_participants' => $stage->minimum_participants ?: '',
                 'stage_deadline' => $stage->stage_deadline ? $stage->stage_deadline->format('Y-m-d\TH:i') : '',
                 'question_type' => $stage->questions->first()?->question_type ?? 'multiple_choice',
@@ -280,18 +284,16 @@ class QuestController extends Controller
      */
     public function update(Request $request, Quest $quest): RedirectResponse
     {
-        $request->validate([
-            'quest.title' => 'required|string|max:255',
-            'quest.quest_type' => 'required|in:daily,event,custom,enrollment',
-            'quest.reward_points' => 'required|integer|min:1|max:150',
-            'quest.start_date' => 'nullable|date',
-            'quest.end_date' => 'nullable|date|after_or_equal:quest.start_date',
-            'stages' => 'required|array|min:1',
-            'stages.*.location_hint' => 'required|string|max:255',
-            'stages.*.question_type' => 'required|in:multiple_choice,qr_scan',
-        ]);
+        $request->validate(
+            $this->questValidationRules($request),
+            $this->questValidationMessages(),
+        );
 
         $questInput = $request->input('quest');
+
+        if ($questInput['quest_type'] === 'enrollment' && $questInput['question_type'] !== 'qr_scan') {
+            return back()->withErrors(['quest.question_type' => 'Enrollment quests must use QR scan only.']);
+        }
 
         $semesterId = null;
         if ($questInput['quest_type'] === 'enrollment') {
@@ -302,11 +304,14 @@ class QuestController extends Controller
             $semesterId = $semester['id'];
         }
 
-        return DB::transaction(function () use ($quest, $questInput, $request, $semesterId) {
+        $questQuestionType = $questInput['question_type'];
+
+        return DB::transaction(function () use ($quest, $questInput, $request, $semesterId, $questQuestionType) {
             $quest->update([
                 'title' => $questInput['title'],
                 'description' => $questInput['description'] ?? null,
                 'quest_type' => $questInput['quest_type'],
+                'question_type' => $questQuestionType,
                 'is_elimination' => (bool) ($questInput['is_elimination'] ?? false),
                 'buy_in_points' => (int) ($questInput['buy_in_points'] ?? 0),
                 'reward_points' => (int) ($questInput['reward_points'] ?? 0),
@@ -340,12 +345,13 @@ class QuestController extends Controller
                     'stage_number' => $idx + 1,
                     'location_hint' => $stageInput['location_hint'],
                     'max_survivors' => $stageInput['max_survivors'] ? (int) $stageInput['max_survivors'] : 0,
+                    'passing_score' => $stageInput['passing_score'] ? (int) $stageInput['passing_score'] : null,
                     'minimum_participants' => $stageInput['minimum_participants'] ? (int) $stageInput['minimum_participants'] : 1,
                     'stage_deadline' => $stageInput['stage_deadline'] ?: null,
                     'status' => 'locked',
                 ]);
 
-                if ($stageInput['question_type'] === 'multiple_choice') {
+                if ($questQuestionType === 'multiple_choice') {
                     foreach ($stageInput['questions'] ?? [] as $qInput) {
                         $question = $stage->questions()->create([
                             'question_text' => $qInput['question_text'] ?? '',
@@ -442,6 +448,71 @@ class QuestController extends Controller
             ->pluck('section');
 
         return response()->json($sections);
+    }
+
+    private function questValidationRules(Request $request): array
+    {
+        $isElimination = (bool) $request->input('quest.is_elimination', false);
+        $questionType = $request->input('quest.question_type', 'multiple_choice');
+
+        $rules = [
+            'quest.title'          => 'required|string|max:255',
+            'quest.description'    => 'nullable|string|max:1000',
+            'quest.quest_type'     => 'required|in:daily,event,custom,enrollment',
+            'quest.question_type'  => 'required|in:multiple_choice,qr_scan',
+            'quest.reward_points'  => 'required|integer|min:1|max:150',
+            'quest.start_date'     => 'required|date',
+            'quest.end_date'       => 'required|date|after_or_equal:quest.start_date',
+            'quest.buy_in_points'  => 'nullable|integer|min:0|max:100',
+            'quest.max_participants'    => 'nullable|integer|min:1',
+            'quest.reward_custom_prize' => 'nullable|string|max:255',
+            'stages'               => 'required|array|min:1',
+            'stages.*.location_hint' => 'required|string|max:255',
+        ];
+
+        if ($isElimination) {
+            $rules['stages.*.max_survivors']        = 'required|integer|min:1';
+            $rules['stages.*.minimum_participants']  = 'required|integer|min:1';
+            $rules['stages.*.stage_deadline']        = 'required|date';
+        }
+
+        if ($questionType === 'multiple_choice') {
+            $rules['stages.*.questions']                      = 'required|array|min:1';
+            $rules['stages.*.questions.*.question_text']      = 'required|string|max:1000';
+            $rules['stages.*.questions.*.choices']            = 'required|array|min:2';
+            $rules['stages.*.questions.*.choices.*.choice_text'] = 'required|string|max:255';
+        }
+
+        if (!$isElimination && $questionType === 'multiple_choice') {
+            $rules['stages.*.passing_score'] = 'nullable|integer|min:1';
+        }
+
+        return $rules;
+    }
+
+    private function questValidationMessages(): array
+    {
+        return [
+            'quest.title.required'       => 'Quest title is required.',
+            'quest.quest_type.required'  => 'Quest type is required.',
+            'quest.question_type.required' => 'Question type is required.',
+            'quest.reward_points.required' => 'Reward points are required.',
+            'quest.reward_points.min'    => 'Reward points must be at least 1.',
+            'quest.reward_points.max'    => 'Reward points cannot exceed 150.',
+            'quest.start_date.required'  => 'Start date is required.',
+            'quest.end_date.required'    => 'End date is required.',
+            'quest.end_date.after_or_equal' => 'End date must be on or after the start date.',
+            'stages.*.location_hint.required' => 'Location hint is required for stage :position.',
+            'stages.*.max_survivors.required' => 'Max survivors is required for elimination stage :position.',
+            'stages.*.minimum_participants.required' => 'Minimum participants is required for elimination stage :position.',
+            'stages.*.stage_deadline.required' => 'Deadline is required for elimination stage :position.',
+            'stages.*.questions.required' => 'At least one question is required for stage :position.',
+            'stages.*.questions.min'     => 'At least one question is required for stage :position.',
+            'stages.*.questions.*.question_text.required' => 'Question text cannot be empty.',
+            'stages.*.questions.*.choices.required' => 'Choices are required for each question.',
+            'stages.*.questions.*.choices.min' => 'At least 2 choices are required per question.',
+            'stages.*.questions.*.choices.*.choice_text.required' => 'Choice text cannot be empty.',
+        ];
     }
 }
 

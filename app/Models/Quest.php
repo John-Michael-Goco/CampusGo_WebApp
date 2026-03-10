@@ -36,6 +36,7 @@ class Quest extends Model
         'created_by',
         'approval_status',
         'creation_payment_status',
+        'question_type',
         'creation_cost_points',
         'start_date',
         'end_date',
@@ -78,6 +79,11 @@ class Quest extends Model
     public function targetGroups(): HasMany
     {
         return $this->hasMany(QuestTargetGroup::class);
+    }
+
+    public function participants(): HasMany
+    {
+        return $this->hasMany(QuestParticipant::class);
     }
 }
 

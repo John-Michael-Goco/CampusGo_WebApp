@@ -17,6 +17,7 @@ return new class extends Migration
             $table->text('description')->nullable();
             $table->enum('quest_type', ['daily', 'event', 'custom', 'enrollment']);
             $table->boolean('is_elimination')->default(true);
+            $table->enum('question_type', ['multiple_choice', 'qr_scan'])->default('multiple_choice');
             $table->unsignedInteger('buy_in_points')->default(0);
             $table->unsignedInteger('reward_points')->default(0);
             $table->string('reward_custom_prize')->nullable();

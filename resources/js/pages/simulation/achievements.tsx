@@ -207,6 +207,12 @@ export default function SimulationAchievements({
                         Store (simulation)
                     </Link>
                     <Link
+                        href="/simulation/quests"
+                        className="text-sm font-medium text-indigo-600 dark:text-indigo-400 hover:underline"
+                    >
+                        Quests (simulation)
+                    </Link>
+                    <Link
                         href="/simulation/transactions"
                         className="text-sm font-medium text-emerald-600 dark:text-emerald-400 hover:underline"
                     >

@@ -15,6 +15,7 @@ export type StageFormData = {
     stage_number: number;
     location_hint: string;
     max_survivors: number | '';
+    passing_score: number | '';
     minimum_participants: number | '';
     stage_deadline: string;
     question_type: QuestionType;
@@ -38,6 +39,7 @@ export function createEmptyStage(stageNumber: number): StageFormData {
         stage_number: stageNumber,
         location_hint: '',
         max_survivors: '',
+        passing_score: '',
         minimum_participants: '',
         stage_deadline: '',
         question_type: 'multiple_choice',

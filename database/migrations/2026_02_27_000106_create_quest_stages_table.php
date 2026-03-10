@@ -17,6 +17,7 @@ return new class extends Migration
             $table->unsignedInteger('stage_number');
             $table->string('location_hint');
             $table->unsignedInteger('max_survivors');
+            $table->unsignedInteger('passing_score')->nullable();
             $table->unsignedInteger('minimum_participants')->default(1);
             $table->dateTime('stage_deadline')->nullable();
             $table->enum('status', ['active', 'locked', 'completed', 'failed'])->default('active');

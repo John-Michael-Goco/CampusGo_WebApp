@@ -25,11 +25,14 @@ export type TargetGroup = {
     section: string;
 };
 
+export type QuestionTypeLevel = 'multiple_choice' | 'qr_scan';
+
 export type CreateQuestFormData = {
     target: TargetGroup;
     title: string;
     description: string;
     quest_type: QuestType;
+    question_type: QuestionTypeLevel;
     num_stages: number | '';
     is_elimination: boolean;
     buy_in_points: number | '';
@@ -53,6 +56,7 @@ export const INITIAL_FORM_DATA: CreateQuestFormData = {
     title: '',
     description: '',
     quest_type: 'daily',
+    question_type: 'multiple_choice',
     num_stages: 1,
     is_elimination: false,
     buy_in_points: '',

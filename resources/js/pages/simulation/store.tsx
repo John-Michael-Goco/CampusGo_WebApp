@@ -394,6 +394,12 @@ export default function SimulationStore({
                         Leaderboard (simulation)
                     </Link>
                     <Link
+                        href="/simulation/quests"
+                        className="text-sm font-medium text-indigo-600 dark:text-indigo-400 hover:underline"
+                    >
+                        Quests (simulation)
+                    </Link>
+                    <Link
                         href="/simulation/achievements"
                         className="text-sm font-medium text-amber-600 dark:text-amber-400 hover:underline"
                     >

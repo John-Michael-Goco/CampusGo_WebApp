@@ -4,38 +4,27 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from '@/components/ui/select';
 import { DateTimePicker } from '@/components/ui/date-time-picker';
 import type { StageFormData, QuestionType, Question, Choice } from './stages-types';
 import { createEmptyQuestion, EMPTY_CHOICE } from './stages-types';
-import type { QuestType } from './types';
+import type { QuestType, QuestionTypeLevel } from './types';
 
 type Props = {
     stage: StageFormData;
     questType: QuestType;
+    questionType: QuestionTypeLevel;
     isElimination: boolean;
     onChange: (stage: StageFormData) => void;
 };
 
-export function StageForm({ stage, questType, isElimination, onChange }: Props) {
+export function StageForm({ stage, questType, questionType, isElimination, onChange }: Props) {
+    const isEnrollment = questType === 'enrollment';
+
     const update = <K extends keyof StageFormData>(key: K, value: StageFormData[K]) => {
         onChange({ ...stage, [key]: value });
     };
 
-    const handleQuestionTypeChange = (value: string) => {
-        const qt = value as QuestionType;
-        onChange({
-            ...stage,
-            question_type: qt,
-            questions: qt === 'qr_scan' ? [] : [createEmptyQuestion(qt)],
-        });
-    };
+    const effectiveQuestionType: QuestionType = isEnrollment ? 'qr_scan' : questionType;
 
     const updateQuestion = (idx: number, question: Question) => {
         const next = [...stage.questions];
@@ -44,7 +33,7 @@ export function StageForm({ stage, questType, isElimination, onChange }: Props) 
     };
 
     const addQuestion = () => {
-        update('questions', [...stage.questions, createEmptyQuestion(stage.question_type)]);
+        update('questions', [...stage.questions, createEmptyQuestion(effectiveQuestionType)]);
     };
 
     const removeQuestion = (idx: number) => {
@@ -133,22 +122,35 @@ export function StageForm({ stage, questType, isElimination, onChange }: Props) 
                 </div>
             )}
 
-            {/* Question type selector */}
+            {/* Question type (read-only, set at quest level) */}
             <div className="grid gap-2">
-                <Label>Question type for this stage</Label>
-                <Select value={stage.question_type} onValueChange={handleQuestionTypeChange}>
-                    <SelectTrigger>
-                        <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="multiple_choice">Multiple choice (+ QR scan)</SelectItem>
-                        <SelectItem value="qr_scan">QR scan only</SelectItem>
-                    </SelectContent>
-                </Select>
+                <Label>Question type</Label>
+                <p className="text-sm text-muted-foreground rounded-md border bg-muted/30 px-3 py-2">
+                    {effectiveQuestionType === 'qr_scan'
+                        ? 'QR scan only'
+                        : 'Multiple choice'}
+                    {isEnrollment && ' — enrollment quests use QR scan for all stages'}
+                </p>
             </div>
 
+            {/* Passing score (non-elimination + multiple choice only) */}
+            {!isElimination && effectiveQuestionType === 'multiple_choice' && (
+                <div className="grid gap-2">
+                    <Label>Passing score</Label>
+                    <Input
+                        type="number"
+                        min={1}
+                        value={stage.passing_score}
+                        onChange={(e) =>
+                            update('passing_score', e.target.value === '' ? '' : parseInt(e.target.value, 10) || 1)
+                        }
+                        placeholder="Min correct answers to pass"
+                    />
+                </div>
+            )}
+
             {/* Questions (multiple_choice only) */}
-            {stage.question_type === 'multiple_choice' && (
+            {effectiveQuestionType === 'multiple_choice' && (
                 <div className="grid gap-4">
                     {stage.questions.map((question, qIdx) => (
                         <div key={qIdx} className="grid gap-3 rounded-md border bg-muted/30 p-4">
@@ -237,7 +239,7 @@ export function StageForm({ stage, questType, isElimination, onChange }: Props) 
                 </div>
             )}
 
-            {stage.question_type === 'qr_scan' && (
+            {effectiveQuestionType === 'qr_scan' && (
                 <p className="text-sm text-muted-foreground">
                     This stage uses QR scan only — participants scan a QR code to complete it.
                 </p>

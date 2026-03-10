@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Head, router } from '@inertiajs/react';
+import { Head, router, usePage } from '@inertiajs/react';
 import AppLayout from '@/layouts/app-layout';
 import type { BreadcrumbItem } from '@/types';
 import { Button } from '@/components/ui/button';
@@ -12,11 +12,24 @@ type Props = {
     questData: CreateQuestFormData;
 };
 
-export default function QuestStagesPage({ questData }: Props) {
+export default function QuestStagesPage({ questData: rawQuestData }: Props) {
+    const questData: CreateQuestFormData = {
+        ...rawQuestData,
+        question_type: rawQuestData.question_type ?? (rawQuestData.quest_type === 'enrollment' ? 'qr_scan' : 'multiple_choice'),
+    };
     const numStages = typeof questData.num_stages === 'number' ? questData.num_stages : 1;
 
+    const effectiveQuestionType = questData.question_type ?? (questData.quest_type === 'enrollment' ? 'qr_scan' : 'multiple_choice');
+
     const [stages, setStages] = useState<StageFormData[]>(() =>
-        Array.from({ length: numStages }, (_, i) => createEmptyStage(i + 1)),
+        Array.from({ length: numStages }, (_, i) => {
+            const stage = createEmptyStage(i + 1);
+            stage.question_type = effectiveQuestionType;
+            if (effectiveQuestionType === 'qr_scan') {
+                stage.questions = [];
+            }
+            return stage;
+        }),
     );
     const [currentIdx, setCurrentIdx] = useState(0);
     const [submitting, setSubmitting] = useState(false);
@@ -52,7 +65,48 @@ export default function QuestStagesPage({ questData }: Props) {
 
     const isLastStage = currentIdx === numStages - 1;
 
+    const [clientErrors, setClientErrors] = useState<string[]>([]);
+
+    const validateStages = (): string[] => {
+        const errs: string[] = [];
+        stages.forEach((s, i) => {
+            const label = `Stage ${i + 1}`;
+            if (!s.location_hint.trim()) errs.push(`${label}: Location hint is required.`);
+            if (questData.is_elimination) {
+                if (!s.max_survivors || s.max_survivors < 1) errs.push(`${label}: Max survivors is required.`);
+                if (!s.minimum_participants || s.minimum_participants < 1) errs.push(`${label}: Minimum participants is required.`);
+                if (!s.stage_deadline) errs.push(`${label}: Stage deadline is required.`);
+            }
+            if (effectiveQuestionType === 'multiple_choice') {
+                if (!s.questions || s.questions.length === 0) {
+                    errs.push(`${label}: At least one question is required.`);
+                } else {
+                    s.questions.forEach((q, qi) => {
+                        if (!q.question_text.trim()) errs.push(`${label}, Q${qi + 1}: Question text is required.`);
+                        if (!q.choices || q.choices.length < 2) {
+                            errs.push(`${label}, Q${qi + 1}: At least 2 choices are required.`);
+                        } else {
+                            q.choices.forEach((c, ci) => {
+                                if (!c.choice_text.trim()) errs.push(`${label}, Q${qi + 1}, Choice ${ci + 1}: Choice text is required.`);
+                            });
+                            if (!q.choices.some((c) => c.is_correct)) {
+                                errs.push(`${label}, Q${qi + 1}: Select a correct answer.`);
+                            }
+                        }
+                    });
+                }
+            }
+        });
+        return errs;
+    };
+
     const handleSubmit = () => {
+        const errs = validateStages();
+        if (errs.length > 0) {
+            setClientErrors(errs);
+            return;
+        }
+        setClientErrors([]);
         setSubmitting(true);
         const finalStages = questData.is_elimination
             ? stages
@@ -69,6 +123,13 @@ export default function QuestStagesPage({ questData }: Props) {
             onFinish: () => setSubmitting(false),
         });
     };
+
+    const { errors: serverErrors } = usePage<{ errors: Record<string, string> }>();
+    const allErrors = [
+        ...clientErrors,
+        ...Object.values(serverErrors || {}),
+    ];
+    const hasErrors = allErrors.length > 0;
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -88,11 +149,23 @@ export default function QuestStagesPage({ questData }: Props) {
                     </Button>
                 </div>
 
+                {hasErrors && (
+                    <div className="mx-auto w-full max-w-4xl rounded-lg border border-destructive/50 bg-destructive/10 p-4">
+                        <p className="text-sm font-medium text-destructive mb-1">Please fix the following errors:</p>
+                        <ul className="list-disc pl-5 text-sm text-destructive space-y-0.5">
+                            {allErrors.map((msg, i) => (
+                                <li key={i}>{msg}</li>
+                            ))}
+                        </ul>
+                    </div>
+                )}
+
                 <div className="mx-auto w-full max-w-4xl">
                     <StageForm
                         key={currentIdx}
                         stage={stages[currentIdx]}
                         questType={questData.quest_type}
+                        questionType={effectiveQuestionType}
                         isElimination={questData.is_elimination}
                         onChange={updateStage}
                     />

@@ -35,16 +35,21 @@ class LeaderboardService
             $period = self::PERIOD_WEEK;
         }
 
-        $entries = $this->getEntriesFromTable($period);
-        if ($entries === null) {
+        // "today" and "overall" change frequently — always compute live
+        if (in_array($period, [self::PERIOD_TODAY, self::PERIOD_OVERALL], true)) {
             $entries = $this->getEntriesComputed($period);
+        } else {
+            $entries = $this->getEntriesFromTable($period);
+            if ($entries === null) {
+                $entries = $this->getEntriesComputed($period);
+            }
         }
 
         return [
             'entries' => $entries,
             'period' => $period,
             'periods' => self::PERIODS,
-            'value_label' => $period === self::PERIOD_OVERALL ? 'Total points' : 'Quest points',
+            'value_label' => $period === self::PERIOD_OVERALL ? 'Total XP earned' : 'Quest reward points',
         ];
     }
 
@@ -113,18 +118,17 @@ class LeaderboardService
     }
 
     /**
-     * Overall: total points from point_transactions (sum of amount per user), students only.
+     * Overall: ranked by total_xp_earned on the users table (canonical source).
      *
      * @return array<int, array{rank: int, user_id: int, user_name: string, value: int}>
      */
     private function getOverallEntriesComputed(): array
     {
-        $rows = PointTransaction::query()
-            ->join('users', 'users.id', '=', 'point_transactions.user_id')
-            ->where('users.role', 'student')
-            ->selectRaw('point_transactions.user_id, users.name as user_name, COALESCE(SUM(point_transactions.amount), 0) as total')
-            ->groupBy('point_transactions.user_id', 'users.name')
-            ->orderByDesc('total')
+        $rows = User::query()
+            ->where('role', 'student')
+            ->where('total_xp_earned', '>', 0)
+            ->orderByDesc('total_xp_earned')
+            ->select('id', 'name', 'total_xp_earned')
             ->get();
 
         $entries = [];
@@ -132,9 +136,9 @@ class LeaderboardService
         foreach ($rows as $row) {
             $entries[] = [
                 'rank' => $rank,
-                'user_id' => (int) $row->user_id,
-                'user_name' => $row->user_name ?? '—',
-                'value' => (int) $row->total,
+                'user_id' => (int) $row->id,
+                'user_name' => $row->name ?? '—',
+                'value' => (int) $row->total_xp_earned,
             ];
             $rank++;
         }

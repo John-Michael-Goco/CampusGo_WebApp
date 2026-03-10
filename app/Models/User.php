@@ -118,4 +118,9 @@ class User extends Authenticatable
     {
         return $this->hasMany(UserAchievement::class, 'user_id');
     }
+
+    public function questParticipations(): HasMany
+    {
+        return $this->hasMany(QuestParticipant::class);
+    }
 }

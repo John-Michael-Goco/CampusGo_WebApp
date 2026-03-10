@@ -16,7 +16,7 @@ return new class extends Migration
             $table->foreignId('quest_id')->constrained('quests')->cascadeOnDelete();
             $table->foreignId('user_id')->constrained('users')->cascadeOnDelete();
             $table->unsignedInteger('current_stage')->default(1);
-            $table->enum('status', ['active', 'eliminated', 'quit', 'winner'])->default('active');
+            $table->enum('status', ['active', 'eliminated', 'quit', 'winner', 'awaiting_ranking'])->default('active');
             $table->timestamp('joined_at')->useCurrent();
             $table->unique(['quest_id', 'user_id']);
         });

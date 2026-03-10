@@ -6,28 +6,23 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-class QuestStage extends Model
+class QuestParticipant extends Model
 {
     public $timestamps = false;
 
     protected $fillable = [
         'quest_id',
-        'stage_number',
-        'location_hint',
-        'max_survivors',
-        'passing_score',
-        'minimum_participants',
-        'stage_deadline',
+        'user_id',
+        'current_stage',
         'status',
+        'joined_at',
     ];
 
     protected function casts(): array
     {
         return [
-            'max_survivors' => 'int',
-            'passing_score' => 'int',
-            'minimum_participants' => 'int',
-            'stage_deadline' => 'datetime',
+            'current_stage' => 'int',
+            'joined_at' => 'datetime',
         ];
     }
 
@@ -36,8 +31,13 @@ class QuestStage extends Model
         return $this->belongsTo(Quest::class);
     }
 
-    public function questions(): HasMany
+    public function user(): BelongsTo
     {
-        return $this->hasMany(QuestQuestion::class, 'stage_id');
+        return $this->belongsTo(User::class);
+    }
+
+    public function submissions(): HasMany
+    {
+        return $this->hasMany(Submission::class, 'participant_id');
     }
 }

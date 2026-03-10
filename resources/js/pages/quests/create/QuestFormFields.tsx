@@ -14,7 +14,7 @@ import {
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { DateTimePicker } from '@/components/ui/date-time-picker';
-import type { CreateQuestFormData, EnrollmentSemester, QuestType, TargetGroup } from './types';
+import type { CreateQuestFormData, EnrollmentSemester, QuestType, QuestionTypeLevel, TargetGroup } from './types';
 import {
     ACT_YEAR_LEVEL_OPTIONS,
     COURSE_OPTIONS,
@@ -117,12 +117,21 @@ export function QuestFormFields({ data, errors, setData, enrollmentSemester }: P
         const questType = value as QuestType;
         setData('quest_type', questType);
 
+        if (questType === 'enrollment') {
+            setData('question_type', 'qr_scan');
+        }
+
         if (isSimpleQuestType(questType)) {
             setData('is_elimination', false);
             setData('buy_in_points', '');
             setData('reward_custom_prize', '');
             setData('max_participants', '');
         }
+    };
+
+    const handleQuestionTypeChange = (value: string) => {
+        if (data.quest_type === 'enrollment') return;
+        setData('question_type', value as QuestionTypeLevel);
     };
 
     return (
@@ -255,8 +264,8 @@ export function QuestFormFields({ data, errors, setData, enrollmentSemester }: P
                 )}
             </fieldset>
 
-            {/* Quest type + Number of stages */}
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            {/* Quest type + Question type + Number of stages */}
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                 <div className="grid gap-2">
                     <Label htmlFor="quest_type">Quest type</Label>
                     <Select
@@ -275,6 +284,28 @@ export function QuestFormFields({ data, errors, setData, enrollmentSemester }: P
                         </SelectContent>
                     </Select>
                     <InputError message={errors.quest_type} />
+                </div>
+                <div className="grid gap-2">
+                    <Label htmlFor="question_type">Question type</Label>
+                    {data.quest_type === 'enrollment' ? (
+                        <p className="text-sm text-muted-foreground rounded-md border bg-muted/30 px-3 py-2">
+                            QR scan only
+                        </p>
+                    ) : (
+                        <Select
+                            value={data.question_type}
+                            onValueChange={handleQuestionTypeChange}
+                        >
+                            <SelectTrigger id="question_type">
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="multiple_choice">Multiple choice</SelectItem>
+                                <SelectItem value="qr_scan">QR scan only</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    )}
+                    <InputError message={errors.question_type} />
                 </div>
                 <div className="grid gap-2">
                     <Label htmlFor="num_stages">Stages</Label>

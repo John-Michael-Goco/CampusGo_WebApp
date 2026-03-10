@@ -518,7 +518,7 @@ Use this when creating or altering migrations to match the design above.
 ## Decided
 
 1. **Student quest creation** — Remove `difficulty` from quests. Add `creation_payment_status` (enum: pending, locked, paid, refunded) and `creation_cost_points` (int) to the quests table. Points required to create a quest are stored per quest.
-2. **Eligibility to create custom quests** — Student must complete **15 daily quests** before they can use points to create a custom quest.
+2. **Eligibility to create custom quests** — Student must complete **10 daily quests** before they can use points to create a custom quest.
 3. **Level formula** — Level 1 = 100 XP, Level 2 = 200 XP, Level 3 = 300 XP, etc. (i.e. Level N requires N × 100 XP). Clarify in implementation whether this is *total XP needed* to reach that level or *XP needed for that level step*.
 
 4. **Admin accounts** — Admin accounts are created via **web registration**. When a user registers through the web app (not via master list lookup), they are created as an admin. Implement as a role/flag on `users` (e.g. `role` or separate admin path with nullable `master_user_id` for non-masterlist admins).

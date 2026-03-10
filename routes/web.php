@@ -13,6 +13,7 @@ use App\Http\Controllers\Simulation\InventoryUseController;
 use App\Http\Controllers\Simulation\LeaderboardController as SimulationLeaderboardController;
 use App\Http\Controllers\Simulation\PointTransactionsController as SimulationPointTransactionsController;
 use App\Http\Controllers\Simulation\PointsTransferController;
+use App\Http\Controllers\Simulation\QuestParticipationController;
 use App\Http\Controllers\Simulation\StudentLoginController;
 use App\Http\Controllers\Simulation\StoreRedeemController;
 use App\Http\Controllers\Simulation\UserDetailsController as SimulationUserDetailsController;
@@ -79,6 +80,20 @@ Route::post('simulation/achievements/simulate-quest-win', [AchievementSimulation
     ->middleware('auth');
 Route::post('simulation/achievements/simulate-quest-participation', [AchievementSimulationController::class, 'simulateQuestParticipation'])
     ->middleware('auth');
+
+Route::get('simulation/quests', [QuestParticipationController::class, 'index'])
+    ->middleware('auth')
+    ->name('simulation.quests');
+Route::post('simulation/quests/join', [QuestParticipationController::class, 'join'])
+    ->middleware('auth')
+    ->name('simulation.quests.join');
+Route::get('simulation/quests/{participant}/play', [QuestParticipationController::class, 'play'])
+    ->middleware('auth')
+    ->name('simulation.quests.play');
+Route::post('simulation/quests/{participant}/submit', [QuestParticipationController::class, 'submit'])
+    ->middleware('auth')
+    ->name('simulation.quests.submit');
+
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::inertia('dashboard', 'dashboard')->name('dashboard');
