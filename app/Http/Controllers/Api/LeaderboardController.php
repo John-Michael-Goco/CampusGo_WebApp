@@ -1,11 +1,11 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Api;
 
+use App\Http\Controllers\Controller;
 use App\Services\LeaderboardService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Inertia\Inertia;
-use Inertia\Response;
 
 class LeaderboardController extends Controller
 {
@@ -14,18 +14,18 @@ class LeaderboardController extends Controller
     ) {}
 
     /**
-     * Display leaderboard for the selected period (web).
+     * Return leaderboard data as JSON for the mobile app.
      */
-    public function index(Request $request): Response
+    public function index(Request $request): JsonResponse
     {
         $period = $request->query('period', LeaderboardService::PERIOD_WEEK);
         $data = $this->leaderboardService->getDataForPeriod($period);
 
-        return Inertia::render('leaderboards/index', [
+        return response()->json([
             'entries' => $data['entries'],
             'period' => $data['period'],
             'periods' => $data['periods'],
-            'valueLabel' => $data['value_label'],
+            'value_label' => $data['value_label'],
         ]);
     }
 }

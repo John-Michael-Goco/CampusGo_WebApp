@@ -23,24 +23,25 @@ export default function LeaderboardsIndex({
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Leaderboards" />
             <div className="flex h-full flex-1 flex-col gap-4 rounded-xl p-4">
-                <h1 className="text-xl font-semibold">Leaderboards</h1>
-
-                <div className="flex flex-wrap gap-1 rounded-lg border bg-muted/30 p-1">
-                    {periods.map((p) => (
-                        <button
-                            key={p}
-                            type="button"
-                            onClick={() => setPeriod(p)}
-                            className={cn(
-                                'rounded-md px-3 py-2 text-sm font-medium transition-colors',
-                                period === p
-                                    ? 'bg-background text-foreground shadow-sm'
-                                    : 'text-muted-foreground hover:text-foreground'
-                            )}
-                        >
-                            {PERIOD_LABELS[p]}
-                        </button>
-                    ))}
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                    <h1 className="text-xl font-semibold">Leaderboards</h1>
+                    <div className="flex gap-1 rounded-lg border bg-muted/30 p-1">
+                        {periods.map((p) => (
+                            <button
+                                key={p}
+                                type="button"
+                                onClick={() => setPeriod(p)}
+                                className={cn(
+                                    'rounded-md px-3 py-2 text-sm font-medium transition-colors',
+                                    period === p
+                                        ? 'bg-background text-foreground shadow-sm'
+                                        : 'text-muted-foreground hover:text-foreground'
+                                )}
+                            >
+                                {PERIOD_LABELS[p]}
+                            </button>
+                        ))}
+                    </div>
                 </div>
 
                 <div className="overflow-hidden rounded-lg border bg-card">
