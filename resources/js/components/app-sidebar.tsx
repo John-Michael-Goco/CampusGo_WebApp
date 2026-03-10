@@ -3,6 +3,7 @@ import {
     GraduationCap,
     LayoutGrid,
     Receipt,
+    ScrollText,
     ShoppingBag,
     Trophy,
     Users,
@@ -37,6 +38,16 @@ const mainNavItems: NavItem[] = [
         title: 'Leaderboards',
         href: '/leaderboards',
         icon: Trophy,
+    },
+    {
+        title: 'Quests',
+        href: '/quests/active',
+        icon: ScrollText,
+        items: [
+            { title: 'Active', href: '/quests/active', icon: null },
+            { title: 'Approval', href: '/quests/approval', icon: null },
+            { title: 'History', href: '/quests/history', icon: null },
+        ],
     },
     {
         title: 'Store & Achievements',

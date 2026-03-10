@@ -28,6 +28,7 @@ Complete reference for the CampusGo schema, table purposes, and phased implement
 | 5 | `quest_target_groups` | Course/year/section restrictions for a quest |
 | 6 | `quest_stages` | Elimination rounds (location, max/min participants, stage_deadline, status) |
 | 7 | `quest_questions` | Questions per stage (trivia, riddle, qr_scan) |
+| 7b | `quest_question_choices` | Multiple-choice options and correct answer (trivia/riddle only) |
 | 8 | `quest_participants` | Who joined which quest; stage and status |
 | 9 | `submissions` | One answer per participant per question; correctness |
 | 10 | `store_items` | Redeemable items (points cost, stock, time window) |
@@ -207,15 +208,34 @@ A quest has many stages; each stage has its own location, max survivors, minimum
 | stage_id       | FK      |             |
 | question_text  | text    |             |
 | question_type  | enum    |             |
-| correct_answer | text    |             |
 
-*(Questions per stage. question_type: trivia, riddle, qr_scan. Gamemaster decides how many questions per stage.)*
+*(Questions per stage. question_type: trivia, riddle, qr_scan. For trivia/riddle: choices and correct answer are in `quest_question_choices`. For qr_scan: no choices.)*
 
 **What it is**  
-Stores questions for each stage (trivia/riddle for quiz; qr_scan for “scan to complete”). Winner: qr_scan = fastest to scan; trivia/riddle = total score + speed.
+Stores questions for each stage. Trivia and riddle are multiple choice: choices and correct answer are stored in `quest_question_choices`. QR scan is not multiple choice — user just scans to complete; winner = fastest to scan. For trivia/riddle, winner = total score + speed.
 
 **Why separate**  
 One stage has many questions; one-to-many relationship.
+
+---
+
+### 7b. quest_question_choices
+
+| Field             | Type    | Description |
+|-------------------|---------|-------------|
+| id                | PK      |             |
+| quest_question_id | FK      |             |
+| choice_text       | text    |             |
+| sort_order        | int     | Display order (0, 1, 2, ...) |
+| is_correct        | boolean | Exactly one true per question |
+
+*(Multiple-choice options for trivia/riddle questions only. One row per choice; exactly one row per question has `is_correct = true`.)*
+
+**What it is**  
+Stores the answer choices and which one is correct for trivia and riddle questions. Not used for `qr_scan` (those questions have no choices).
+
+**Why separate**  
+Keeps choices normalized and ordered; correct answer is indicated by `is_correct`. Enforce in app: for each trivia/riddle question, at least one choice exists and exactly one has `is_correct = true`.
 
 ---
 
@@ -434,7 +454,7 @@ Audit trail for points; required for “points this semester” (and today/week/
 
 - **Quests**: Implement `quest_type`, `approval_status`, `creation_payment_status`, `creation_cost_points`, `buy_in_points`, `max_participants`, `start_date`, `end_date`. Only admin can set `approval_status` to `approved`.
 - **Targeting**: Use `quest_target_groups` when listing available quests (filter by user’s course/year/section from `master_users`).
-- **Stages & questions**: Create/edit quests with `quest_stages` and `quest_questions`. Each stage has `stage_deadline` and `minimum_participants`. **Stage completion**: stage closes when **either** `max_survivors` is reached **or** `stage_deadline` has passed; if `minimum_participants` is not met by the deadline, mark the stage (or quest) as failed. QR/AR content can be derived from stage + questions (e.g. API returns question for a stage).
+- **Stages & questions**: Create/edit quests with `quest_stages` and `quest_questions`. For trivia/riddle, add choices via **`quest_question_choices`** (choice_text, sort_order, is_correct). Each stage has `stage_deadline` and `minimum_participants`. **Stage completion**: stage closes when **either** `max_survivors` is reached **or** `stage_deadline` has passed; if `minimum_participants` is not met by the deadline, mark the stage (or quest) as failed. QR/AR content can be derived from stage + questions (e.g. API returns question and choices for a stage).
 - **Participants & submissions**: When a user joins a quest, create `quest_participants`. On answer submit, create/update `submissions` (enforce one attempt per participant per question). Update `current_stage` and `status` (active, eliminated, quit, winner) as the quest runs.
 - **Winner logic**: For **qr_scan** stages, winner = first to submit (order by `submissions.submitted_at`). For **trivia/riddle** stages, winner = highest total score, tie-break by total response time (faster = better); derive response time from `submitted_at` (e.g. time since stage start or previous submission).
 
@@ -474,7 +494,8 @@ Use this when creating or altering migrations to match the design above.
 | 4 | `quests` | Create/update: all fields; include current_participants for atomic join; quest_type includes daily, event, custom, enrollment; creation_payment_status nullable for professor/admin |
 | 5 | `quest_target_groups` | Create |
 | 6 | `quest_stages` | Create: include stage_deadline, minimum_participants (replaces/integrates previous “tasks” concept) |
-| 7 | `quest_questions` | Create |
+| 7 | `quest_questions` | Create (no correct_answer; trivia/riddle use quest_question_choices) |
+| 7b | `quest_question_choices` | Create: quest_question_id, choice_text, sort_order, is_correct (trivia/riddle only) |
 | 8 | `quest_participants` | Create/update: `current_stage`, `status` (include `quit`, `winner`) |
 | 9 | `submissions` | Create (unique on participant_id + question_id) |
 | 10 | `store_items` | Create |
@@ -498,14 +519,13 @@ Use this when creating or altering migrations to match the design above.
 5. **Leaderboard update** — Use a **batch job** at **12:00 AM** to recalculate leaderboard ranks from `point_transactions`. Leaderboards for **today**, **1 week**, **1 month**, and **semester**. Every semester, semester leaderboard resets (new period_key); today/week/month roll with the calendar.
 
 6. **QR/AR & question types** — **In-app**: When a user scans a quest QR, the CampusGo app opens a camera/view and shows the content.  
-   **multiple choice.**
-   - **Quiz type** (trivia, riddle) — user answers; winner = **total score** (correct answers) + **how fast they answered** (speed).
-   - **Scan the QR** — user just scans to complete; winner = **who is faster** (first to scan wins).  
-   **Question type** for `quest_questions.question_type`: use **trivia**, **riddle**, **qr_scan** (use multiple).
+   - **Quiz type (trivia, riddle)** — **All quiz questions are multiple choice** (except QR scan). Choices and the correct answer are stored in the database: use table **`quest_question_choices`** (one row per choice; `is_correct` = true on the correct option). User picks one choice; winner = **total score** (correct answers) + **how fast they answered** (speed).  
+   - **Scan the QR (qr_scan)** — **Not multiple choice.** User just scans to complete; winner = **who is faster** (first to scan wins). No choices stored.  
+   **Question type** for `quest_questions.question_type`: **trivia**, **riddle**, **qr_scan**.
 
-   **Schema check — supported:**  
-   - **qr_scan**: Record completion in `submissions` (e.g. one submission per participant for the scan). Winner = first `submitted_at` (fastest).  
-   - **Trivia/riddle**: `submissions` has `is_correct` (for score) and `submitted_at` (for speed). To get "how fast they answered," use time between stage start and each submission: derive from `submissions.submitted_at` order per participant, or optionally add a `stage_entered_at` (or `question_revealed_at`) on a participant–stage table if you want explicit "time to answer." Current tables are enough if you derive stage start from previous submissions or `quest_participants.joined_at` for stage 1.
+   **Schema — supported:**  
+   - **qr_scan**: No choices. Record completion in `submissions`. Winner = first `submitted_at` (fastest).  
+   - **Trivia/riddle**: Store choices in **`quest_question_choices`** (quest_question_id, choice_text, sort_order, is_correct). Exactly one choice per question has `is_correct = true`. `submissions` has `answer` (selected choice id or text), `is_correct`, and `submitted_at` (for speed). Winner = highest score + tie-break by response time.
 
 7. **Points sharing** — Add **transfer_in** and **transfer_out** to `point_transactions.transaction_type`. Only **students** can send points. **Min 10 pts, max 100 pts** per transfer. One transfer = two rows (sender: transfer_out negative; receiver: transfer_in positive); `reference_id` = counterparty user_id. Transferred points do **not** count for XP/leaderboard.
 

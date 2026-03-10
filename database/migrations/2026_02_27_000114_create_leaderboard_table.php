@@ -10,7 +10,7 @@ return new class extends Migration
     {
         Schema::create('leaderboard', function (Blueprint $table) {
             $table->id();
-            $table->enum('period_type', ['today', 'week', 'month', 'semester']);
+            $table->enum('period_type', ['today', 'week', 'month', 'semester', 'overall']);
             $table->string('period_key');
             $table->foreignId('user_id')->constrained('users')->cascadeOnDelete();
             $table->unsignedInteger('total_points')->default(0);
