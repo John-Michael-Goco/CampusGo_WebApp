@@ -1,0 +1,448 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\ActivityLog;
+use App\Models\MasterUser;
+use App\Models\Quest;
+use App\Models\QuestQuestionChoice;
+use App\Models\Semester;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Inertia\Inertia;
+use Inertia\Response;
+
+class QuestController extends Controller
+{
+    /**
+     * Show active quests (approved & ongoing/upcoming).
+     */
+    public function active(Request $request): Response
+    {
+        $filters = [
+            'search' => (string) $request->query('search', ''),
+            'quest_type' => (string) $request->query('quest_type', ''),
+            'sort_by' => (string) $request->query('sort_by', 'start_date'),
+            'sort_dir' => (string) $request->query('sort_dir', 'desc'),
+        ];
+
+        $sortBy = in_array($filters['sort_by'], ['title', 'quest_type', 'status', 'start_date', 'end_date'], true)
+            ? $filters['sort_by']
+            : 'start_date';
+        $sortDir = $filters['sort_dir'] === 'asc' ? 'asc' : 'desc';
+
+        $query = Quest::query()
+            ->where('approval_status', 'approved')
+            ->whereIn('status', ['upcoming', 'ongoing']);
+
+        if ($filters['search'] !== '') {
+            $search = $filters['search'];
+            $query->where(function ($q) use ($search) {
+                $q->where('title', 'like', "%{$search}%")
+                    ->orWhere('description', 'like', "%{$search}%");
+            });
+        }
+
+        if ($filters['quest_type'] !== '') {
+            $query->where('quest_type', $filters['quest_type']);
+        }
+
+        $quests = $query
+            ->orderBy($sortBy, $sortDir)
+            ->orderBy('title')
+            ->paginate(10)
+            ->withQueryString([
+                'search' => $filters['search'] ?: null,
+                'quest_type' => $filters['quest_type'] ?: null,
+                'sort_by' => $sortBy,
+                'sort_dir' => $sortDir,
+            ]);
+
+        return Inertia::render('quests/active', [
+            'quests' => $quests,
+            'filters' => $filters,
+        ]);
+    }
+
+    /**
+     * Show the create-quest form.
+     */
+    public function create(Request $request): Response
+    {
+        $questData = null;
+        if ($request->has('questData')) {
+            $questData = json_decode((string) $request->query('questData', '{}'), true);
+        }
+
+        return Inertia::render('quests/create', [
+            'questData' => $questData,
+            'enrollmentSemester' => $this->getAvailableEnrollmentSemester(),
+        ]);
+    }
+
+    /**
+     * Show the quest stages form (step 2).
+     */
+    public function stages(Request $request): Response
+    {
+        $questData = json_decode((string) $request->query('questData', '{}'), true) ?: [];
+
+        return Inertia::render('quests/create/stages', [
+            'questData' => $questData,
+        ]);
+    }
+
+    /**
+     * Store a new quest with stages, questions, choices, and target groups.
+     */
+    public function store(Request $request): RedirectResponse
+    {
+        $request->validate([
+            'quest.title' => 'required|string|max:255',
+            'quest.quest_type' => 'required|in:daily,event,custom,enrollment',
+            'quest.reward_points' => 'required|integer|min:1|max:150',
+            'quest.start_date' => 'nullable|date',
+            'quest.end_date' => 'nullable|date|after_or_equal:quest.start_date',
+            'stages' => 'required|array|min:1',
+            'stages.*.location_hint' => 'required|string|max:255',
+            'stages.*.question_type' => 'required|in:multiple_choice,qr_scan',
+        ]);
+
+        $user = $request->user();
+        $isAdmin = $user->role === 'admin';
+        $questInput = $request->input('quest');
+
+        $semesterId = null;
+        if ($questInput['quest_type'] === 'enrollment') {
+            $semester = $this->getAvailableEnrollmentSemester();
+            if (!$semester) {
+                return back()->withErrors(['quest.quest_type' => 'No available semester for an enrollment quest.']);
+            }
+            $semesterId = $semester['id'];
+        }
+
+        return DB::transaction(function () use ($questInput, $request, $user, $isAdmin, $semesterId) {
+            $quest = Quest::create([
+                'title' => $questInput['title'],
+                'description' => $questInput['description'] ?? null,
+                'quest_type' => $questInput['quest_type'],
+                'is_elimination' => (bool) ($questInput['is_elimination'] ?? false),
+                'buy_in_points' => (int) ($questInput['buy_in_points'] ?? 0),
+                'reward_points' => (int) ($questInput['reward_points'] ?? 0),
+                'reward_custom_prize' => $questInput['reward_custom_prize'] ?? null,
+                'max_participants' => $questInput['max_participants'] ? (int) $questInput['max_participants'] : 0,
+                'created_by' => $user->id,
+                'approval_status' => $isAdmin ? 'approved' : 'pending',
+                'creation_payment_status' => $isAdmin ? 'paid' : 'pending',
+                'creation_cost_points' => $isAdmin ? 0 : ((int) ($questInput['creation_cost_points'] ?? 0) ?: null),
+                'start_date' => $questInput['start_date'] ?: null,
+                'end_date' => $questInput['end_date'] ?: null,
+                'semester_id' => $semesterId,
+            ]);
+
+            $target = $questInput['target'] ?? null;
+            if ($target && ($target['target_type'] ?? 'everyone') === 'specific') {
+                $quest->targetGroups()->create([
+                    'course' => $target['course'] ?: null,
+                    'year_level' => $target['year_level'] ? (int) $target['year_level'] : null,
+                    'section' => $target['section'] ?: null,
+                ]);
+            }
+
+            foreach ($request->input('stages', []) as $idx => $stageInput) {
+                $stage = $quest->stages()->create([
+                    'stage_number' => $idx + 1,
+                    'location_hint' => $stageInput['location_hint'],
+                    'max_survivors' => $stageInput['max_survivors'] ? (int) $stageInput['max_survivors'] : 0,
+                    'minimum_participants' => $stageInput['minimum_participants'] ? (int) $stageInput['minimum_participants'] : 1,
+                    'stage_deadline' => $stageInput['stage_deadline'] ?: null,
+                    'status' => 'locked',
+                ]);
+
+                if ($stageInput['question_type'] === 'multiple_choice') {
+                    foreach ($stageInput['questions'] ?? [] as $qInput) {
+                        $question = $stage->questions()->create([
+                            'question_text' => $qInput['question_text'] ?? '',
+                            'question_type' => 'multiple_choice',
+                        ]);
+
+                        foreach ($qInput['choices'] ?? [] as $sortOrder => $choiceInput) {
+                            QuestQuestionChoice::create([
+                                'quest_question_id' => $question->id,
+                                'choice_text' => $choiceInput['choice_text'] ?? '',
+                                'sort_order' => $sortOrder,
+                                'is_correct' => (bool) ($choiceInput['is_correct'] ?? false),
+                            ]);
+                        }
+                    }
+                } else {
+                    $stage->questions()->create([
+                        'question_text' => 'QR Scan',
+                        'question_type' => 'qr_scan',
+                    ]);
+                }
+            }
+
+            ActivityLog::log($user->id, ActivityLog::ACTION_QUEST_CREATED, $quest->title);
+
+            return redirect()->route('quests.active')->with('success', 'Quest created successfully.');
+        });
+    }
+
+    /**
+     * Show the edit-quest form (step 1).
+     */
+    public function edit(Request $request, Quest $quest): Response
+    {
+        $quest->load('targetGroups', 'stages.questions.choices');
+
+        $target = $quest->targetGroups->first();
+        $questData = [
+            'target' => $target ? [
+                'target_type' => 'specific',
+                'course' => $target->course ?? '',
+                'year_level' => $target->year_level ? (string) $target->year_level : '',
+                'section' => $target->section ?? '',
+            ] : [
+                'target_type' => 'everyone',
+                'course' => '',
+                'year_level' => '',
+                'section' => '',
+            ],
+            'title' => $quest->title,
+            'description' => $quest->description ?? '',
+            'quest_type' => $quest->quest_type,
+            'num_stages' => $quest->stages->count() ?: 1,
+            'is_elimination' => $quest->is_elimination,
+            'buy_in_points' => $quest->buy_in_points ?: '',
+            'reward_points' => $quest->reward_points ?: '',
+            'reward_custom_prize' => $quest->reward_custom_prize ?? '',
+            'max_participants' => $quest->max_participants ?: '',
+            'start_date' => $quest->start_date ? $quest->start_date->format('Y-m-d\TH:i') : '',
+            'end_date' => $quest->end_date ? $quest->end_date->format('Y-m-d\TH:i') : '',
+            'creation_cost_points' => $quest->creation_cost_points ?? '',
+        ];
+
+        if ($request->has('questData')) {
+            $questData = json_decode((string) $request->query('questData', '{}'), true) ?: $questData;
+        }
+
+        return Inertia::render('quests/edit', [
+            'questId' => $quest->id,
+            'questData' => $questData,
+            'enrollmentSemester' => $this->getAvailableEnrollmentSemester($quest->id),
+        ]);
+    }
+
+    /**
+     * Show the edit stages form (step 2).
+     */
+    public function editStages(Request $request, Quest $quest): Response
+    {
+        $quest->load('stages.questions.choices');
+
+        $questData = json_decode((string) $request->query('questData', '{}'), true) ?: [];
+
+        $stagesData = $quest->stages->sortBy('stage_number')->values()->map(function ($stage) {
+            return [
+                'stage_number' => $stage->stage_number,
+                'location_hint' => $stage->location_hint,
+                'max_survivors' => $stage->max_survivors ?: '',
+                'minimum_participants' => $stage->minimum_participants ?: '',
+                'stage_deadline' => $stage->stage_deadline ? $stage->stage_deadline->format('Y-m-d\TH:i') : '',
+                'question_type' => $stage->questions->first()?->question_type ?? 'multiple_choice',
+                'questions' => $stage->questions->map(function ($question) {
+                    return [
+                        'question_text' => $question->question_text,
+                        'question_type' => $question->question_type,
+                        'choices' => $question->choices->sortBy('sort_order')->values()->map(function ($choice) {
+                            return [
+                                'choice_text' => $choice->choice_text,
+                                'is_correct' => $choice->is_correct,
+                            ];
+                        })->all(),
+                    ];
+                })->all(),
+            ];
+        })->all();
+
+        return Inertia::render('quests/edit/stages', [
+            'questId' => $quest->id,
+            'questData' => $questData,
+            'existingStages' => $stagesData,
+        ]);
+    }
+
+    /**
+     * Update an existing quest with stages, questions, choices, and target groups.
+     */
+    public function update(Request $request, Quest $quest): RedirectResponse
+    {
+        $request->validate([
+            'quest.title' => 'required|string|max:255',
+            'quest.quest_type' => 'required|in:daily,event,custom,enrollment',
+            'quest.reward_points' => 'required|integer|min:1|max:150',
+            'quest.start_date' => 'nullable|date',
+            'quest.end_date' => 'nullable|date|after_or_equal:quest.start_date',
+            'stages' => 'required|array|min:1',
+            'stages.*.location_hint' => 'required|string|max:255',
+            'stages.*.question_type' => 'required|in:multiple_choice,qr_scan',
+        ]);
+
+        $questInput = $request->input('quest');
+
+        $semesterId = null;
+        if ($questInput['quest_type'] === 'enrollment') {
+            $semester = $this->getAvailableEnrollmentSemester($quest->id);
+            if (!$semester) {
+                return back()->withErrors(['quest.quest_type' => 'No available semester for an enrollment quest.']);
+            }
+            $semesterId = $semester['id'];
+        }
+
+        return DB::transaction(function () use ($quest, $questInput, $request, $semesterId) {
+            $quest->update([
+                'title' => $questInput['title'],
+                'description' => $questInput['description'] ?? null,
+                'quest_type' => $questInput['quest_type'],
+                'is_elimination' => (bool) ($questInput['is_elimination'] ?? false),
+                'buy_in_points' => (int) ($questInput['buy_in_points'] ?? 0),
+                'reward_points' => (int) ($questInput['reward_points'] ?? 0),
+                'reward_custom_prize' => $questInput['reward_custom_prize'] ?? null,
+                'max_participants' => $questInput['max_participants'] ? (int) $questInput['max_participants'] : 0,
+                'start_date' => $questInput['start_date'] ?: null,
+                'end_date' => $questInput['end_date'] ?: null,
+                'semester_id' => $semesterId,
+            ]);
+
+            $quest->targetGroups()->delete();
+            $target = $questInput['target'] ?? null;
+            if ($target && ($target['target_type'] ?? 'everyone') === 'specific') {
+                $quest->targetGroups()->create([
+                    'course' => $target['course'] ?: null,
+                    'year_level' => $target['year_level'] ? (int) $target['year_level'] : null,
+                    'section' => $target['section'] ?: null,
+                ]);
+            }
+
+            $quest->stages()->each(function ($stage) {
+                $stage->questions()->each(function ($question) {
+                    $question->choices()->delete();
+                });
+                $stage->questions()->delete();
+            });
+            $quest->stages()->delete();
+
+            foreach ($request->input('stages', []) as $idx => $stageInput) {
+                $stage = $quest->stages()->create([
+                    'stage_number' => $idx + 1,
+                    'location_hint' => $stageInput['location_hint'],
+                    'max_survivors' => $stageInput['max_survivors'] ? (int) $stageInput['max_survivors'] : 0,
+                    'minimum_participants' => $stageInput['minimum_participants'] ? (int) $stageInput['minimum_participants'] : 1,
+                    'stage_deadline' => $stageInput['stage_deadline'] ?: null,
+                    'status' => 'locked',
+                ]);
+
+                if ($stageInput['question_type'] === 'multiple_choice') {
+                    foreach ($stageInput['questions'] ?? [] as $qInput) {
+                        $question = $stage->questions()->create([
+                            'question_text' => $qInput['question_text'] ?? '',
+                            'question_type' => 'multiple_choice',
+                        ]);
+
+                        foreach ($qInput['choices'] ?? [] as $sortOrder => $choiceInput) {
+                            QuestQuestionChoice::create([
+                                'quest_question_id' => $question->id,
+                                'choice_text' => $choiceInput['choice_text'] ?? '',
+                                'sort_order' => $sortOrder,
+                                'is_correct' => (bool) ($choiceInput['is_correct'] ?? false),
+                            ]);
+                        }
+                    }
+                } else {
+                    $stage->questions()->create([
+                        'question_text' => 'QR Scan',
+                        'question_type' => 'qr_scan',
+                    ]);
+                }
+            }
+
+            ActivityLog::log($request->user()->id, ActivityLog::ACTION_QUEST_UPDATED, $quest->title);
+
+            return redirect()->route('quests.active')->with('success', 'Quest updated successfully.');
+        });
+    }
+
+    /**
+     * Soft-delete a quest.
+     */
+    public function destroy(Request $request, Quest $quest): RedirectResponse
+    {
+        $title = $quest->title;
+        $quest->delete();
+
+        ActivityLog::log($request->user()->id, ActivityLog::ACTION_QUEST_DELETED, $title);
+
+        return back()->with('success', 'Quest deleted.');
+    }
+
+    /**
+     * Find a semester (current or upcoming) that has no enrollment quest yet.
+     * Excludes the given quest ID so editing doesn't block itself.
+     */
+    private function getAvailableEnrollmentSemester(?int $excludeQuestId = null): ?array
+    {
+        $today = now()->toDateString();
+
+        $takenSemesterIds = Quest::query()
+            ->where('quest_type', 'enrollment')
+            ->whereNotNull('semester_id')
+            ->when($excludeQuestId, fn ($q) => $q->where('id', '!=', $excludeQuestId))
+            ->pluck('semester_id');
+
+        $semester = Semester::query()
+            ->where('end_date', '>=', $today)
+            ->whereNotIn('id', $takenSemesterIds)
+            ->orderByRaw("CASE WHEN start_date <= ? AND end_date >= ? THEN 0 ELSE 1 END", [$today, $today])
+            ->orderBy('start_date')
+            ->first();
+
+        if (!$semester) {
+            return null;
+        }
+
+        return [
+            'id' => $semester->id,
+            'name' => $semester->name,
+            'start_date' => $semester->start_date->format('Y-m-d'),
+            'end_date' => $semester->end_date->format('Y-m-d'),
+        ];
+    }
+
+    /**
+     * Return distinct sections for a given course + year_level
+     * from the master_users table.
+     */
+    public function sections(Request $request): JsonResponse
+    {
+        $request->validate([
+            'course' => 'required|string',
+            'year_level' => 'required|integer|min:1',
+        ]);
+
+        $sections = MasterUser::query()
+            ->where('course', $request->query('course'))
+            ->where('year_level', $request->query('year_level'))
+            ->whereNotNull('section')
+            ->where('section', '!=', '')
+            ->distinct()
+            ->orderBy('section')
+            ->pluck('section');
+
+        return response()->json($sections);
+    }
+}
+
+

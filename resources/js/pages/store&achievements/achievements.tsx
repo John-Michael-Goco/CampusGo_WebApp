@@ -37,14 +37,14 @@ export default function AchievementsPage({
         name: '',
         description: '',
         requirement_type: 'quest_count',
-        requirement_value: 0,
+        requirement_value: '',
     });
 
     const editForm = useForm<AchievementFormData>({
         name: '',
         description: '',
         requirement_type: 'quest_count',
-        requirement_value: 0,
+        requirement_value: '',
     });
 
     const openEdit = (achievement: Achievement) => {

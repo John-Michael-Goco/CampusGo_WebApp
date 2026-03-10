@@ -129,6 +129,7 @@ Rule: *If not enrolled → only the enrollment quest is visible.* This table is 
 | title                    | varchar  |             |
 | description              | text     |             |
 | quest_type               | enum     |             |
+| status                   | enum     | upcoming, ongoing, completed, cancelled |
 | is_elimination           | boolean  |             |
 | buy_in_points            | int      |             |
 | reward_points            | int      |             |
@@ -144,12 +145,15 @@ Rule: *If not enrolled → only the enrollment quest is visible.* This table is 
 | created_at               | datetime |             |
 | deleted_at               | datetime | nullable; soft delete |
 
-*(Main quest definition. quest_type: daily, event, custom, enrollment. creation_payment_status: pending, locked, paid, refunded; nullable/N/A for professor/admin-created. creation_cost_points: points required to create quest. Use soft delete (deleted_at); do not hard delete.)*
+*(Main quest definition. quest_type: daily, event, custom, enrollment. status: upcoming (approved but not started), ongoing (live), completed (finished), cancelled. creation_payment_status: pending, locked, paid, refunded; nullable/N/A for professor/admin-created. creation_cost_points: points required to create quest. Use soft delete (deleted_at); do not hard delete.)*
 
-**What it is**  
-Core quest definition: type, rewards, buy-in, max participants, approval status, and creation payment (for student-created quests).
+**What it is**
+Core quest definition: type, rewards, buy-in, max participants, approval status, quest lifecycle status, and creation payment (for student-created quests).
 
-**Why approval_status**  
+**Why status**
+Tracks the lifecycle of a quest. A quest starts as `upcoming` when approved, moves to `ongoing` when live, and ends as `completed` or `cancelled`. The "Active Quests" page shows only `upcoming` and `ongoing` quests.
+
+**Why approval_status**
 Only admin can approve quests before they go live.
 
 ---
@@ -185,17 +189,20 @@ Storing multiple sections in one column is bad design. This is a proper many-to-
 | max_survivors        | int      |             |
 | minimum_participants | int      |             |
 | stage_deadline       | datetime |             |
-| status               | enum     |             |
+| status               | enum     | active, locked, completed, failed |
 
-*(Elimination rounds. Stage proceeds when either max_survivors is reached OR stage_deadline has passed. If minimum_participants is not met by stage_deadline, the stage/quest is considered failed.)*
+*(Elimination rounds. Stage proceeds when either max_survivors is reached OR stage_deadline has passed. status: active (in progress), locked (not yet open), completed (finished successfully), failed (minimum_participants not met by stage_deadline).)*
 
-**What it is**  
+**What it is**
 Represents each elimination round. The system is fully elimination-based. Each stage has a deadline so the quest can move on even when max participants/survivors is not filled.
 
-**Why stage_deadline**  
-If max participants is not met, the stage would never complete without a deadline. So: **either** `max_survivors` is reached **or** `stage_deadline` passes — then the stage closes. If `minimum_participants` is not met by the deadline, mark the stage (or quest) as failed.
+**Why stage_deadline**
+If max participants is not met, the stage would never complete without a deadline. So: **either** `max_survivors` is reached **or** `stage_deadline` passes — then the stage closes. If `minimum_participants` is not met by the deadline, the stage is marked as `failed`.
 
-**Why separate**  
+**Why failed status**
+When a stage's `stage_deadline` passes and `minimum_participants` has not been reached, the stage transitions to `failed`. This can also cascade to cancel the entire quest depending on the game rules.
+
+**Why separate**
 A quest has many stages; each stage has its own location, max survivors, minimum participants, deadline, and status. Keeping this in a separate table keeps the schema scalable.
 
 ---
@@ -207,14 +214,14 @@ A quest has many stages; each stage has its own location, max survivors, minimum
 | id             | PK      |             |
 | stage_id       | FK      |             |
 | question_text  | text    |             |
-| question_type  | enum    |             |
+| question_type  | enum    | multiple_choice, qr_scan |
 
-*(Questions per stage. question_type: trivia, riddle, qr_scan. For trivia/riddle: choices and correct answer are in `quest_question_choices`. For qr_scan: no choices.)*
+*(Questions per stage. question_type: multiple_choice or qr_scan. For multiple_choice: choices and correct answer are in `quest_question_choices`, and a QR code is also required (scan to reveal the question). For qr_scan: only a single QR scan is needed per stage — no choices. A stage with multiple_choice can have many questions; a stage with qr_scan has exactly one.)*
 
-**What it is**  
-Stores questions for each stage. Trivia and riddle are multiple choice: choices and correct answer are stored in `quest_question_choices`. QR scan is not multiple choice — user just scans to complete; winner = fastest to scan. For trivia/riddle, winner = total score + speed.
+**What it is**
+Stores questions for each stage. Multiple choice questions have choices and a correct answer stored in `quest_question_choices`, plus a QR code that participants scan to reveal the question. QR scan questions only require scanning — no quiz; winner = fastest to scan. For multiple choice, winner = total score + speed.
 
-**Why separate**  
+**Why separate**
 One stage has many questions; one-to-many relationship.
 
 ---
@@ -229,7 +236,7 @@ One stage has many questions; one-to-many relationship.
 | sort_order        | int     | Display order (0, 1, 2, ...) |
 | is_correct        | boolean | Exactly one true per question |
 
-*(Multiple-choice options for trivia/riddle questions only. One row per choice; exactly one row per question has `is_correct = true`.)*
+*(Multiple-choice options for multiple_choice questions only. One row per choice; exactly one row per question has `is_correct = true`. Not used for qr_scan questions.)*
 
 **What it is**  
 Stores the answer choices and which one is correct for trivia and riddle questions. Not used for `qr_scan` (those questions have no choices).

@@ -19,7 +19,7 @@ return new class extends Migration
             $table->unsignedInteger('max_survivors');
             $table->unsignedInteger('minimum_participants')->default(1);
             $table->dateTime('stage_deadline')->nullable();
-            $table->enum('status', ['active', 'locked', 'completed'])->default('active');
+            $table->enum('status', ['active', 'locked', 'completed', 'failed'])->default('active');
         });
     }
 

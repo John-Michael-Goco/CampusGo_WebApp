@@ -63,6 +63,9 @@ export const ACTION_LABELS: Record<string, string> = {
     auth_signup: 'Registered (API)',
     points_transfer_out: 'Transfer out',
     points_transfer_in: 'Transfer in',
+    quest_created: 'Quest created',
+    quest_updated: 'Quest updated',
+    quest_deleted: 'Quest deleted',
 };
 
 export function getActionKey(action: string): string {

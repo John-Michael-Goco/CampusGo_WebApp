@@ -20,6 +20,8 @@ const breadcrumbs: BreadcrumbItem[] = [
 function toDateInputValue(dateStr: string | null): string {
     if (!dateStr) return '';
     try {
+        const datePart = dateStr.split('T')[0];
+        if (/^\d{4}-\d{2}-\d{2}$/.test(datePart)) return datePart;
         const d = new Date(dateStr);
         const pad = (n: number) => String(n).padStart(2, '0');
         return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;

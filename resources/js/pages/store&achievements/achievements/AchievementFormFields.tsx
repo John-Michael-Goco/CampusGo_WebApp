@@ -13,7 +13,7 @@ export type AchievementFormData = {
     name: string;
     description: string;
     requirement_type: string;
-    requirement_value: number;
+    requirement_value: number | '';
 };
 
 type Props = {
@@ -104,10 +104,12 @@ export function AchievementFormFields({
                     onChange={(e) =>
                         setData(
                             'requirement_value',
-                            parseInt(e.target.value, 10) || 0
+                            e.target.value === ''
+                                ? ''
+                                : parseInt(e.target.value, 10)
                         )
                     }
-                    placeholder="0"
+                    placeholder="e.g. 5"
                 />
                 {errors.requirement_value && (
                     <p className="text-sm text-destructive">

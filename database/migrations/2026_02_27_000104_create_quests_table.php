@@ -23,9 +23,11 @@ return new class extends Migration
             $table->unsignedInteger('max_participants');
             $table->unsignedInteger('current_participants')->default(0);
             $table->foreignId('created_by')->constrained('users')->cascadeOnDelete();
+            $table->enum('status', ['upcoming', 'ongoing', 'completed', 'cancelled'])->default('upcoming');
             $table->enum('approval_status', ['draft', 'pending', 'approved', 'rejected'])->default('draft');
             $table->enum('creation_payment_status', ['pending', 'locked', 'paid', 'refunded'])->nullable();
             $table->unsignedInteger('creation_cost_points')->nullable();
+            $table->foreignId('semester_id')->nullable()->constrained('semesters')->nullOnDelete();
             $table->dateTime('start_date')->nullable();
             $table->dateTime('end_date')->nullable();
             $table->timestamps();

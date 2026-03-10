@@ -44,6 +44,9 @@ class ActivityLog extends Model
     public const ACTION_AUTH_SIGNUP = 'auth_signup';
     public const ACTION_POINTS_TRANSFER_OUT = 'points_transfer_out';
     public const ACTION_POINTS_TRANSFER_IN = 'points_transfer_in';
+    public const ACTION_QUEST_CREATED = 'quest_created';
+    public const ACTION_QUEST_UPDATED = 'quest_updated';
+    public const ACTION_QUEST_DELETED = 'quest_deleted';
 
     protected function casts(): array
     {

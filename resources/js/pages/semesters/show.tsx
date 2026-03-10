@@ -37,7 +37,9 @@ export type SemesterShowProps = {
 function formatDate(dateStr: string): string {
     if (!dateStr) return '—';
     try {
-        const d = new Date(dateStr);
+        const datePart = dateStr.split('T')[0];
+        const [year, month, day] = datePart.split('-').map(Number);
+        const d = new Date(year, month - 1, day);
         return d.toLocaleDateString(undefined, {
             year: 'numeric',
             month: 'long',

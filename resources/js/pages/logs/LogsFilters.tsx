@@ -1,7 +1,9 @@
 import { useMemo, useState } from 'react';
-import { Calendar, Search, User } from 'lucide-react';
+import { Search, User, X } from 'lucide-react';
+import { parse, isValid } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { DateTimePicker } from '@/components/ui/date-time-picker';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -17,6 +19,12 @@ export type LogsFiltersProps = {
     onFiltersChange: (updates: Partial<LogsFiltersType>) => void;
     activityLogUsers?: ActivityLogUser[];
 };
+
+function parseDate(value: string): Date | undefined {
+    if (!value) return undefined;
+    const d = parse(value, 'yyyy-MM-dd', new Date());
+    return isValid(d) ? d : undefined;
+}
 
 export function LogsFilters({
     filters,
@@ -47,6 +55,8 @@ export function LogsFilters({
         setUserDropdownOpen(false);
         setUserSearch('');
     };
+
+    const fromDateObj = parseDate(filters.date_from);
 
     return (
         <div className="flex flex-wrap items-center gap-3">
@@ -117,62 +127,40 @@ export function LogsFilters({
                 </DropdownMenuContent>
             </DropdownMenu>
 
-            <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="sm">
-                        <Calendar className="mr-2 size-4" />
-                        Calendar
-                        {hasDateFilter && (
-                            <span className="ml-2 size-2 rounded-full bg-primary" />
-                        )}
+            <div className="flex items-center gap-2">
+                <div className="w-[180px]">
+                    <DateTimePicker
+                        value={filters.date_from}
+                        onChange={(val) => onFiltersChange({ date_from: val })}
+                        placeholder="From date"
+                        showTime={false}
+                        side="bottom"
+                    />
+                </div>
+                <div className="w-[180px]">
+                    <DateTimePicker
+                        value={filters.date_to}
+                        onChange={(val) => onFiltersChange({ date_to: val })}
+                        placeholder="To date"
+                        showTime={false}
+                        side="bottom"
+                        minDate={fromDateObj}
+                    />
+                </div>
+                {hasDateFilter && (
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className="size-8"
+                        onClick={() =>
+                            onFiltersChange({ date_from: '', date_to: '' })
+                        }
+                        aria-label="Clear dates"
+                    >
+                        <X className="size-4" />
                     </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-64 p-3">
-                    <div className="space-y-3">
-                        <div>
-                            <label className="mb-1 block text-xs font-medium text-muted-foreground">
-                                From
-                            </label>
-                            <Input
-                                type="date"
-                                value={filters.date_from}
-                                onChange={(e) =>
-                                    onFiltersChange({ date_from: e.target.value })
-                                }
-                                className="relative w-full pr-10 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:right-3 [&::-webkit-calendar-picker-indicator]:top-1/2 [&::-webkit-calendar-picker-indicator]:-translate-y-1/2"
-                            />
-                        </div>
-                        <div>
-                            <label className="mb-1 block text-xs font-medium text-muted-foreground">
-                                To
-                            </label>
-                            <Input
-                                type="date"
-                                value={filters.date_to}
-                                onChange={(e) =>
-                                    onFiltersChange({ date_to: e.target.value })
-                                }
-                                className="relative w-full pr-10 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:right-3 [&::-webkit-calendar-picker-indicator]:top-1/2 [&::-webkit-calendar-picker-indicator]:-translate-y-1/2"
-                            />
-                        </div>
-                        {hasDateFilter && (
-                            <Button
-                                variant="ghost"
-                                size="sm"
-                                className="w-full"
-                                onClick={() =>
-                                    onFiltersChange({
-                                        date_from: '',
-                                        date_to: '',
-                                    })
-                                }
-                            >
-                                Clear dates
-                            </Button>
-                        )}
-                    </div>
-                </DropdownMenuContent>
-            </DropdownMenu>
+                )}
+            </div>
         </div>
     );
 }

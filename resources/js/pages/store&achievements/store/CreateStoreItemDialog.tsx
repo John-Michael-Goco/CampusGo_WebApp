@@ -21,7 +21,7 @@ type Props = {
         errors: Partial<Record<keyof StoreItemFormData, string>>;
         setData: (
             field: keyof StoreItemFormData,
-            value: string | number | boolean
+            value: string | number | boolean | ''
         ) => void;
         processing: boolean;
     };

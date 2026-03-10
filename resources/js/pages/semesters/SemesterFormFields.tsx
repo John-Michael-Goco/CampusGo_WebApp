@@ -1,6 +1,7 @@
-import { Calendar } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { DateTimePicker } from '@/components/ui/date-time-picker';
+import { parse, isValid } from 'date-fns';
 
 export type SemesterFormData = {
     name: string;
@@ -8,16 +9,22 @@ export type SemesterFormData = {
     end_date: string;
 };
 
-/** Format date for input type="date" (YYYY-MM-DD) */
-function toDateInputValue(dateStr: string | null): string {
-    if (!dateStr) return '';
+function toDateOnly(value: string | null): string {
+    if (!value) return '';
+    if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
     try {
-        const d = new Date(dateStr);
+        const d = new Date(value);
         const pad = (n: number) => String(n).padStart(2, '0');
         return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
     } catch {
         return '';
     }
+}
+
+function parseLocalDate(value: string): Date | undefined {
+    if (!value) return undefined;
+    const d = parse(value, 'yyyy-MM-dd', new Date());
+    return isValid(d) ? d : undefined;
 }
 
 type Props = {
@@ -33,6 +40,8 @@ export function SemesterFormFields({
     errors,
     setData,
 }: Props) {
+    const startDateObj = parseLocalDate(toDateOnly(data.start_date));
+
     return (
         <div className="grid gap-4">
             <div className="grid gap-2">
@@ -58,21 +67,12 @@ export function SemesterFormFields({
                         >
                             Start date
                         </Label>
-                        <div className="relative">
-                            <Input
-                                id={`${idPrefix}-start_date`}
-                                type="date"
-                                value={toDateInputValue(data.start_date || null)}
-                                onChange={(e) =>
-                                    setData('start_date', e.target.value)
-                                }
-                                className="pr-9 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:right-0 [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:w-9 [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-0"
-                            />
-                            <Calendar
-                                className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
-                                aria-hidden
-                            />
-                        </div>
+                        <DateTimePicker
+                            value={toDateOnly(data.start_date)}
+                            onChange={(val) => setData('start_date', val)}
+                            placeholder="Pick start date"
+                            showTime={false}
+                        />
                         {errors.start_date && (
                             <p className="text-sm text-destructive">
                                 {errors.start_date}
@@ -86,21 +86,13 @@ export function SemesterFormFields({
                         >
                             End date
                         </Label>
-                        <div className="relative">
-                            <Input
-                                id={`${idPrefix}-end_date`}
-                                type="date"
-                                value={toDateInputValue(data.end_date || null)}
-                                onChange={(e) =>
-                                    setData('end_date', e.target.value)
-                                }
-                                className="pr-9 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:right-0 [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:w-9 [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-0"
-                            />
-                            <Calendar
-                                className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
-                                aria-hidden
-                            />
-                        </div>
+                        <DateTimePicker
+                            value={toDateOnly(data.end_date)}
+                            onChange={(val) => setData('end_date', val)}
+                            placeholder="Pick end date"
+                            showTime={false}
+                            minDate={startDateObj}
+                        />
                         {errors.end_date && (
                             <p className="text-sm text-destructive">
                                 {errors.end_date}

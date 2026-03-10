@@ -42,8 +42,8 @@ export default function StorePage({
     const createForm = useForm<StoreItemFormData>({
         name: '',
         description: '',
-        cost_points: 0,
-        stock: 0,
+        cost_points: '',
+        stock: '',
         start_date: '',
         end_date: '',
         is_visible: true,
@@ -52,8 +52,8 @@ export default function StorePage({
     const editForm = useForm<StoreItemFormData>({
         name: '',
         description: '',
-        cost_points: 0,
-        stock: 0,
+        cost_points: '',
+        stock: '',
         start_date: '',
         end_date: '',
         is_visible: true,

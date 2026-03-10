@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AchievementController;
 use App\Http\Controllers\LeaderboardController;
+use App\Http\Controllers\QuestController;
 use App\Http\Controllers\LogController;
 use App\Http\Controllers\PointTransactionController;
 use App\Http\Controllers\Masterlist\ProfessorController;
@@ -112,6 +113,17 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // Leaderboards
     Route::get('leaderboards', [LeaderboardController::class, 'index'])->name('leaderboards.index');
+
+    // Quests
+    Route::get('quests/active', [QuestController::class, 'active'])->name('quests.active');
+    Route::get('quests/create', [QuestController::class, 'create'])->name('quests.create');
+    Route::get('quests/create/stages', [QuestController::class, 'stages'])->name('quests.create.stages');
+    Route::post('quests', [QuestController::class, 'store'])->name('quests.store');
+    Route::get('quests/{quest}/edit', [QuestController::class, 'edit'])->name('quests.edit');
+    Route::get('quests/{quest}/edit/stages', [QuestController::class, 'editStages'])->name('quests.edit.stages');
+    Route::put('quests/{quest}', [QuestController::class, 'update'])->name('quests.update');
+    Route::delete('quests/{quest}', [QuestController::class, 'destroy'])->name('quests.destroy');
+    Route::get('quests/sections', [QuestController::class, 'sections'])->name('quests.sections');
 
     // Store & Achievements
     Route::get('store', [StoreItemController::class, 'index'])->name('store.index');

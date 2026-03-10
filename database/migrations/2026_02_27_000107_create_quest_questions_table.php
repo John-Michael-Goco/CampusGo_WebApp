@@ -12,7 +12,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('stage_id')->constrained('quest_stages')->cascadeOnDelete();
             $table->text('question_text');
-            $table->enum('question_type', ['trivia', 'riddle', 'qr_scan']);
+            $table->enum('question_type', ['multiple_choice', 'qr_scan']);
         });
     }
 

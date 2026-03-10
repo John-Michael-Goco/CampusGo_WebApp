@@ -5,7 +5,9 @@ import type { StoreItem, StoreItemsFilters } from './types';
 function formatDate(iso: string | null): string {
     if (!iso) return '—';
     try {
-        const d = new Date(iso);
+        const datePart = iso.split('T')[0];
+        const [year, month, day] = datePart.split('-').map(Number);
+        const d = new Date(year, month - 1, day);
         return d.toLocaleDateString(undefined, {
             year: 'numeric',
             month: 'short',
