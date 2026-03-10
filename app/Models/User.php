@@ -29,6 +29,7 @@ class User extends Authenticatable
         'points_balance',
         'level',
         'total_completed_quests',
+        'quests_won',
         'total_xp_earned',
     ];
 
@@ -92,5 +93,29 @@ class User extends Authenticatable
     public function enrollments(): HasMany
     {
         return $this->hasMany(Enrollment::class);
+    }
+
+    /**
+     * Get the user's inventory (store redemptions and other items).
+     */
+    public function inventory(): HasMany
+    {
+        return $this->hasMany(UserInventory::class, 'user_id');
+    }
+
+    /**
+     * Get the user's point transactions (earnings and spendings).
+     */
+    public function pointTransactions(): HasMany
+    {
+        return $this->hasMany(PointTransaction::class, 'user_id');
+    }
+
+    /**
+     * Get the user's earned achievements (badges).
+     */
+    public function userAchievements(): HasMany
+    {
+        return $this->hasMany(UserAchievement::class, 'user_id');
     }
 }

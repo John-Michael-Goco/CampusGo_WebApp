@@ -16,7 +16,6 @@ return new class extends Migration
             $table->unsignedInteger('stock')->default(0);
             $table->dateTime('start_date')->nullable();
             $table->dateTime('end_date')->nullable();
-            $table->boolean('is_limited')->default(false);
             $table->boolean('is_visible')->default(true);
         });
     }

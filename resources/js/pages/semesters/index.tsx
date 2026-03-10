@@ -4,71 +4,59 @@ import { ArrowLeft, ArrowRight } from 'lucide-react';
 import { sileo } from 'sileo';
 import AppLayout from '@/layouts/app-layout';
 import type { BreadcrumbItem } from '@/types';
-import type { StoreItem, StorePageProps } from './store/types';
-import { StoreItemsFilters } from './store/StoreItemsFilters';
-import { StoreItemsTable } from './store/StoreItemsTable';
-import { CreateStoreItemDialog } from './store/CreateStoreItemDialog';
-import { EditStoreItemDialog } from './store/EditStoreItemDialog';
-import { DeleteStoreItemDialog } from './store/DeleteStoreItemDialog';
-import type { StoreItemFormData } from './store/StoreItemFormFields';
+import type { Semester, SemestersPageProps } from './types';
+import { SemestersFilters } from './SemestersFilters';
+import { SemestersTable } from './SemestersTable';
+import { CreateSemesterDialog } from './CreateSemesterDialog';
+import { EditSemesterDialog } from './EditSemesterDialog';
+import { DeleteSemesterDialog } from './DeleteSemesterDialog';
+import type { SemesterFormData } from './SemesterFormFields';
 
 const breadcrumbs: BreadcrumbItem[] = [
-    { title: 'Store & Achievements', href: '/store' },
-    { title: 'Store', href: '/store' },
+    { title: 'Academic management', href: '/masterlist/students' },
+    { title: 'Semester', href: '/semesters' },
 ];
 
-function toDateTimeLocal(iso: string | null): string {
-    if (!iso) return '';
+function toDateInputValue(dateStr: string | null): string {
+    if (!dateStr) return '';
     try {
-        const d = new Date(iso);
+        const d = new Date(dateStr);
         const pad = (n: number) => String(n).padStart(2, '0');
-        return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+        return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
     } catch {
         return '';
     }
 }
 
-export default function StorePage({
-    storeItems,
+export default function SemestersPage({
+    semesters,
     filters,
-}: StorePageProps) {
-    const items = storeItems.data ?? [];
+}: SemestersPageProps) {
+    const items = semesters.data ?? [];
     const [search, setSearch] = useState(filters.search);
     const [createOpen, setCreateOpen] = useState(false);
-    const [editingItem, setEditingItem] = useState<StoreItem | null>(null);
-    const [deletingItem, setDeletingItem] = useState<StoreItem | null>(null);
+    const [editingSemester, setEditingSemester] = useState<Semester | null>(null);
+    const [deletingSemester, setDeletingSemester] = useState<Semester | null>(null);
     const isInitialMount = useRef(true);
 
-    const createForm = useForm<StoreItemFormData>({
+    const createForm = useForm<SemesterFormData>({
         name: '',
-        description: '',
-        cost_points: 0,
-        stock: 0,
         start_date: '',
         end_date: '',
-        is_visible: true,
     });
 
-    const editForm = useForm<StoreItemFormData>({
+    const editForm = useForm<SemesterFormData>({
         name: '',
-        description: '',
-        cost_points: 0,
-        stock: 0,
         start_date: '',
         end_date: '',
-        is_visible: true,
     });
 
-    const openEdit = (item: StoreItem) => {
-        setEditingItem(item);
+    const openEdit = (semester: Semester) => {
+        setEditingSemester(semester);
         editForm.setData({
-            name: item.name,
-            description: item.description ?? '',
-            cost_points: item.cost_points,
-            stock: item.stock,
-            start_date: toDateTimeLocal(item.start_date) || '',
-            end_date: toDateTimeLocal(item.end_date) || '',
-            is_visible: item.is_visible,
+            name: semester.name,
+            start_date: toDateInputValue(semester.start_date) || '',
+            end_date: toDateInputValue(semester.end_date) || '',
         });
     };
 
@@ -99,20 +87,20 @@ export default function StorePage({
     } as const;
 
     const handleCreateSubmit = () => {
-        createForm.post(`/store?${filterQuery()}`, {
+        createForm.post(`/semesters?${filterQuery()}`, {
             preserveScroll: true,
             onSuccess: () => {
                 setCreateOpen(false);
                 createForm.reset();
                 sileo.success({
-                    title: 'Store item added',
-                    description: 'The item has been created.',
+                    title: 'Semester added',
+                    description: 'The semester has been created.',
                     ...toastOptions.success,
                 });
             },
             onError: () => {
                 sileo.error({
-                    title: 'Could not add store item',
+                    title: 'Could not add semester',
                     description: 'Please check the form and try again.',
                     ...toastOptions.error,
                 });
@@ -121,19 +109,19 @@ export default function StorePage({
     };
 
     const handleEditSubmit = () => {
-        if (!editingItem) return;
-        editForm.put(`/store/${editingItem.id}?${filterQuery()}`, {
+        if (!editingSemester) return;
+        editForm.put(`/semesters/${editingSemester.id}?${filterQuery()}`, {
             preserveScroll: true,
             onSuccess: () => {
                 sileo.success({
-                    title: 'Store item updated',
-                    description: 'The item has been updated.',
+                    title: 'Semester updated',
+                    description: 'The semester has been updated.',
                     ...toastOptions.success,
                 });
             },
             onError: () => {
                 sileo.error({
-                    title: 'Could not update store item',
+                    title: 'Could not update semester',
                     description: 'Please check the form and try again.',
                     ...toastOptions.error,
                 });
@@ -142,20 +130,20 @@ export default function StorePage({
     };
 
     const handleDeleteConfirm = () => {
-        if (!deletingItem) return;
-        router.delete(`/store/${deletingItem.id}?${filterQuery()}`, {
+        if (!deletingSemester) return;
+        router.delete(`/semesters/${deletingSemester.id}?${filterQuery()}`, {
             preserveScroll: true,
             onSuccess: () => {
-                setDeletingItem(null);
+                setDeletingSemester(null);
                 sileo.success({
-                    title: 'Store item deleted',
-                    description: 'The item has been removed.',
+                    title: 'Semester deleted',
+                    description: 'The semester has been removed.',
                     ...toastOptions.success,
                 });
             },
             onError: () => {
                 sileo.error({
-                    title: 'Could not delete store item',
+                    title: 'Could not delete semester',
                     description: 'Something went wrong. Please try again.',
                     ...toastOptions.error,
                 });
@@ -174,7 +162,7 @@ export default function StorePage({
         }
         const t = setTimeout(() => {
             router.get(
-                '/store',
+                '/semesters',
                 {
                     search: search || undefined,
                     sort_by: filters.sort_by,
@@ -187,9 +175,9 @@ export default function StorePage({
     }, [search]);
 
     const updateFilters = useCallback(
-        (updates: Partial<StorePageProps['filters']>) => {
+        (updates: Partial<SemestersPageProps['filters']>) => {
             router.get(
-                '/store',
+                '/semesters',
                 {
                     search:
                         'search' in updates ? updates.search : search || undefined,
@@ -203,7 +191,7 @@ export default function StorePage({
     );
 
     const handleSort = (
-            column: 'name' | 'cost_points' | 'stock' | 'is_visible'
+        column: 'name' | 'start_date' | 'end_date'
     ) => {
         const nextDir =
             filters.sort_by === column && filters.sort_dir === 'asc'
@@ -214,43 +202,42 @@ export default function StorePage({
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
-            <Head title="Store" />
+            <Head title="Semesters" />
             <div className="flex h-full flex-1 flex-col gap-4 rounded-xl p-4">
-                <h1 className="text-xl font-semibold">Store</h1>
+                <h1 className="text-xl font-semibold">Semesters</h1>
 
-                <StoreItemsFilters
+                <SemestersFilters
                     search={search}
                     onSearchChange={setSearch}
                     onOpenCreate={() => setCreateOpen(true)}
                 />
 
-                <StoreItemsTable
-                    storeItems={items}
+                <SemestersTable
+                    semesters={items}
                     filters={filters}
                     onSort={handleSort}
                     onEdit={openEdit}
-                    onDelete={setDeletingItem}
+                    onDelete={setDeletingSemester}
                 />
 
-                {storeItems.total > 0 && (
+                {semesters.total > 0 && (
                     <div className="flex items-center justify-between gap-4 border-t pt-4">
                         <p className="text-sm text-muted-foreground">
                             Showing{' '}
-                            {(storeItems.current_page - 1) *
-                                storeItems.per_page +
+                            {(semesters.current_page - 1) * semesters.per_page +
                                 1}{' '}
                             to{' '}
                             {Math.min(
-                                storeItems.current_page * storeItems.per_page,
-                                storeItems.total
+                                semesters.current_page * semesters.per_page,
+                                semesters.total
                             )}{' '}
-                            of {storeItems.total} entries
+                            of {semesters.total} entries
                         </p>
-                        {storeItems.last_page > 1 && (
+                        {semesters.last_page > 1 && (
                             <div className="flex items-center gap-2">
-                                {storeItems.prev_page_url ? (
+                                {semesters.prev_page_url ? (
                                     <Link
-                                        href={storeItems.prev_page_url}
+                                        href={semesters.prev_page_url}
                                         preserveState
                                         className="inline-flex items-center gap-1 rounded-md border px-3 py-2 text-sm font-medium transition-colors hover:bg-muted"
                                     >
@@ -264,12 +251,12 @@ export default function StorePage({
                                     </span>
                                 )}
                                 <span className="text-sm text-muted-foreground">
-                                    Page {storeItems.current_page} of{' '}
-                                    {storeItems.last_page}
+                                    Page {semesters.current_page} of{' '}
+                                    {semesters.last_page}
                                 </span>
-                                {storeItems.next_page_url ? (
+                                {semesters.next_page_url ? (
                                     <Link
-                                        href={storeItems.next_page_url}
+                                        href={semesters.next_page_url}
                                         preserveState
                                         className="inline-flex items-center gap-1 rounded-md border px-3 py-2 text-sm font-medium transition-colors hover:bg-muted"
                                     >
@@ -287,24 +274,24 @@ export default function StorePage({
                     </div>
                 )}
 
-                <CreateStoreItemDialog
+                <CreateSemesterDialog
                     open={createOpen}
                     onOpenChange={setCreateOpen}
                     form={createForm}
                     onSubmit={handleCreateSubmit}
                 />
 
-                <EditStoreItemDialog
-                    open={!!editingItem}
-                    onOpenChange={(open) => !open && setEditingItem(null)}
+                <EditSemesterDialog
+                    open={!!editingSemester}
+                    onOpenChange={(open) => !open && setEditingSemester(null)}
                     form={editForm}
                     onSubmit={handleEditSubmit}
                 />
 
-                <DeleteStoreItemDialog
-                    storeItem={deletingItem}
-                    open={!!deletingItem}
-                    onOpenChange={(open) => !open && setDeletingItem(null)}
+                <DeleteSemesterDialog
+                    semester={deletingSemester}
+                    open={!!deletingSemester}
+                    onOpenChange={(open) => !open && setDeletingSemester(null)}
                     onConfirm={handleDeleteConfirm}
                 />
             </div>

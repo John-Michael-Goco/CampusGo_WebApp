@@ -27,7 +27,7 @@ class StoreItemController extends Controller
 
         $sortBy = $request->query('sort_by', 'name');
         $sortDir = $request->query('sort_dir', 'asc');
-        if (! in_array($sortBy, ['name', 'cost_points', 'stock', 'is_limited', 'is_visible'], true)) {
+        if (! in_array($sortBy, ['name', 'cost_points', 'stock', 'is_visible'], true)) {
             $sortBy = 'name';
         }
         if (! in_array($sortDir, ['asc', 'desc'], true)) {
@@ -56,7 +56,6 @@ class StoreItemController extends Controller
             'stock' => ['required', 'integer', 'min:0'],
             'start_date' => ['nullable', 'string'],
             'end_date' => ['nullable', 'string'],
-            'is_limited' => ['boolean'],
             'is_visible' => ['boolean'],
         ]);
 
@@ -74,7 +73,6 @@ class StoreItemController extends Controller
             'stock' => (int) $validated['stock'],
             'start_date' => $startDate,
             'end_date' => $endDate,
-            'is_limited' => (bool) ($validated['is_limited'] ?? false),
             'is_visible' => (bool) ($validated['is_visible'] ?? true),
         ]);
 
@@ -98,7 +96,6 @@ class StoreItemController extends Controller
             'stock' => ['required', 'integer', 'min:0'],
             'start_date' => ['nullable', 'string'],
             'end_date' => ['nullable', 'string'],
-            'is_limited' => ['boolean'],
             'is_visible' => ['boolean'],
         ]);
 
@@ -116,7 +113,6 @@ class StoreItemController extends Controller
             'stock' => (int) $validated['stock'],
             'start_date' => $startDate,
             'end_date' => $endDate,
-            'is_limited' => (bool) ($validated['is_limited'] ?? false),
             'is_visible' => (bool) ($validated['is_visible'] ?? true),
         ]);
 

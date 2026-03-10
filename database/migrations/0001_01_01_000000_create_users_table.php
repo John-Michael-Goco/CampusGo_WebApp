@@ -25,7 +25,7 @@ return new class extends Migration
             $table->boolean('is_registered')->default(false);
             $table->timestamps();
         });
-
+        
         Schema::create('users', function (Blueprint $table) {
             $table->id();
             $table->foreignId('master_user_id')->nullable()->constrained('master_users')->nullOnDelete();
@@ -37,6 +37,7 @@ return new class extends Migration
             $table->unsignedInteger('points_balance')->default(0);
             $table->unsignedInteger('level')->default(1);
             $table->unsignedInteger('total_completed_quests')->default(0);
+            $table->unsignedInteger('quests_won')->default(0);
             $table->unsignedInteger('total_xp_earned')->default(0);
             $table->rememberToken();
             $table->timestamps();

@@ -32,7 +32,7 @@ Complete reference for the CampusGo schema, table purposes, and phased implement
 | 9 | `submissions` | One answer per participant per question; correctness |
 | 10 | `store_items` | Redeemable items (points cost, stock, time window) |
 | 11 | `user_inventory` | Items a user owns (from store or rewards) |
-| 12 | `achievements` | Badge definitions (quest count, level, event win) |
+| 12 | `achievements` | Badge definitions (quest count, level, quests win) |
 | 13 | `user_achievements` | Which users have earned which badges |
 | 14 | `leaderboard` | Rankings by period (today, week, month, semester) |
 | 15 | `activity_logs` | Admin audit trail (who did what, when) |
@@ -498,10 +498,10 @@ Use this when creating or altering migrations to match the design above.
 5. **Leaderboard update** — Use a **batch job** at **12:00 AM** to recalculate leaderboard ranks from `point_transactions`. Leaderboards for **today**, **1 week**, **1 month**, and **semester**. Every semester, semester leaderboard resets (new period_key); today/week/month roll with the calendar.
 
 6. **QR/AR & question types** — **In-app**: When a user scans a quest QR, the CampusGo app opens a camera/view and shows the content.  
-   **No multiple choice.** Only:
+   **multiple choice.**
    - **Quiz type** (trivia, riddle) — user answers; winner = **total score** (correct answers) + **how fast they answered** (speed).
    - **Scan the QR** — user just scans to complete; winner = **who is faster** (first to scan wins).  
-   **Question type** for `quest_questions.question_type`: use **trivia**, **riddle**, **qr_scan** (not mcq/identification).
+   **Question type** for `quest_questions.question_type`: use **trivia**, **riddle**, **qr_scan** (use multiple).
 
    **Schema check — supported:**  
    - **qr_scan**: Record completion in `submissions` (e.g. one submission per participant for the scan). Winner = first `submitted_at` (fastest).  
@@ -586,9 +586,9 @@ Many users redeem the same limited item at once → stock can go negative.
 **Problem:**  
 The same badge can be awarded to a user more than once (e.g. duplicate event or bug).
 
-**Solution:**
-- Add a **UNIQUE constraint** on `(user_id, achievement_id)` in **user_achievements**.
-- Then only one row per user per achievement is allowed; duplicate inserts will fail and can be ignored or handled gracefully.
+**Solution (implemented):**
+- **UNIQUE constraint** on `(user_id, achievement_id)` in **user_achievements** — already in migration `create_user_achievements_table` via `$table->unique(['user_id', 'achievement_id'])`. Only one row per user per achievement is allowed.
+- When awarding achievements (e.g. in simulation or future quest-completion logic), use **`UserAchievement::firstOrCreate(...)`** so duplicate awards are idempotent and never raise a duplicate-key error.
 
 ---
 

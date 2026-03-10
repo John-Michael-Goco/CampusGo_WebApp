@@ -38,7 +38,7 @@ function SortIcon({
 type Props = {
     storeItems: StoreItem[];
     filters: StoreItemsFilters;
-    onSort: (column: 'name' | 'cost_points' | 'stock' | 'is_limited' | 'is_visible') => void;
+    onSort: (column: 'name' | 'cost_points' | 'stock' | 'is_visible') => void;
     onEdit: (item: StoreItem) => void;
     onDelete: (item: StoreItem) => void;
 };
@@ -111,20 +111,6 @@ export function StoreItemsTable({
                                 <button
                                     type="button"
                                     className="inline-flex items-center hover:underline"
-                                    onClick={() => onSort('is_limited')}
-                                >
-                                    Limited
-                                    <SortIcon
-                                        column="is_limited"
-                                        currentSort={filters.sort_by}
-                                        sortDir={filters.sort_dir}
-                                    />
-                                </button>
-                            </th>
-                            <th className="h-11 px-4 text-left font-medium">
-                                <button
-                                    type="button"
-                                    className="inline-flex items-center hover:underline"
                                     onClick={() => onSort('is_visible')}
                                 >
                                     Visible
@@ -144,7 +130,7 @@ export function StoreItemsTable({
                         {storeItems.length === 0 ? (
                             <tr>
                                 <td
-                                    colSpan={9}
+                                    colSpan={8}
                                     className="h-24 px-4 text-center text-muted-foreground"
                                 >
                                     No store items found.
@@ -173,9 +159,6 @@ export function StoreItemsTable({
                                     </td>
                                     <td className="px-4 py-3 text-muted-foreground">
                                         {formatDate(item.end_date)}
-                                    </td>
-                                    <td className="px-4 py-3">
-                                        {item.is_limited ? 'Yes' : 'No'}
                                     </td>
                                     <td className="px-4 py-3">
                                         {item.is_visible ? 'Yes' : 'No'}

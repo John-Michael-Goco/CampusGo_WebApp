@@ -1,7 +1,7 @@
 export const REQUIREMENT_TYPE_OPTIONS = [
     { value: 'quest_count', label: 'Quest count' },
     { value: 'level', label: 'Level' },
-    { value: 'event_win', label: 'Event win' },
+    { value: 'quest_win', label: 'Quests win' },
 ] as const;
 
 export type Achievement = {

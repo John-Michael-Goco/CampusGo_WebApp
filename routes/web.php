@@ -4,14 +4,76 @@ use App\Http\Controllers\AchievementController;
 use App\Http\Controllers\LogController;
 use App\Http\Controllers\Masterlist\ProfessorController;
 use App\Http\Controllers\Masterlist\StudentController;
+use App\Http\Controllers\SemesterController;
+use App\Http\Controllers\Simulation\AchievementSimulationController;
+use App\Http\Controllers\Simulation\InventoryUseController;
+use App\Http\Controllers\Simulation\PointsTransferController;
+use App\Http\Controllers\Simulation\StudentLoginController;
+use App\Http\Controllers\Simulation\StoreRedeemController;
 use App\Http\Controllers\StoreItemController;
 use App\Http\Controllers\UserController;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 
 Route::redirect('/', '/login')->name('home');
 
+// Temporary: mobile simulation (remove when simulation is done)
+Route::inertia('simulation/student-register', 'simulation/student-register')->name('simulation.student-register');
+Route::get('simulation/login', [StudentLoginController::class, 'show'])->name('simulation.login');
+Route::post('simulation/login', [StudentLoginController::class, 'store']);
+Route::get('simulation/store', function () {
+    $storeItems = \App\Models\StoreItem::where('is_visible', true)
+        ->orderBy('name')
+        ->get();
+
+    /** @var \App\Models\User|null $user */
+    $user = Auth::user();
+    $inventory = $user
+        ? $user->inventory()->with('storeItem')->orderByDesc('acquired_at')->get()
+        : [];
+
+    return \Inertia\Inertia::render('simulation/store', [
+        'storeItems' => $storeItems,
+        'pointsBalance' => $user?->points_balance ?? 0,
+        'inventory' => $inventory,
+        'canTransferPoints' => $user?->role === 'student',
+    ]);
+})->middleware('auth')->name('simulation.store');
+
+Route::post('simulation/store/redeem', [StoreRedeemController::class, 'store'])
+    ->middleware('auth')
+    ->name('simulation.store.redeem');
+
+Route::post('simulation/inventory/use', [InventoryUseController::class, 'store'])
+    ->middleware('auth')
+    ->name('simulation.inventory.use');
+
+Route::get('simulation/students/search', [PointsTransferController::class, 'searchStudents'])
+    ->middleware('auth')
+    ->name('simulation.students.search');
+Route::post('simulation/points/transfer', [PointsTransferController::class, 'transfer'])
+    ->middleware('auth')
+    ->name('simulation.points.transfer');
+
+Route::get('simulation/achievements', [AchievementSimulationController::class, 'index'])
+    ->middleware('auth')
+    ->name('simulation.achievements');
+Route::post('simulation/achievements/simulate-level-up', [AchievementSimulationController::class, 'simulateLevelUp'])
+    ->middleware('auth');
+Route::post('simulation/achievements/simulate-quest-win', [AchievementSimulationController::class, 'simulateQuestWin'])
+    ->middleware('auth');
+Route::post('simulation/achievements/simulate-quest-participation', [AchievementSimulationController::class, 'simulateQuestParticipation'])
+    ->middleware('auth');
+
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::inertia('dashboard', 'dashboard')->name('dashboard');
+
+    // Semesters (Academic management)
+    Route::get('semesters', [SemesterController::class, 'index'])->name('semesters.index');
+    Route::get('semesters/{semester}', [SemesterController::class, 'show'])->name('semesters.show');
+    Route::post('semesters', [SemesterController::class, 'store'])->name('semesters.store');
+    Route::put('semesters/{semester}', [SemesterController::class, 'update'])->name('semesters.update');
+    Route::delete('semesters/{semester}', [SemesterController::class, 'destroy'])->name('semesters.destroy');
 
     // Masterlist
     Route::get('masterlist/students', [StudentController::class, 'index'])->name('masterlist.students');
@@ -27,6 +89,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Users
     Route::get('users', [UserController::class, 'index'])->name('users.index');
     Route::post('users', [UserController::class, 'store'])->name('users.store');
+    Route::put('users/{user}', [UserController::class, 'update'])->name('users.update');
+    Route::delete('users/{user}', [UserController::class, 'destroy'])->name('users.destroy');
 
     // Logs
     Route::get('logs', [LogController::class, 'index'])->name('logs.index');

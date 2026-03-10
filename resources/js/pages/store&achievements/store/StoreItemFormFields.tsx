@@ -9,7 +9,6 @@ export type StoreItemFormData = {
     stock: number;
     start_date: string;
     end_date: string;
-    is_limited: boolean;
     is_visible: boolean;
 };
 
@@ -149,21 +148,6 @@ export function StoreItemFormFields({
             <div className="flex flex-wrap items-center gap-6">
                 <div className="flex items-center gap-2">
                     <Checkbox
-                        id={`${idPrefix}-is_limited`}
-                        checked={data.is_limited}
-                        onCheckedChange={(checked) =>
-                            setData('is_limited', checked === true)
-                        }
-                    />
-                    <Label
-                        htmlFor={`${idPrefix}-is_limited`}
-                        className="cursor-pointer font-normal"
-                    >
-                        Limited availability
-                    </Label>
-                </div>
-                <div className="flex items-center gap-2">
-                    <Checkbox
                         id={`${idPrefix}-is_visible`}
                         checked={data.is_visible}
                         onCheckedChange={(checked) =>
@@ -178,18 +162,11 @@ export function StoreItemFormFields({
                     </Label>
                 </div>
             </div>
-            {(errors.is_limited || errors.is_visible) && (
+            {errors.is_visible && (
                 <div className="space-y-1">
-                    {errors.is_limited && (
-                        <p className="text-sm text-destructive">
-                            {errors.is_limited}
-                        </p>
-                    )}
-                    {errors.is_visible && (
-                        <p className="text-sm text-destructive">
-                            {errors.is_visible}
-                        </p>
-                    )}
+                    <p className="text-sm text-destructive">
+                        {errors.is_visible}
+                    </p>
                 </div>
             )}
         </div>

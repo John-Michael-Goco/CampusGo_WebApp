@@ -77,7 +77,7 @@ class UserController extends Controller
     }
 
     /**
-     * Store a new user account for a professor (gamemaster).
+     * Store a new user account for a professor (as Admin or Gamemaster).
      */
     public function store(Request $request): RedirectResponse
     {
@@ -95,17 +95,19 @@ class UserController extends Controller
             ],
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
             'password' => ['required', 'string', 'confirmed', Password::default()],
+            'role' => ['required', 'string', 'in:admin,professor'],
         ]);
 
         $professor = MasterUser::where('role', 'professor')->findOrFail($validated['professor_id']);
         $name = trim($professor->first_name . ' ' . $professor->last_name);
+        $role = $validated['role'];
 
         $user = User::create([
             'master_user_id' => $professor->id,
             'name' => $name,
             'email' => $validated['email'],
             'password' => $validated['password'],
-            'role' => 'professor',
+            'role' => $role,
         ]);
 
         $professor->update(['is_registered' => true]);
@@ -113,11 +115,89 @@ class UserController extends Controller
         ActivityLog::log(
             $request->user()->id,
             ActivityLog::ACTION_GAMEMASTER_CREATED,
-            sprintf('%s (%s)', $user->name, $user->email)
+            sprintf('%s (%s) as %s', $user->name, $user->email, $role === 'admin' ? 'Admin' : 'Gamemaster')
+        );
+
+        $statusLabel = $role === 'admin' ? 'Admin' : 'Gamemaster';
+        return redirect()
+            ->route('users.index', $request->only(['search', 'role', 'sort_by', 'sort_dir']))
+            ->with('status', "{$statusLabel} created successfully.");
+    }
+
+    /**
+     * Update a user (e.g. change role: professor <-> admin). Only for professor/admin users.
+     */
+    public function update(Request $request, User $user): RedirectResponse
+    {
+        $validated = $request->validate([
+            'role' => ['required', 'string', 'in:admin,professor'],
+        ]);
+
+        if ($user->id === $request->user()->id) {
+            return redirect()
+                ->route('users.index')
+                ->withErrors(['role' => 'You cannot change your own role.']);
+        }
+
+        if (! in_array($user->role, ['admin', 'professor'], true)) {
+            return redirect()
+                ->route('users.index')
+                ->withErrors(['role' => 'Only admin and professor roles can be changed.']);
+        }
+
+        $user->update(['role' => $validated['role']]);
+
+        ActivityLog::log(
+            $request->user()->id,
+            ActivityLog::ACTION_GAMEMASTER_UPDATED,
+            sprintf('%s (%s) → %s', $user->name, $user->email, $validated['role'])
         );
 
         return redirect()
             ->route('users.index', $request->only(['search', 'role', 'sort_by', 'sort_dir']))
-            ->with('status', 'Gamemaster created successfully.');
+            ->with('status', 'User role updated.');
+    }
+
+    /**
+     * Default admin seeded on migrate:fresh --seed; cannot be deleted.
+     */
+    private const DEFAULT_ADMIN_EMAIL = 'admin@email.com';
+
+    /**
+     * Delete a user. Cannot delete self or the default admin. If user was linked to a professor, mark master as not registered.
+     */
+    public function destroy(Request $request, User $user): RedirectResponse
+    {
+        if ($user->id === $request->user()->id) {
+            return redirect()
+                ->route('users.index')
+                ->withErrors(['user' => 'You cannot delete your own account.']);
+        }
+
+        if (strtolower($user->email) === self::DEFAULT_ADMIN_EMAIL) {
+            return redirect()
+                ->route('users.index')
+                ->withErrors(['user' => 'The default admin account cannot be deleted.']);
+        }
+
+        $name = $user->name;
+        $email = $user->email;
+        $masterUserId = $user->master_user_id;
+
+        $user->delete();
+
+        if ($masterUserId) {
+            MasterUser::where('id', $masterUserId)->update(['is_registered' => false]);
+        }
+
+        ActivityLog::log(
+            $request->user()->id,
+            ActivityLog::ACTION_USER_DELETED,
+            sprintf('%s (%s)', $name, $email)
+        );
+
+        return redirect()
+            ->route('users.index', $request->only(['search', 'role', 'sort_by', 'sort_dir']))
+            ->with('status', 'User deleted.');
     }
 }

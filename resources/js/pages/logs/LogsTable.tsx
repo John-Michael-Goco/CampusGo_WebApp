@@ -1,7 +1,7 @@
 import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp } from 'lucide-react';
 import { Link } from '@inertiajs/react';
 import type { LogEntry, LogsFilters } from './types';
-import { getActionDetail, getActionDisplayLabel } from './types';
+import { getActionDetail, getActionDisplayLabel, getActionKey } from './types';
 
 type Props = {
     logs: LogEntry[];
@@ -69,6 +69,8 @@ export function LogsTable({
                             ) : (
                                 logs.map((log) => {
                                     const detail = getActionDetail(log.action);
+                                    const actionKey = getActionKey(log.action);
+                                    const showDetailSuffix = detail != null && actionKey !== 'item_used';
                                     return (
                                         <tr
                                             key={log.id}
@@ -85,7 +87,7 @@ export function LogsTable({
                                                 {getActionDisplayLabel(
                                                     log.action
                                                 )}
-                                                {detail != null && (
+                                                {showDetailSuffix && (
                                                     <span className="ml-1 text-muted-foreground">
                                                         — {detail}
                                                     </span>

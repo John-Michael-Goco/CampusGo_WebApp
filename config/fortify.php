@@ -143,7 +143,7 @@ return [
     */
 
     'features' => [
-        Features::registration(),
+        // Registration disabled; use default admin (see DatabaseSeeder) or add users via Users page.
         Features::resetPasswords(),
         Features::emailVerification(),
     ],

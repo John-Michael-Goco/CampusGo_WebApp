@@ -11,7 +11,7 @@ use Inertia\Response;
 
 class AchievementController extends Controller
 {
-    private const REQUIREMENT_TYPES = ['quest_count', 'level', 'event_win'];
+    private const REQUIREMENT_TYPES = ['quest_count', 'level', 'quest_win'];
 
     /**
      * Display the achievements list with search.
@@ -55,7 +55,7 @@ class AchievementController extends Controller
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string', 'max:2000'],
-            'requirement_type' => ['required', 'string', 'in:quest_count,level,event_win'],
+            'requirement_type' => ['required', 'string', 'in:quest_count,level,quest_win'],
             'requirement_value' => ['required', 'integer', 'min:0'],
         ]);
 
@@ -77,7 +77,7 @@ class AchievementController extends Controller
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string', 'max:2000'],
-            'requirement_type' => ['required', 'string', 'in:quest_count,level,event_win'],
+            'requirement_type' => ['required', 'string', 'in:quest_count,level,quest_win'],
             'requirement_value' => ['required', 'integer', 'min:0'],
         ]);
 

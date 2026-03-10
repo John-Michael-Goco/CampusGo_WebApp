@@ -12,12 +12,20 @@ import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 import { Spinner } from '@/components/ui/spinner';
 import type { AvailableProfessor } from './types';
 import { formatProfessorName } from './types';
 
 type FormData = {
     professor_id: number | '';
+    role: 'admin' | 'professor';
     email: string;
     password: string;
     password_confirmation: string;
@@ -33,6 +41,7 @@ type Props = {
         setData: (field: keyof FormData, value: string | number) => void;
         processing: boolean;
     };
+    roleOptions: readonly { value: 'admin' | 'professor'; label: string }[];
     onSubmit: () => void;
 };
 
@@ -41,6 +50,7 @@ export function CreateGamemasterDialog({
     onOpenChange,
     availableProfessors,
     form,
+    roleOptions,
     onSubmit,
 }: Props) {
     const [professorSearch, setProfessorSearch] = useState('');
@@ -85,15 +95,39 @@ export function CreateGamemasterDialog({
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-md">
                 <DialogHeader>
-                    <DialogTitle>Add gamemaster</DialogTitle>
+                    <DialogTitle>Add Admin/Gamemaster</DialogTitle>
                     <DialogDescription>
                         Select a professor from the masterlist to create their
-                        gamemaster account. Only professors in the list can be
-                        added. Name will be saved as &quot;Last name, First
-                        name&quot;.
+                        account as Admin or Gamemaster. Only professors in the
+                        list can be added. Name will be saved as &quot;Last
+                        name, First name&quot;.
                     </DialogDescription>
                 </DialogHeader>
                 <div className="grid gap-4 py-4">
+                    <div className="grid gap-2">
+                        <Label htmlFor="create_role">Role</Label>
+                        <Select
+                            value={form.data.role}
+                            onValueChange={(v) =>
+                                form.setData('role', v as 'admin' | 'professor')
+                            }
+                        >
+                            <SelectTrigger id="create_role">
+                                <SelectValue placeholder="Select role" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {roleOptions.map((opt) => (
+                                    <SelectItem
+                                        key={opt.value}
+                                        value={opt.value}
+                                    >
+                                        {opt.label}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                        <InputError message={form.errors.role} />
+                    </div>
                     <div className="grid gap-2">
                         <Label htmlFor="create_professor">Professor</Label>
                         {selectedProfessor ? (
@@ -191,7 +225,7 @@ export function CreateGamemasterDialog({
                             onChange={(e) =>
                                 form.setData('password', e.target.value)
                             }
-                            placeholder="123456"
+                            placeholder="12345678"
                             autoComplete="new-password"
                         />
                         <InputError message={form.errors.password} />
@@ -210,7 +244,7 @@ export function CreateGamemasterDialog({
                                     e.target.value
                                 )
                             }
-                            placeholder="123456"
+                            placeholder="12345678"
                             autoComplete="new-password"
                         />
                         <InputError message={form.errors.password_confirmation} />
@@ -230,7 +264,7 @@ export function CreateGamemasterDialog({
                         disabled={form.processing}
                     >
                         {form.processing && <Spinner />}
-                        Add gamemaster
+                        Add {form.data.role === 'admin' ? 'Admin' : 'Gamemaster'}
                     </Button>
                 </DialogFooter>
             </DialogContent>

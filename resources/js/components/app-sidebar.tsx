@@ -1,6 +1,6 @@
 import { Link } from '@inertiajs/react';
 import {
-    ClipboardList,
+    GraduationCap,
     LayoutGrid,
     Receipt,
     ShoppingBag,
@@ -42,21 +42,22 @@ const mainNavItems: NavItem[] = [
         icon: Users,
     },
     {
-        title: 'Masterlist',
+        title: 'Academic Management',
         href: '/masterlist/students',
-        icon: ClipboardList,
+        icon: GraduationCap,
         items: [
             { title: 'Students', href: '/masterlist/students', icon: null },
             { title: 'Professors', href: '/masterlist/professors', icon: null },
+            { title: 'Semester', href: '/semesters', icon: null },
         ],
     },
     {
-        title: 'Logs and transactions',
+        title: 'Logs and Transactions',
         href: '/logs',
         icon: Receipt,
         items: [
             { title: 'Activity Logs', href: '/logs', icon: null },
-            { title: 'Points transactions', href: '/transactions', icon: null },
+            { title: 'Points Transactions', href: '/transactions', icon: null },
         ],
     },
 ];

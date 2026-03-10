@@ -44,15 +44,25 @@ export const ACTION_LABELS: Record<string, string> = {
     professor_updated: 'Professor updated',
     professor_deleted: 'Professor deleted',
     gamemaster_created: 'Gamemaster created',
+    gamemaster_updated: 'Gamemaster/Admin role updated',
+    user_deleted: 'User deleted',
     achievement_created: 'Achievement created',
     achievement_updated: 'Achievement updated',
     achievement_deleted: 'Achievement deleted',
+    achievement_earned: 'Achievement earned',
     store_item_created: 'Store item created',
     store_item_updated: 'Store item updated',
     store_item_deleted: 'Store item deleted',
+    store_redeem: 'Store redeem',
+    item_used: 'Item used',
+    semester_created: 'Semester created',
+    semester_updated: 'Semester updated',
+    semester_deleted: 'Semester deleted',
     auth_signin: 'Signed in (API)',
     auth_signout: 'Signed out (API)',
     auth_signup: 'Registered (API)',
+    points_transfer_out: 'Transfer out',
+    points_transfer_in: 'Transfer in',
 };
 
 export function getActionKey(action: string): string {
@@ -69,5 +79,9 @@ export function getActionDetail(action: string): string | null {
 
 export function getActionDisplayLabel(action: string): string {
     const key = getActionKey(action);
+    const detail = getActionDetail(action);
+    if (key === 'item_used' && detail) {
+        return `Item - ${detail} used`;
+    }
     return ACTION_LABELS[key] ?? action;
 }

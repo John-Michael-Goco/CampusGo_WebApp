@@ -10,14 +10,23 @@ const breadcrumbs: BreadcrumbItem[] = [
     { title: 'All Users', href: '/users' },
 ];
 import { CreateGamemasterDialog } from './CreateGamemasterDialog';
+import { DeleteUserDialog } from './DeleteUserDialog';
+import { EditUserDialog } from './EditUserDialog';
 import { UsersFilters } from './UsersFilters';
 import { UsersTable } from './UsersTable';
+import type { UserListItem } from './types';
+
+const ADD_ROLE_OPTIONS = [
+    { value: 'admin', label: 'Admin' },
+    { value: 'professor', label: 'Gamemaster' },
+] as const;
 
 const INITIAL_CREATE_FORM = {
     professor_id: '' as number | '',
+    role: 'professor' as 'admin' | 'professor',
     email: '',
-    password: '123456',
-    password_confirmation: '123456',
+    password: '12345678',
+    password_confirmation: '12345678',
 };
 
 export default function UsersIndex({
@@ -28,11 +37,29 @@ export default function UsersIndex({
     const userItems = users.data ?? [];
     const [search, setSearch] = useState(filters.search);
     const [createOpen, setCreateOpen] = useState(false);
+    const [editingUser, setEditingUser] = useState<UserListItem | null>(null);
+    const [deletingUser, setDeletingUser] = useState<UserListItem | null>(null);
+    const [isDeleting, setIsDeleting] = useState(false);
     const isInitialMount = useRef(true);
 
     const createForm = useForm({
         ...INITIAL_CREATE_FORM,
     });
+
+    const editForm = useForm({
+        role: 'professor' as 'admin' | 'professor',
+    });
+
+    useEffect(() => {
+        if (editingUser) {
+            editForm.setData(
+                'role',
+                (editingUser.role === 'admin' ? 'admin' : 'professor') as
+                    | 'admin'
+                    | 'professor'
+            );
+        }
+    }, [editingUser?.id]);
 
     const handleCreateSubmit = () => {
         createForm.post('/users', {
@@ -41,6 +68,27 @@ export default function UsersIndex({
                 setCreateOpen(false);
                 createForm.reset();
             },
+        });
+    };
+
+    const handleEditSubmit = () => {
+        if (!editingUser) return;
+        editForm.put(`/users/${editingUser.id}`, {
+            preserveScroll: true,
+            preserveState: true,
+            onSuccess: () => setEditingUser(null),
+        });
+    };
+
+    const handleDeleteConfirm = () => {
+        if (!deletingUser) return;
+        setIsDeleting(true);
+        router.delete(`/users/${deletingUser.id}`, {
+            preserveScroll: true,
+            onSuccess: () => {
+                setDeletingUser(null);
+            },
+            onFinish: () => setIsDeleting(false),
         });
     };
 
@@ -102,6 +150,8 @@ export default function UsersIndex({
                     users={userItems}
                     filters={filters}
                     onSort={handleSort}
+                    onEdit={setEditingUser}
+                    onDelete={setDeletingUser}
                 />
 
                 {users.total > 0 && (
@@ -156,7 +206,25 @@ export default function UsersIndex({
                     onOpenChange={setCreateOpen}
                     availableProfessors={available_professors}
                     form={createForm}
+                    roleOptions={ADD_ROLE_OPTIONS}
                     onSubmit={handleCreateSubmit}
+                />
+
+                <EditUserDialog
+                    open={editingUser !== null}
+                    onOpenChange={(open) => !open && setEditingUser(null)}
+                    user={editingUser}
+                    form={editForm}
+                    roleOptions={ADD_ROLE_OPTIONS}
+                    onSubmit={handleEditSubmit}
+                />
+
+                <DeleteUserDialog
+                    user={deletingUser}
+                    open={deletingUser !== null}
+                    onOpenChange={(open) => !open && setDeletingUser(null)}
+                    onConfirm={handleDeleteConfirm}
+                    processing={isDeleting}
                 />
             </div>
         </AppLayout>

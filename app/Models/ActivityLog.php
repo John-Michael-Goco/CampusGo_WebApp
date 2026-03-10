@@ -25,15 +25,25 @@ class ActivityLog extends Model
     public const ACTION_PROFESSOR_UPDATED = 'professor_updated';
     public const ACTION_PROFESSOR_DELETED = 'professor_deleted';
     public const ACTION_GAMEMASTER_CREATED = 'gamemaster_created';
+    public const ACTION_GAMEMASTER_UPDATED = 'gamemaster_updated';
+    public const ACTION_USER_DELETED = 'user_deleted';
     public const ACTION_ACHIEVEMENT_CREATED = 'achievement_created';
     public const ACTION_ACHIEVEMENT_UPDATED = 'achievement_updated';
     public const ACTION_ACHIEVEMENT_DELETED = 'achievement_deleted';
+    public const ACTION_ACHIEVEMENT_EARNED = 'achievement_earned';
     public const ACTION_STORE_ITEM_CREATED = 'store_item_created';
     public const ACTION_STORE_ITEM_UPDATED = 'store_item_updated';
     public const ACTION_STORE_ITEM_DELETED = 'store_item_deleted';
+    public const ACTION_STORE_REDEEM = 'store_redeem';
+    public const ACTION_ITEM_USED = 'item_used';
+    public const ACTION_SEMESTER_CREATED = 'semester_created';
+    public const ACTION_SEMESTER_UPDATED = 'semester_updated';
+    public const ACTION_SEMESTER_DELETED = 'semester_deleted';
     public const ACTION_AUTH_SIGNIN = 'auth_signin';
     public const ACTION_AUTH_SIGNOUT = 'auth_signout';
     public const ACTION_AUTH_SIGNUP = 'auth_signup';
+    public const ACTION_POINTS_TRANSFER_OUT = 'points_transfer_out';
+    public const ACTION_POINTS_TRANSFER_IN = 'points_transfer_in';
 
     protected function casts(): array
     {

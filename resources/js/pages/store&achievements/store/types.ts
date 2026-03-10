@@ -6,7 +6,6 @@ export type StoreItem = {
     stock: number;
     start_date: string | null;
     end_date: string | null;
-    is_limited: boolean;
     is_visible: boolean;
 };
 

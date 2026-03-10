@@ -1,6 +1,21 @@
 import { ArrowDown, ArrowUp, ArrowUpDown, Eye, Pencil, Trash2 } from 'lucide-react';
+import { Link } from '@inertiajs/react';
 import { Button } from '@/components/ui/button';
-import { maskEmail, type UserListItem, type UsersFilters } from './types';
+import type { Semester, SemestersFilters } from './types';
+
+function formatDate(dateStr: string): string {
+    if (!dateStr) return '—';
+    try {
+        const d = new Date(dateStr);
+        return d.toLocaleDateString(undefined, {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric',
+        });
+    } catch {
+        return '—';
+    }
+}
 
 function SortIcon({
     column,
@@ -21,21 +36,23 @@ function SortIcon({
     );
 }
 
-function pointsDisplay(user: UserListItem): string {
-    return String(user.points_balance ?? 0);
-}
-
 type Props = {
-    users: UserListItem[];
-    filters: UsersFilters;
-    onSort: (column: 'name' | 'role' | 'points_balance' | 'level') => void;
-    onEdit: (user: UserListItem) => void;
-    onDelete: (user: UserListItem) => void;
+    semesters: Semester[];
+    filters: SemestersFilters;
+    onSort: (column: 'name' | 'start_date' | 'end_date') => void;
+    onEdit: (semester: Semester) => void;
+    onDelete: (semester: Semester) => void;
 };
 
-export function UsersTable({ users, filters, onSort, onEdit, onDelete }: Props) {
+export function SemestersTable({
+    semesters,
+    filters,
+    onSort,
+    onEdit,
+    onDelete,
+}: Props) {
     return (
-        <div className="rounded-lg border bg-card overflow-hidden">
+        <div className="overflow-hidden rounded-lg border bg-card">
             <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                     <thead>
@@ -55,17 +72,14 @@ export function UsersTable({ users, filters, onSort, onEdit, onDelete }: Props) 
                                 </button>
                             </th>
                             <th className="h-11 px-4 text-left font-medium">
-                                Email
-                            </th>
-                            <th className="h-11 px-4 text-left font-medium">
                                 <button
                                     type="button"
                                     className="inline-flex items-center hover:underline"
-                                    onClick={() => onSort('role')}
+                                    onClick={() => onSort('start_date')}
                                 >
-                                    Role
+                                    Start date
                                     <SortIcon
-                                        column="role"
+                                        column="start_date"
                                         currentSort={filters.sort_by}
                                         sortDir={filters.sort_dir}
                                     />
@@ -75,29 +89,18 @@ export function UsersTable({ users, filters, onSort, onEdit, onDelete }: Props) 
                                 <button
                                     type="button"
                                     className="inline-flex items-center hover:underline"
-                                    onClick={() => onSort('points_balance')}
+                                    onClick={() => onSort('end_date')}
                                 >
-                                    Points
+                                    End date
                                     <SortIcon
-                                        column="points_balance"
+                                        column="end_date"
                                         currentSort={filters.sort_by}
                                         sortDir={filters.sort_dir}
                                     />
                                 </button>
                             </th>
                             <th className="h-11 px-4 text-left font-medium">
-                                <button
-                                    type="button"
-                                    className="inline-flex items-center hover:underline"
-                                    onClick={() => onSort('level')}
-                                >
-                                    Level
-                                    <SortIcon
-                                        column="level"
-                                        currentSort={filters.sort_by}
-                                        sortDir={filters.sort_dir}
-                                    />
-                                </button>
+                                Current
                             </th>
                             <th className="h-11 px-4 text-right font-medium">
                                 Actions
@@ -105,68 +108,68 @@ export function UsersTable({ users, filters, onSort, onEdit, onDelete }: Props) 
                         </tr>
                     </thead>
                     <tbody>
-                        {users.length === 0 ? (
+                        {semesters.length === 0 ? (
                             <tr>
                                 <td
-                                    colSpan={6}
+                                    colSpan={5}
                                     className="h-24 px-4 text-center text-muted-foreground"
                                 >
-                                    No users found.
+                                    No semesters found.
                                 </td>
                             </tr>
                         ) : (
-                            users.map((user) => (
+                            semesters.map((semester) => (
                                 <tr
-                                    key={user.id}
+                                    key={semester.id}
                                     className="border-b transition-colors hover:bg-muted/30"
                                 >
-                                    <td className="px-4 py-3">{user.name}</td>
-                                    <td className="px-4 py-3 font-mono text-muted-foreground">
-                                        {maskEmail(user.email)}
+                                    <td className="px-4 py-3 font-medium">
+                                        {semester.name}
                                     </td>
-                                    <td className="px-4 py-3 capitalize">
-                                        {user.role}
+                                    <td className="px-4 py-3 text-muted-foreground">
+                                        {formatDate(semester.start_date)}
+                                    </td>
+                                    <td className="px-4 py-3 text-muted-foreground">
+                                        {formatDate(semester.end_date)}
                                     </td>
                                     <td className="px-4 py-3">
-                                        {pointsDisplay(user)}
-                                    </td>
-                                    <td className="px-4 py-3">
-                                        {user.level ?? 1}
+                                        {semester.is_current ? 'Yes' : 'No'}
                                     </td>
                                     <td className="px-4 py-3 text-right">
-                                        <div className="flex items-center justify-end gap-1">
+                                        <div className="flex justify-end gap-2">
                                             <Button
-                                                type="button"
                                                 variant="ghost"
                                                 size="icon"
                                                 className="size-8"
-                                                aria-label="View"
-                                                onClick={() => {}}
+                                                asChild
                                             >
-                                                <Eye className="size-4" />
+                                                <Link
+                                                    href={`/semesters/${semester.id}`}
+                                                    aria-label="View"
+                                                >
+                                                    <Eye className="size-4" />
+                                                </Link>
                                             </Button>
                                             <Button
                                                 type="button"
                                                 variant="ghost"
                                                 size="icon"
                                                 className="size-8"
+                                                onClick={() => onEdit(semester)}
                                                 aria-label="Edit"
-                                                onClick={() => onEdit(user)}
                                             >
                                                 <Pencil className="size-4" />
                                             </Button>
-                                            {user.email !== 'admin@email.com' && (
-                                                <Button
-                                                    type="button"
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    className="size-8 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10 dark:hover:text-red-400"
-                                                    aria-label="Delete"
-                                                    onClick={() => onDelete(user)}
-                                                >
-                                                    <Trash2 className="size-4" />
-                                                </Button>
-                                            )}
+                                            <Button
+                                                type="button"
+                                                variant="ghost"
+                                                size="icon"
+                                                className="size-8 text-destructive hover:text-destructive"
+                                                onClick={() => onDelete(semester)}
+                                                aria-label="Delete"
+                                            >
+                                                <Trash2 className="size-4" />
+                                            </Button>
                                         </div>
                                     </td>
                                 </tr>

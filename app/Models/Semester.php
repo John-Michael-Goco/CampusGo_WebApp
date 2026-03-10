@@ -7,7 +7,9 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Semester extends Model
 {
-    protected $fillable = ['name', 'start_date', 'end_date', 'is_current'];
+    public $timestamps = false;
+
+    protected $fillable = ['name', 'start_date', 'end_date'];
 
     protected function casts(): array
     {
@@ -23,8 +25,33 @@ class Semester extends Model
         return $this->hasMany(Enrollment::class, 'semester', 'name');
     }
 
+    /**
+     * Check if any semester has a date range overlapping [startDate, endDate].
+     * Pass $excludeId when updating to exclude that semester from the check.
+     */
+    public static function hasOverlappingRange(string $startDate, string $endDate, ?int $excludeId = null): bool
+    {
+        $query = self::query()
+            ->where('start_date', '<=', $endDate)
+            ->where('end_date', '>=', $startDate);
+
+        if ($excludeId !== null) {
+            $query->where('id', '!=', $excludeId);
+        }
+
+        return $query->exists();
+    }
+
+    /**
+     * The current semester is the one where today's date falls within [start_date, end_date].
+     */
     public static function current(): ?self
     {
-        return self::where('is_current', true)->first();
+        $today = now()->toDateString();
+
+        return self::query()
+            ->whereDate('start_date', '<=', $today)
+            ->whereDate('end_date', '>=', $today)
+            ->first();
     }
 }
