@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AchievementController;
 use App\Http\Controllers\LogController;
+use App\Http\Controllers\PointTransactionController;
 use App\Http\Controllers\Masterlist\ProfessorController;
 use App\Http\Controllers\Masterlist\StudentController;
 use App\Http\Controllers\SemesterController;
@@ -92,8 +93,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::put('users/{user}', [UserController::class, 'update'])->name('users.update');
     Route::delete('users/{user}', [UserController::class, 'destroy'])->name('users.destroy');
 
-    // Logs
+    // Logs & Point Transactions
     Route::get('logs', [LogController::class, 'index'])->name('logs.index');
+    Route::get('transactions', [PointTransactionController::class, 'index'])->name('transactions.index');
 
     // Store & Achievements
     Route::get('store', [StoreItemController::class, 'index'])->name('store.index');

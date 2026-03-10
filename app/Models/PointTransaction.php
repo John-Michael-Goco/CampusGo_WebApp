@@ -20,6 +20,7 @@ class PointTransaction extends Model
     {
         return [
             'amount' => 'integer',
+            'created_at' => 'datetime',
         ];
     }
 

@@ -1,10 +1,10 @@
 import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp } from 'lucide-react';
 import { Link } from '@inertiajs/react';
-import type { LogEntry, LogsFilters } from './types';
-import { getActionDetail, getActionDisplayLabel, getActionKey } from './types';
+import type { PointTransactionItem, PointTransactionsFilters } from './types';
+import { getTransactionTypeLabel } from './types';
 
 type Props = {
-    logs: LogEntry[];
+    transactions: PointTransactionItem[];
     pagination: {
         total: number;
         current_page: number;
@@ -13,7 +13,7 @@ type Props = {
         prev_page_url: string | null;
         next_page_url: string | null;
     };
-    filters: LogsFilters;
+    filters: PointTransactionsFilters;
     onSortByDate: () => void;
 };
 
@@ -25,7 +25,7 @@ function SortIcon({ sortDir }: { sortDir: 'asc' | 'desc' }) {
     );
 }
 
-function formatDate(iso: string | null | undefined): string {
+function formatDate(iso: string): string {
     if (!iso) return '—';
     const d = new Date(iso);
     return d.toLocaleDateString(undefined, {
@@ -35,7 +35,7 @@ function formatDate(iso: string | null | undefined): string {
     });
 }
 
-function formatTime(iso: string | null | undefined): string {
+function formatTime(iso: string): string {
     if (!iso) return '—';
     const d = new Date(iso);
     return d.toLocaleTimeString(undefined, {
@@ -45,8 +45,8 @@ function formatTime(iso: string | null | undefined): string {
     });
 }
 
-export function LogsTable({
-    logs,
+export function PointTransactionsTable({
+    transactions,
     pagination,
     filters,
     onSortByDate,
@@ -72,55 +72,57 @@ export function LogsTable({
                                     Time
                                 </th>
                                 <th className="h-11 px-4 text-left font-medium">
-                                    Action
+                                    User
                                 </th>
                                 <th className="h-11 px-4 text-left font-medium">
-                                    By
+                                    Type
+                                </th>
+                                <th className="h-11 px-4 text-right font-medium">
+                                    Amount
                                 </th>
                             </tr>
                         </thead>
                         <tbody>
-                            {logs.length === 0 ? (
+                            {transactions.length === 0 ? (
                                 <tr>
                                     <td
-                                        colSpan={4}
+                                        colSpan={5}
                                         className="h-24 px-4 text-center text-muted-foreground"
                                     >
-                                        No logs yet.
+                                        No point transactions found.
                                     </td>
                                 </tr>
                             ) : (
-                                logs.map((log) => {
-                                    const detail = getActionDetail(log.action);
-                                    const actionKey = getActionKey(log.action);
-                                    const showDetailSuffix = detail != null && actionKey !== 'item_used';
-                                    return (
-                                        <tr
-                                            key={log.id}
-                                            className="border-b transition-colors hover:bg-muted/30"
-                                        >
-                                            <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
-                                                {formatDate(log.timestamp)}
-                                            </td>
-                                            <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
-                                                {formatTime(log.timestamp)}
-                                            </td>
-                                            <td className="px-4 py-3">
-                                                {getActionDisplayLabel(
-                                                    log.action
-                                                )}
-                                                {showDetailSuffix && (
-                                                    <span className="ml-1 text-muted-foreground">
-                                                        — {detail}
-                                                    </span>
-                                                )}
-                                            </td>
-                                            <td className="px-4 py-3">
-                                                {log.user?.name ?? '—'}
-                                            </td>
-                                        </tr>
-                                    );
-                                })
+                                transactions.map((tx) => (
+                                    <tr
+                                        key={tx.id}
+                                        className="border-b transition-colors hover:bg-muted/30"
+                                    >
+                                        <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
+                                            {formatDate(tx.created_at)}
+                                        </td>
+                                        <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
+                                            {formatTime(tx.created_at)}
+                                        </td>
+                                        <td className="px-4 py-3">
+                                            {tx.user?.name ?? '—'}
+                                        </td>
+                                        <td className="px-4 py-3">
+                                            {getTransactionTypeLabel(tx.transaction_type)}
+                                        </td>
+                                        <td className="px-4 py-3 text-right font-medium tabular-nums">
+                                            {tx.amount >= 0 ? (
+                                                <span className="text-green-600 dark:text-green-400">
+                                                    +{tx.amount}
+                                                </span>
+                                            ) : (
+                                                <span className="text-red-600 dark:text-red-400">
+                                                    {tx.amount}
+                                                </span>
+                                            )}
+                                        </td>
+                                    </tr>
+                                ))
                             )}
                         </tbody>
                     </table>
@@ -131,8 +133,7 @@ export function LogsTable({
                 <div className="flex items-center justify-between gap-4 border-t pt-4">
                     <p className="text-sm text-muted-foreground">
                         Showing{' '}
-                        {(pagination.current_page - 1) * pagination.per_page +
-                            1}{' '}
+                        {(pagination.current_page - 1) * pagination.per_page + 1}{' '}
                         to{' '}
                         {Math.min(
                             pagination.current_page * pagination.per_page,
