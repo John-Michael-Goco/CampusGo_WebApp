@@ -44,7 +44,7 @@ class LeaderboardService
             'entries' => $entries,
             'period' => $period,
             'periods' => self::PERIODS,
-            'value_label' => $period === self::PERIOD_OVERALL ? 'Total XP' : 'Quest points',
+            'value_label' => $period === self::PERIOD_OVERALL ? 'Total points' : 'Quest points',
         ];
     }
 
@@ -113,24 +113,28 @@ class LeaderboardService
     }
 
     /**
+     * Overall: total points from point_transactions (sum of amount per user), students only.
+     *
      * @return array<int, array{rank: int, user_id: int, user_name: string, value: int}>
      */
     private function getOverallEntriesComputed(): array
     {
-        $users = User::query()
-            ->where('role', 'student')
-            ->select('id', 'name', 'email', 'total_xp_earned')
-            ->orderByDesc('total_xp_earned')
+        $rows = PointTransaction::query()
+            ->join('users', 'users.id', '=', 'point_transactions.user_id')
+            ->where('users.role', 'student')
+            ->selectRaw('point_transactions.user_id, users.name as user_name, COALESCE(SUM(point_transactions.amount), 0) as total')
+            ->groupBy('point_transactions.user_id', 'users.name')
+            ->orderByDesc('total')
             ->get();
 
         $entries = [];
         $rank = 1;
-        foreach ($users as $user) {
+        foreach ($rows as $row) {
             $entries[] = [
                 'rank' => $rank,
-                'user_id' => $user->id,
-                'user_name' => $user->name ?? $user->email ?? '—',
-                'value' => (int) $user->total_xp_earned,
+                'user_id' => (int) $row->user_id,
+                'user_name' => $row->user_name ?? '—',
+                'value' => (int) $row->total,
             ];
             $rank++;
         }

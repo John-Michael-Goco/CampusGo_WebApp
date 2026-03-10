@@ -9,9 +9,12 @@ use App\Http\Controllers\Masterlist\StudentController;
 use App\Http\Controllers\SemesterController;
 use App\Http\Controllers\Simulation\AchievementSimulationController;
 use App\Http\Controllers\Simulation\InventoryUseController;
+use App\Http\Controllers\Simulation\LeaderboardController as SimulationLeaderboardController;
+use App\Http\Controllers\Simulation\PointTransactionsController as SimulationPointTransactionsController;
 use App\Http\Controllers\Simulation\PointsTransferController;
 use App\Http\Controllers\Simulation\StudentLoginController;
 use App\Http\Controllers\Simulation\StoreRedeemController;
+use App\Http\Controllers\Simulation\UserDetailsController as SimulationUserDetailsController;
 use App\Http\Controllers\StoreItemController;
 use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Auth;
@@ -60,6 +63,15 @@ Route::post('simulation/points/transfer', [PointsTransferController::class, 'tra
 Route::get('simulation/achievements', [AchievementSimulationController::class, 'index'])
     ->middleware('auth')
     ->name('simulation.achievements');
+Route::get('simulation/leaderboard', [SimulationLeaderboardController::class, 'index'])
+    ->middleware('auth')
+    ->name('simulation.leaderboard');
+Route::get('simulation/transactions', [SimulationPointTransactionsController::class, 'index'])
+    ->middleware('auth')
+    ->name('simulation.transactions');
+Route::get('simulation/profile', [SimulationUserDetailsController::class, 'index'])
+    ->middleware('auth')
+    ->name('simulation.profile');
 Route::post('simulation/achievements/simulate-level-up', [AchievementSimulationController::class, 'simulateLevelUp'])
     ->middleware('auth');
 Route::post('simulation/achievements/simulate-quest-win', [AchievementSimulationController::class, 'simulateQuestWin'])

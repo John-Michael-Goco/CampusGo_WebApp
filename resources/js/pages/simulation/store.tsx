@@ -376,6 +376,24 @@ export default function SimulationStore({
 
                 <div className="mt-4 flex flex-col items-center gap-2 text-center">
                     <Link
+                        href="/simulation/transactions"
+                        className="text-sm font-medium text-emerald-600 dark:text-emerald-400 hover:underline"
+                    >
+                        My transactions (simulation)
+                    </Link>
+                    <Link
+                        href="/simulation/profile"
+                        className="text-sm font-medium text-amber-600 dark:text-amber-400 hover:underline"
+                    >
+                        My profile (simulation)
+                    </Link>
+                    <Link
+                        href="/simulation/leaderboard"
+                        className="text-sm font-medium text-amber-600 dark:text-amber-400 hover:underline"
+                    >
+                        Leaderboard (simulation)
+                    </Link>
+                    <Link
                         href="/simulation/achievements"
                         className="text-sm font-medium text-amber-600 dark:text-amber-400 hover:underline"
                     >

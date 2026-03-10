@@ -207,6 +207,24 @@ export default function SimulationAchievements({
                         Store (simulation)
                     </Link>
                     <Link
+                        href="/simulation/transactions"
+                        className="text-sm font-medium text-emerald-600 dark:text-emerald-400 hover:underline"
+                    >
+                        My transactions (simulation)
+                    </Link>
+                    <Link
+                        href="/simulation/profile"
+                        className="text-sm font-medium text-amber-600 dark:text-amber-400 hover:underline"
+                    >
+                        My profile (simulation)
+                    </Link>
+                    <Link
+                        href="/simulation/leaderboard"
+                        className="text-sm font-medium text-amber-600 dark:text-amber-400 hover:underline"
+                    >
+                        Leaderboard (simulation)
+                    </Link>
+                    <Link
                         href="/simulation/login"
                         className="text-sm text-zinc-500 dark:text-zinc-400 hover:underline"
                     >
