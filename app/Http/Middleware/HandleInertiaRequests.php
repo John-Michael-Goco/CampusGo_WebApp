@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\Quest;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -37,22 +38,30 @@ class HandleInertiaRequests extends Middleware
     {
         $user = $request->user();
         $isAdmin = $user && $user->role === 'admin';
+        $isStudent = $user && $user->role === 'student';
+
+        $auth = [
+            'user' => $user,
+            'isAdmin' => $isAdmin,
+            'isStudent' => $isStudent,
+            'canManageUsers' => $isAdmin,
+            'canManageQuests' => $isAdmin,
+            'canApproveQuests' => $user && in_array($user->role, ['admin', 'professor'], true),
+            'canManageStore' => $isAdmin,
+            'canManageAchievements' => $isAdmin,
+            'canManageSemesters' => $isAdmin,
+            'canManageMasterlist' => $isAdmin,
+            'canSeeQuestHistory' => $user && in_array($user->role, ['admin', 'professor'], true),
+        ];
+
+        if ($isAdmin) {
+            $auth['pendingApprovalCount'] = Quest::query()->where('approval_status', 'pending')->count();
+        }
 
         return [
             ...parent::share($request),
             'name' => config('app.name'),
-            'auth' => [
-                'user' => $user,
-                'isAdmin' => $isAdmin,
-                'canManageUsers' => $isAdmin,
-                'canManageQuests' => $isAdmin,
-                'canApproveQuests' => $user && in_array($user->role, ['admin', 'professor'], true),
-                'canManageStore' => $isAdmin,
-                'canManageAchievements' => $isAdmin,
-                'canManageSemesters' => $isAdmin,
-                'canManageMasterlist' => $isAdmin,
-                'canSeeQuestHistory' => $isAdmin,
-            ],
+            'auth' => $auth,
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
             'flash' => [
                 'status' => fn () => $request->session()->get('status'),

@@ -1,13 +1,9 @@
 import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
-import { useCallback, useEffect, useRef, useState } from 'react';
 import { ArrowLeft, ArrowRight } from 'lucide-react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { sileo } from 'sileo';
 import AppLayout from '@/layouts/app-layout';
 import type { BreadcrumbItem } from '@/types';
-import type {
-    MasterlistProfessorsProps,
-    Professor,
-} from './professors/types';
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Masterlist', href: '/masterlist/students' },
@@ -18,6 +14,10 @@ import { DeleteProfessorDialog } from './professors/DeleteProfessorDialog';
 import { EditProfessorDialog } from './professors/EditProfessorDialog';
 import { ProfessorsFilters } from './professors/ProfessorsFilters';
 import { ProfessorsTable } from './professors/ProfessorsTable';
+import type {
+    MasterlistProfessorsProps,
+    Professor,
+} from './professors/types';
 
 export default function MasterlistProfessors({
     professors,
@@ -144,6 +144,8 @@ export default function MasterlistProfessors({
     };
 
     useEffect(() => {
+        // Sync props to local state when filters change (e.g. from navigation)
+         
         setSearch(filters.search);
     }, [filters.search]);
 
@@ -155,24 +157,24 @@ export default function MasterlistProfessors({
         const t = setTimeout(() => {
             router.get('/masterlist/professors', {
                 search: search || undefined,
-                title: filters.title || undefined,
                 sort_by: filters.sort_by,
                 sort_dir: filters.sort_dir,
             }, { preserveState: true });
         }, 300);
         return () => clearTimeout(t);
+        // Intentionally only when search changes to avoid request loops
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [search]);
 
     const updateFilters = useCallback(
         (updates: Partial<MasterlistProfessorsProps['filters']>) => {
             router.get('/masterlist/professors', {
                 search: ('search' in updates ? updates.search : search) || undefined,
-                title: ('title' in updates ? updates.title : filters.title) || undefined,
                 sort_by: updates.sort_by ?? filters.sort_by,
                 sort_dir: updates.sort_dir ?? filters.sort_dir,
             }, { preserveState: true });
         },
-        [search, filters.title, filters.sort_by, filters.sort_dir]
+        [search, filters.sort_by, filters.sort_dir]
     );
 
     const handleSort = (column: 'employee_id' | 'last_name') => {

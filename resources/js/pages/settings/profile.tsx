@@ -1,6 +1,8 @@
 import { Transition } from '@headlessui/react';
 import { Form, Head, Link, router, usePage } from '@inertiajs/react';
 import { useRef, useState } from 'react';
+import PasswordController from '@/actions/App/Http/Controllers/Settings/PasswordController';
+import ProfileController from '@/actions/App/Http/Controllers/Settings/ProfileController';
 import DeleteUser from '@/components/delete-user';
 import Heading from '@/components/heading';
 import InputError from '@/components/input-error';
@@ -11,11 +13,9 @@ import { Label } from '@/components/ui/label';
 import { useInitials } from '@/hooks/use-initials';
 import AppLayout from '@/layouts/app-layout';
 import SettingsLayout from '@/layouts/settings/layout';
-import type { BreadcrumbItem } from '@/types';
-import ProfileController from '@/actions/App/Http/Controllers/Settings/ProfileController';
-import PasswordController from '@/actions/App/Http/Controllers/Settings/PasswordController';
 import { edit } from '@/routes/profile';
 import { send } from '@/routes/verification';
+import type { BreadcrumbItem } from '@/types';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {

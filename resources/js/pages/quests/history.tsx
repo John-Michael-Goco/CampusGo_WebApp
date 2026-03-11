@@ -1,8 +1,8 @@
-import { Head, router } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
+import { Eye, Printer, Trash2 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
-import AppLayout from '@/layouts/app-layout';
-import type { BreadcrumbItem } from '@/types';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import {
     Select,
     SelectContent,
@@ -18,6 +18,9 @@ import {
     tableCellClass,
     tableEmptyClass,
 } from '@/components/ui/table';
+import AppLayout from '@/layouts/app-layout';
+import type { BreadcrumbItem } from '@/types';
+import { DeleteQuestDialog } from './active/DeleteQuestDialog';
 import type { HistoryQuest, PaginatedQuests } from './shared';
 import {
     QuestSearchInput,
@@ -45,16 +48,23 @@ const historyBodyRowClass =
     'border-b border-border/60 transition-colors hover:bg-slate-50/40 dark:hover:bg-slate-800/30 last:border-b-0';
 
 export default function QuestHistoryPage({ quests, filters = {} }: Props) {
+    const pageProps = usePage().props as { auth?: { canManageQuests?: boolean; user?: { id: number } } };
+    const canManageQuests = pageProps.auth?.canManageQuests ?? false;
+    const currentUserId = pageProps.auth?.user?.id;
     const [search, setSearch] = useState(filters.search ?? '');
     const [questType, setQuestType] = useState<QuestTypeFilter>(filters.quest_type ?? '');
     const [createdByMe, setCreatedByMe] = useState(filters.created_by_me ?? false);
+    const [deletingQuest, setDeletingQuest] = useState<HistoryQuest | null>(null);
     const isInitialMount = useRef(true);
     const items = quests.data ?? [];
 
     useEffect(() => {
+        // Sync props to local state when filters change (e.g. from navigation)
+         
         setSearch(filters.search ?? '');
         setQuestType(filters.quest_type ?? '');
         setCreatedByMe(filters.created_by_me ?? false);
+         
     }, [filters.search, filters.quest_type, filters.created_by_me]);
 
     const getHistoryParams = (overrides?: { quest_type?: QuestTypeFilter; created_by_me?: boolean }) => ({
@@ -72,6 +82,8 @@ export default function QuestHistoryPage({ quests, filters = {} }: Props) {
             router.get('/quests/history', getHistoryParams(), { preserveState: true });
         }, 300);
         return () => clearTimeout(t);
+        // Intentionally only when search changes to avoid request loops
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [search]);
 
     const handleQuestTypeChange = (value: string) => {
@@ -83,6 +95,30 @@ export default function QuestHistoryPage({ quests, filters = {} }: Props) {
     const handleCreatedByMeChange = (value: boolean) => {
         setCreatedByMe(value);
         router.get('/quests/history', getHistoryParams({ created_by_me: value }), { preserveState: true });
+    };
+
+    const getHistoryReturnParams = () => ({
+        from: 'history',
+        history_search: search || undefined,
+        history_quest_type: questType || undefined,
+        history_created_by_me: createdByMe ? '1' : undefined,
+    });
+
+    const historyReturnQuery = () => {
+        const p = getHistoryReturnParams();
+        const qs = new URLSearchParams();
+        Object.entries(p).forEach(([k, v]) => {
+            if (v != null && v !== '') qs.set(k, v);
+        });
+        return qs.toString();
+    };
+
+    const handleDeleteConfirm = () => {
+        if (!deletingQuest) return;
+        router.delete(`/quests/${deletingQuest.id}`, {
+            preserveScroll: true,
+            onSuccess: () => setDeletingQuest(null),
+        });
     };
 
     return (
@@ -135,12 +171,13 @@ export default function QuestHistoryPage({ quests, filters = {} }: Props) {
                                     <th className={tableHeadClass}>Outcome</th>
                                     <th className={tableHeadClass}>Created</th>
                                     <th className={tableHeadClass}>Ended</th>
+                                    <th className={`${tableHeadClass} text-right`}>Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {items.length === 0 ? (
                                     <tr className={historyBodyRowClass}>
-                                        <td colSpan={6} className={tableEmptyClass}>
+                                        <td colSpan={7} className={tableEmptyClass}>
                                             No completed or cancelled quests found.
                                         </td>
                                     </tr>
@@ -166,6 +203,44 @@ export default function QuestHistoryPage({ quests, filters = {} }: Props) {
                                             <td className={`${tableCellClass} text-muted-foreground`}>
                                                 {formatQuestDate(quest.updated_at)}
                                             </td>
+                                            <td className={`${tableCellClass} text-right`}>
+                                                <div className="flex justify-end gap-1">
+                                                    {(canManageQuests || (currentUserId != null && quest.creator?.id === currentUserId)) && (
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="size-8"
+                                                            asChild
+                                                        >
+                                                            <Link href={`/quests/${quest.id}/print-qr?${historyReturnQuery()}`} aria-label="Print QR codes">
+                                                                <Printer className="size-4" />
+                                                            </Link>
+                                                        </Button>
+                                                    )}
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="size-8"
+                                                        asChild
+                                                    >
+                                                        <Link href={`/quests/${quest.id}?${historyReturnQuery()}`} aria-label="View">
+                                                            <Eye className="size-4" />
+                                                        </Link>
+                                                    </Button>
+                                                    {canManageQuests && (
+                                                        <Button
+                                                            type="button"
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="size-8 text-destructive hover:text-destructive"
+                                                            onClick={() => setDeletingQuest(quest)}
+                                                            aria-label="Delete"
+                                                        >
+                                                            <Trash2 className="size-4" />
+                                                        </Button>
+                                                    )}
+                                                </div>
+                                            </td>
                                         </tr>
                                     ))
                                 )}
@@ -173,6 +248,15 @@ export default function QuestHistoryPage({ quests, filters = {} }: Props) {
                         </TableElement>
                     </TableScroll>
                 </Table>
+
+                {canManageQuests && (
+                    <DeleteQuestDialog
+                        quest={deletingQuest}
+                        open={!!deletingQuest}
+                        onOpenChange={(open) => !open && setDeletingQuest(null)}
+                        onConfirm={handleDeleteConfirm}
+                    />
+                )}
 
                 {quests.total > 0 && (
                     <QuestPagination

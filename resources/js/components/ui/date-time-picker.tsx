@@ -133,7 +133,10 @@ export function DateTimePicker({
                     onSelect={handleDaySelect}
                     disabled={
                         minDate || maxDate
-                            ? { ...(minDate && { before: minDate }), ...(maxDate && { after: maxDate }) }
+                            ? [
+                                  ...(minDate ? [{ before: minDate }] : []),
+                                  ...(maxDate ? [{ after: maxDate }] : []),
+                              ]
                             : undefined
                     }
                     defaultMonth={date}

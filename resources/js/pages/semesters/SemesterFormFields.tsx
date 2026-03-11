@@ -1,7 +1,7 @@
+import { parse, isValid } from 'date-fns';
+import { DateTimePicker } from '@/components/ui/date-time-picker';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { DateTimePicker } from '@/components/ui/date-time-picker';
-import { parse, isValid } from 'date-fns';
 
 export type SemesterFormData = {
     name: string;

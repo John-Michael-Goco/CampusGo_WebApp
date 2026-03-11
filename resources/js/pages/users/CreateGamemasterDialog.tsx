@@ -1,5 +1,7 @@
 import { Search, X } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
+import InputError from '@/components/input-error';
+import { Button } from '@/components/ui/button';
 import {
     Dialog,
     DialogContent,
@@ -8,8 +10,6 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
-import InputError from '@/components/input-error';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -63,8 +63,10 @@ export function CreateGamemasterDialog({
 
     useEffect(() => {
         if (open) {
+            /* eslint-disable react-hooks/set-state-in-effect -- reset when dialog opens */
             setProfessorSearch('');
             setShowProfessorList(false);
+            /* eslint-enable react-hooks/set-state-in-effect */
         }
     }, [open]);
 

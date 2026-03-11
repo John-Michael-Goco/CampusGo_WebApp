@@ -1,16 +1,16 @@
 import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
-import { useCallback, useEffect, useRef, useState } from 'react';
 import { ArrowLeft, ArrowRight } from 'lucide-react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { sileo } from 'sileo';
 import AppLayout from '@/layouts/app-layout';
 import type { BreadcrumbItem } from '@/types';
-import type { StoreItem, StorePageProps } from './store/types';
+import { CreateStoreItemDialog } from './store/CreateStoreItemDialog';
+import { DeleteStoreItemDialog } from './store/DeleteStoreItemDialog';
+import { EditStoreItemDialog } from './store/EditStoreItemDialog';
+import type { StoreItemFormData } from './store/StoreItemFormFields';
 import { StoreItemsFilters } from './store/StoreItemsFilters';
 import { StoreItemsTable } from './store/StoreItemsTable';
-import { CreateStoreItemDialog } from './store/CreateStoreItemDialog';
-import { EditStoreItemDialog } from './store/EditStoreItemDialog';
-import { DeleteStoreItemDialog } from './store/DeleteStoreItemDialog';
-import type { StoreItemFormData } from './store/StoreItemFormFields';
+import type { StoreItem, StorePageProps } from './store/types';
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Store & Achievements', href: '/store' },
@@ -165,6 +165,8 @@ export default function StorePage({
     };
 
     useEffect(() => {
+        // Sync props to local state when filters change (e.g. from navigation)
+         
         setSearch(filters.search);
     }, [filters.search]);
 
@@ -185,6 +187,8 @@ export default function StorePage({
             );
         }, 300);
         return () => clearTimeout(t);
+        // Intentionally only when search changes to avoid request loops
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [search]);
 
     const updateFilters = useCallback(

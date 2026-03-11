@@ -1,16 +1,16 @@
 import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
-import { useCallback, useEffect, useRef, useState } from 'react';
 import { ArrowLeft, ArrowRight } from 'lucide-react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { sileo } from 'sileo';
 import AppLayout from '@/layouts/app-layout';
 import type { BreadcrumbItem } from '@/types';
-import type { Semester, SemestersPageProps } from './types';
+import { CreateSemesterDialog } from './CreateSemesterDialog';
+import { DeleteSemesterDialog } from './DeleteSemesterDialog';
+import { EditSemesterDialog } from './EditSemesterDialog';
+import type { SemesterFormData } from './SemesterFormFields';
 import { SemestersFilters } from './SemestersFilters';
 import { SemestersTable } from './SemestersTable';
-import { CreateSemesterDialog } from './CreateSemesterDialog';
-import { EditSemesterDialog } from './EditSemesterDialog';
-import { DeleteSemesterDialog } from './DeleteSemesterDialog';
-import type { SemesterFormData } from './SemesterFormFields';
+import type { Semester, SemestersPageProps } from './types';
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Academic management', href: '/masterlist/students' },
@@ -155,6 +155,8 @@ export default function SemestersPage({
     };
 
     useEffect(() => {
+        // Sync props to local state when filters change (e.g. from navigation)
+         
         setSearch(filters.search);
     }, [filters.search]);
 
@@ -175,6 +177,8 @@ export default function SemestersPage({
             );
         }, 300);
         return () => clearTimeout(t);
+        // Intentionally only when search changes to avoid request loops
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [search]);
 
     const updateFilters = useCallback(

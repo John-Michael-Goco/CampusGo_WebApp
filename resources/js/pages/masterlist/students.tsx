@@ -1,10 +1,9 @@
 import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
-import { useCallback, useEffect, useRef, useState } from 'react';
 import { ArrowLeft, ArrowRight } from 'lucide-react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { sileo } from 'sileo';
 import AppLayout from '@/layouts/app-layout';
 import type { BreadcrumbItem } from '@/types';
-import type { MasterlistStudentsProps, Student } from './students/types';
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Masterlist', href: '/masterlist/students' },
@@ -15,6 +14,7 @@ import { DeleteStudentDialog } from './students/DeleteStudentDialog';
 import { EditStudentDialog } from './students/EditStudentDialog';
 import { StudentsFilters } from './students/StudentsFilters';
 import { StudentsTable } from './students/StudentsTable';
+import type { MasterlistStudentsProps, Student } from './students/types';
 
 export default function MasterlistStudents({
     students,
@@ -154,6 +154,8 @@ export default function MasterlistStudents({
     };
 
     useEffect(() => {
+        // Sync props to local state when filters change (e.g. from navigation)
+         
         setSearch(filters.search);
     }, [filters.search]);
 
@@ -173,6 +175,8 @@ export default function MasterlistStudents({
             }, { preserveState: true });
         }, 300);
         return () => clearTimeout(t);
+        // Intentionally only when search changes to avoid request loops
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [search]);
 
     const updateFilters = useCallback(

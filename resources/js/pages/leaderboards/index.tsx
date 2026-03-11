@@ -1,7 +1,4 @@
 import { Head, Link, router } from '@inertiajs/react';
-import { cn } from '@/lib/utils';
-import AppLayout from '@/layouts/app-layout';
-import type { BreadcrumbItem } from '@/types';
 import {
     Table,
     TableScroll,
@@ -10,6 +7,9 @@ import {
     tableCellClass,
     tableEmptyClass,
 } from '@/components/ui/table';
+import AppLayout from '@/layouts/app-layout';
+import { cn } from '@/lib/utils';
+import type { BreadcrumbItem } from '@/types';
 import type { LeaderboardPeriod, LeaderboardsPageProps } from './types';
 import { PERIOD_LABELS } from './types';
 

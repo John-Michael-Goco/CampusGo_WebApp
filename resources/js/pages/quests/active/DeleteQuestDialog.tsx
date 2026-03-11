@@ -1,3 +1,4 @@
+import { Button } from '@/components/ui/button';
 import {
     Dialog,
     DialogContent,
@@ -6,11 +7,12 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
 import type { ActiveQuest } from './types';
 
+type QuestWithTitle = { id: number; title: string };
+
 type Props = {
-    quest: ActiveQuest | null;
+    quest: (ActiveQuest | QuestWithTitle) | null;
     open: boolean;
     onOpenChange: (open: boolean) => void;
     onConfirm: () => void;

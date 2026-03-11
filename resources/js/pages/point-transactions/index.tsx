@@ -2,12 +2,12 @@ import { Head, router } from '@inertiajs/react';
 import { useEffect, useRef, useState } from 'react';
 import AppLayout from '@/layouts/app-layout';
 import type { BreadcrumbItem } from '@/types';
+import { PointTransactionsFilters as PointTransactionsFiltersComponent } from './PointTransactionsFilters';
+import { PointTransactionsTable } from './PointTransactionsTable';
 import type {
     PointTransactionsFilters,
     PointTransactionsPageProps,
 } from './types';
-import { PointTransactionsFilters as PointTransactionsFiltersComponent } from './PointTransactionsFilters';
-import { PointTransactionsTable } from './PointTransactionsTable';
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Logs and Transactions', href: '/logs' },
@@ -44,6 +44,8 @@ export default function PointTransactionsIndex({
     };
 
     useEffect(() => {
+        // Sync props to local state when filters change (e.g. from navigation)
+         
         setSearch(filters.search);
     }, [filters.search]);
 
@@ -56,6 +58,8 @@ export default function PointTransactionsIndex({
             applyFilters({ search });
         }, 300);
         return () => clearTimeout(t);
+        // Intentionally only when search changes to avoid request loops
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [search]);
 
     const handleSortByDate = () => {

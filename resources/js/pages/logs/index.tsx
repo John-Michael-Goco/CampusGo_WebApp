@@ -2,9 +2,9 @@ import { Head, router } from '@inertiajs/react';
 import { useEffect, useRef, useState } from 'react';
 import AppLayout from '@/layouts/app-layout';
 import type { BreadcrumbItem } from '@/types';
-import type { LogsFilters, LogsPageProps } from './types';
 import { LogsFilters as LogsFiltersComponent } from './LogsFilters';
 import { LogsTable } from './LogsTable';
+import type { LogsFilters, LogsPageProps } from './types';
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Activity Logs', href: '/logs' },
@@ -37,6 +37,8 @@ export default function LogsIndex({ logs, activityLogUsers, filters: rawFilters 
     };
 
     useEffect(() => {
+        // Sync props to local state when filters change (e.g. from navigation)
+         
         setSearch(filters.search);
     }, [filters.search]);
 
@@ -49,6 +51,8 @@ export default function LogsIndex({ logs, activityLogUsers, filters: rawFilters 
             applyFilters({ search });
         }, 300);
         return () => clearTimeout(t);
+        // Intentionally only when search changes to avoid request loops
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [search]);
 
     const handleSortByDate = () => {

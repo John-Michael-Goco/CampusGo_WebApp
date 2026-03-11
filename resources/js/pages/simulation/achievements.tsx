@@ -1,6 +1,6 @@
 import { Head, Link, router } from '@inertiajs/react';
-import { useEffect, useState } from 'react';
 import { Award, Check, Lock, Trophy } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import {
     Dialog,
     DialogContent,
@@ -59,7 +59,6 @@ function requirementLabel(achievement: SimulationAchievement, quests: QuestOptio
 
 export default function SimulationAchievements({
     stats,
-    earnedAchievements,
     allAchievements,
     earnedIds,
     quests = [],
@@ -69,6 +68,8 @@ export default function SimulationAchievements({
     const [simulating, setSimulating] = useState<string | null>(null);
 
     useEffect(() => {
+        // Show unlocked modal when achievement is received
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         if (unlockedAchievement) setShowUnlocked(true);
     }, [unlockedAchievement]);
 

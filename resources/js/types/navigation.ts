@@ -11,6 +11,8 @@ export type NavItem = {
     href: NonNullable<InertiaLinkProps['href']>;
     icon?: LucideIcon | null;
     isActive?: boolean;
+    /** Optional count badge (e.g. pending approval) */
+    badge?: number;
     /** Nested items for dropdown/collapsible menus */
     items?: NavItem[];
 };

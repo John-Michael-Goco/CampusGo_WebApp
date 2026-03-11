@@ -1,4 +1,5 @@
-import { Eye, Pencil, Trash2 } from 'lucide-react';
+import { Link } from '@inertiajs/react';
+import { Eye, Pencil, Printer, Trash2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -45,9 +46,22 @@ type Props = {
     onEdit: (quest: ActiveQuest) => void;
     onDelete: (quest: ActiveQuest) => void;
     canManage?: boolean;
+    /** When set (e.g. professor), show Print QR only for quests created by this user. */
+    currentUserId?: number | null;
+    /** Params to preserve when linking to show/print-qr so Back returns to same filters. */
+    activeReturnParams?: Record<string, string | undefined>;
 };
 
-export function ActiveTable({ quests, onView, onEdit, onDelete, canManage = true }: Props) {
+function activeReturnQuery(params?: Record<string, string | undefined>): string {
+    if (!params) return 'from=active';
+    const qs = new URLSearchParams();
+    Object.entries(params).forEach(([k, v]) => {
+        if (v != null && v !== '') qs.set(k, v);
+    });
+    return qs.toString() || 'from=active';
+}
+
+export function ActiveTable({ quests, onView, onEdit, onDelete, canManage = true, currentUserId, activeReturnParams }: Props) {
     return (
         <Table className="border-emerald-200/60 dark:border-emerald-900/40 ring-1 ring-emerald-200/20 dark:ring-emerald-800/20">
             <TableScroll>
@@ -129,18 +143,28 @@ export function ActiveTable({ quests, onView, onEdit, onDelete, canManage = true
                                     </td>
                                     <td className={`${tableCellClass} text-right`}>
                                         <div className="flex justify-end gap-1">
-                                            <Button
-                                                type="button"
-                                                variant="ghost"
-                                                size="icon"
-                                                className="size-8"
-                                                onClick={() => onView(quest)}
-                                                aria-label="View"
-                                            >
-                                                <Eye className="size-4" />
-                                            </Button>
-                                            {canManage && (
+                                            {canManage ? (
                                                 <>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="size-8"
+                                                        asChild
+                                                    >
+                                                        <Link href={`/quests/${quest.id}/print-qr?${activeReturnQuery(activeReturnParams)}`} aria-label="Print QR codes">
+                                                            <Printer className="size-4" />
+                                                        </Link>
+                                                    </Button>
+                                                    <Button
+                                                        type="button"
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="size-8"
+                                                        onClick={() => onView(quest)}
+                                                        aria-label="View"
+                                                    >
+                                                        <Eye className="size-4" />
+                                                    </Button>
                                                     <Button
                                                         type="button"
                                                         variant="ghost"
@@ -160,6 +184,31 @@ export function ActiveTable({ quests, onView, onEdit, onDelete, canManage = true
                                                         aria-label="Delete"
                                                     >
                                                         <Trash2 className="size-4" />
+                                                    </Button>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    {currentUserId != null && quest.creator?.id === currentUserId && (
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="size-8"
+                                                            asChild
+                                                        >
+                                                            <Link href={`/quests/${quest.id}/print-qr?${activeReturnQuery(activeReturnParams)}`} aria-label="Print QR codes">
+                                                                <Printer className="size-4" />
+                                                            </Link>
+                                                        </Button>
+                                                    )}
+                                                    <Button
+                                                        type="button"
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="size-8"
+                                                        onClick={() => onView(quest)}
+                                                        aria-label="View"
+                                                    >
+                                                        <Eye className="size-4" />
                                                     </Button>
                                                 </>
                                             )}

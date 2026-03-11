@@ -9,11 +9,12 @@ import {
     tableEmptyClass,
 } from '@/components/ui/table';
 import {
-    REQUIREMENT_TYPE_OPTIONS,
-    type Achievement,
-    type AchievementsFilters,
-    type QuestOption,
+    REQUIREMENT_TYPE_OPTIONS
+    
+    
+    
 } from './types';
+import type {Achievement, AchievementsFilters, QuestOption} from './types';
 
 function SortIcon({
     column,

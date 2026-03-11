@@ -1,8 +1,6 @@
 import { Head, Link } from '@inertiajs/react';
+import { ArrowLeft, Calendar, Search } from 'lucide-react';
 import { useMemo, useState } from 'react';
-import { Calendar, Search } from 'lucide-react';
-import AppLayout from '@/layouts/app-layout';
-import type { BreadcrumbItem } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -12,6 +10,8 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import AppLayout from '@/layouts/app-layout';
+import type { BreadcrumbItem } from '@/types';
 
 export type EnrolledStudent = {
     id: number;
@@ -130,19 +130,23 @@ export default function SemesterShowPage({
             <Head title={semester.name} />
             <div className="flex h-full flex-1 flex-col gap-6 rounded-xl p-4">
                 <div className="flex flex-wrap items-center justify-between gap-4">
-                    <div>
-                        <h1 className="text-xl font-semibold">
-                            {semester.name}
-                        </h1>
-                        <p className="text-sm text-muted-foreground">
-                            {semester.is_current
-                                ? 'Current semester'
-                                : 'Past or upcoming semester'}
-                        </p>
+                    <div className="flex items-center gap-3">
+                        <Button variant="ghost" size="icon" asChild>
+                            <Link href="/semesters" aria-label="Back to semesters">
+                                <ArrowLeft className="size-4" />
+                            </Link>
+                        </Button>
+                        <div>
+                            <h1 className="text-xl font-semibold">
+                                {semester.name}
+                            </h1>
+                            <p className="text-sm text-muted-foreground">
+                                {semester.is_current
+                                    ? 'Current semester'
+                                    : 'Past or upcoming semester'}
+                            </p>
+                        </div>
                     </div>
-                    <Button variant="outline" size="sm" asChild>
-                        <Link href="/semesters">Back to semesters</Link>
-                    </Button>
                 </div>
 
                 <div className="rounded-lg border bg-card p-4">

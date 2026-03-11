@@ -10,7 +10,8 @@ import {
     tableEmptyClass,
 } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
-import { maskEmail, type UserListItem, type UsersFilters } from './types';
+import { maskEmail   } from './types';
+import type {UserListItem, UsersFilters} from './types';
 
 function SortIcon({
     column,

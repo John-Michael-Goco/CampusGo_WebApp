@@ -4,7 +4,9 @@ export type PendingQuest = {
     id: number;
     title: string;
     quest_type: string;
+    approval_status: string;
     created_at: string;
+    creator?: { id: number; name: string } | null;
 };
 
 export type CreatedQuest = {
@@ -46,6 +48,7 @@ export type Question = {
 };
 
 export type Stage = {
+    id?: number;
     stage_number: number;
     location_hint: string;
     max_survivors: number | null;

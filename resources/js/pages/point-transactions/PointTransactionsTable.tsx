@@ -1,5 +1,5 @@
-import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp } from 'lucide-react';
 import { Link } from '@inertiajs/react';
+import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp } from 'lucide-react';
 import {
     Table,
     TableScroll,

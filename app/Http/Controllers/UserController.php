@@ -7,6 +7,7 @@ use App\Models\MasterUser;
 use App\Models\Quest;
 use App\Models\QuestParticipant;
 use App\Models\User;
+use App\Models\UserAchievement;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rules\Password;
@@ -63,8 +64,25 @@ class UserController extends Controller
                 ->all();
         }
 
+        $achievementsUnlocked = [];
         $questsParticipated = [];
         if ($user->role === 'student') {
+            $achievementsUnlocked = UserAchievement::query()
+                ->where('user_id', $user->id)
+                ->with('achievement:id,name,description,requirement_type,requirement_value')
+                ->orderByDesc('earned_at')
+                ->get()
+                ->map(fn (UserAchievement $ua) => [
+                    'id' => $ua->id,
+                    'achievement_id' => $ua->achievement_id,
+                    'name' => $ua->achievement?->name ?? 'Unknown',
+                    'description' => $ua->achievement?->description ?? null,
+                    'requirement_type' => $ua->achievement?->requirement_type ?? null,
+                    'earned_at' => $ua->earned_at?->toIso8601String(),
+                ])
+                ->values()
+                ->all();
+
             $questsParticipated = QuestParticipant::query()
                 ->where('user_id', $user->id)
                 ->whereHas('quest')
@@ -109,6 +127,7 @@ class UserController extends Controller
         return Inertia::render('users/show', [
             'user' => $userPayload,
             'can_change_role' => $canChangeRole,
+            'achievements_unlocked' => $achievementsUnlocked,
             'quests_created' => $questsCreated,
             'quests_participated' => $questsParticipated,
         ]);

@@ -1,8 +1,7 @@
-import { useMemo, useState } from 'react';
-import { Search, User, X } from 'lucide-react';
 import { parse, isValid } from 'date-fns';
+import { Search, User, X } from 'lucide-react';
+import { useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { DateTimePicker } from '@/components/ui/date-time-picker';
 import {
     DropdownMenu,
@@ -10,6 +9,7 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { Input } from '@/components/ui/input';
 import type { ActivityLogUser, LogsFilters as LogsFiltersType } from './types';
 
 export type LogsFiltersProps = {

@@ -1,3 +1,4 @@
+import { Button } from '@/components/ui/button';
 import {
     Dialog,
     DialogContent,
@@ -6,12 +7,12 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import {
-    StoreItemFormFields,
-    type StoreItemFormData,
+    StoreItemFormFields
+    
 } from './StoreItemFormFields';
+import type {StoreItemFormData} from './StoreItemFormFields';
 
 type Props = {
     open: boolean;

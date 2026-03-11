@@ -1,19 +1,19 @@
 import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
-import { useCallback, useEffect, useRef, useState } from 'react';
 import { ArrowLeft, ArrowRight } from 'lucide-react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { sileo } from 'sileo';
 import AppLayout from '@/layouts/app-layout';
 import type { BreadcrumbItem } from '@/types';
+import type { AchievementFormData } from './achievements/AchievementFormFields';
+import { AchievementsFilters } from './achievements/AchievementsFilters';
+import { AchievementsTable } from './achievements/AchievementsTable';
+import { CreateAchievementDialog } from './achievements/CreateAchievementDialog';
+import { DeleteAchievementDialog } from './achievements/DeleteAchievementDialog';
+import { EditAchievementDialog } from './achievements/EditAchievementDialog';
 import type {
     Achievement,
     AchievementsPageProps,
 } from './achievements/types';
-import { AchievementsFilters } from './achievements/AchievementsFilters';
-import { AchievementsTable } from './achievements/AchievementsTable';
-import { CreateAchievementDialog } from './achievements/CreateAchievementDialog';
-import { EditAchievementDialog } from './achievements/EditAchievementDialog';
-import { DeleteAchievementDialog } from './achievements/DeleteAchievementDialog';
-import type { AchievementFormData } from './achievements/AchievementFormFields';
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Store & Achievements', href: '/store' },
@@ -157,6 +157,8 @@ export default function AchievementsPage({
     };
 
     useEffect(() => {
+        // Sync props to local state when filters change (e.g. from navigation)
+         
         setSearch(filters.search);
     }, [filters.search]);
 
@@ -173,6 +175,8 @@ export default function AchievementsPage({
             }, { preserveState: true });
         }, 300);
         return () => clearTimeout(t);
+        // Intentionally only when search changes to avoid request loops
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [search]);
 
     const updateFilters = useCallback(

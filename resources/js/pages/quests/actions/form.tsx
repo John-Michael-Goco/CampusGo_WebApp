@@ -1,10 +1,10 @@
 import { Head, Link, useForm, usePage, router } from '@inertiajs/react';
+import { ArrowLeft, ChevronDown, Lightbulb } from 'lucide-react';
 import { useState } from 'react';
-import { ChevronDown, Lightbulb } from 'lucide-react';
-import AppLayout from '@/layouts/app-layout';
-import type { BreadcrumbItem } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import AppLayout from '@/layouts/app-layout';
+import type { BreadcrumbItem } from '@/types';
 import { QuestFormFields } from './QuestFormFields';
 import type { CreateQuestFormData, EnrollmentSemester } from './types';
 import { INITIAL_FORM_DATA } from './types';
@@ -61,10 +61,11 @@ export default function QuestFormPage() {
     const { questId, questData, enrollmentSemester } = usePage<PageProps>().props;
     const auth = (usePage().props as { auth?: { user?: { role?: string } } }).auth;
     const isEdit = typeof questId === 'number';
-    const initialData = questData ?? { ...INITIAL_FORM_DATA };
-    if (!isEdit && auth?.user?.role === 'professor' && !['custom', 'event'].includes(initialData.quest_type)) {
-        initialData.quest_type = 'custom';
-    }
+    const baseData = questData ?? { ...INITIAL_FORM_DATA };
+    const initialData =
+        !isEdit && auth?.user?.role === 'professor' && !['custom', 'event'].includes(baseData.quest_type)
+            ? { ...baseData, quest_type: 'custom' as const }
+            : baseData;
     const form = useForm<CreateQuestFormData>(initialData);
     const [guideOpen, setGuideOpen] = useState(false);
     const [clientErrors, setClientErrors] = useState<Record<string, string>>({});
@@ -120,10 +121,17 @@ export default function QuestFormPage() {
             <Head title={isEdit ? 'Edit Quest' : 'Create Quest'} />
             <div className="flex h-full flex-1 flex-col gap-6 rounded-xl p-4">
                 <div className="flex flex-wrap items-center justify-between gap-4">
-                    <h1 className="text-xl font-semibold">{isEdit ? 'Edit Quest' : 'Create Quest'}</h1>
-                    <Button variant="outline" size="sm" asChild>
-                        <Link href="/quests/active">Back to active quests</Link>
-                    </Button>
+                    <div className="flex items-center gap-3">
+                        <Button variant="ghost" size="icon" asChild>
+                            <Link
+                                href={isEdit && questId ? `/quests/${questId}` : '/quests/active'}
+                                aria-label={isEdit ? 'Back to quest' : 'Back to active quests'}
+                            >
+                                <ArrowLeft className="size-4" />
+                            </Link>
+                        </Button>
+                        <h1 className="text-xl font-semibold">{isEdit ? 'Edit Quest' : 'Create Quest'}</h1>
+                    </div>
                 </div>
 
                 <div className="mx-auto w-full max-w-4xl">
@@ -167,7 +175,7 @@ export default function QuestFormPage() {
 
                     <div className="mt-8 flex items-center justify-end gap-3">
                         <Button variant="outline" asChild>
-                            <Link href="/quests/active">Cancel</Link>
+                            <Link href={isEdit && questId ? `/quests/${questId}` : '/quests/active'}>Cancel</Link>
                         </Button>
                         <Button type="button" onClick={handleContinue}>
                             Continue

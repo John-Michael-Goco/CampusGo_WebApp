@@ -1,8 +1,9 @@
+import { Head, Link, router, usePage } from '@inertiajs/react';
+import { ArrowLeft } from 'lucide-react';
 import { useState } from 'react';
-import { Head, router, usePage } from '@inertiajs/react';
+import { Button } from '@/components/ui/button';
 import AppLayout from '@/layouts/app-layout';
 import type { BreadcrumbItem } from '@/types';
-import { Button } from '@/components/ui/button';
 import { StageForm } from './StageForm';
 import type { StageFormData } from './stages-types';
 import { createEmptyStage } from './stages-types';
@@ -84,6 +85,10 @@ export default function QuestStagesPage({ questId, questData: rawQuestData, exis
 
     const isLastStage = currentIdx === numStages - 1;
 
+    /** Returns only choices that have non-empty choice_text (used for validation and payload). */
+    const getFilledChoices = (choices: { choice_text: string; is_correct: boolean }[] | undefined) =>
+        (choices ?? []).filter((c) => (c.choice_text ?? '').trim() !== '');
+
     const validateStages = (): string[] => {
         const errs: string[] = [];
         if (questData.is_elimination) {
@@ -130,15 +135,11 @@ export default function QuestStagesPage({ questId, questData: rawQuestData, exis
                 } else {
                     s.questions.forEach((q, qi) => {
                         if (!q.question_text.trim()) errs.push(`${label}, Q${qi + 1}: Question text is required.`);
-                        if (!q.choices || q.choices.length < 2) {
-                            errs.push(`${label}, Q${qi + 1}: At least 2 choices are required.`);
-                        } else {
-                            q.choices.forEach((c, ci) => {
-                                if (!c.choice_text.trim()) errs.push(`${label}, Q${qi + 1}, Choice ${ci + 1}: Choice text is required.`);
-                            });
-                            if (!q.choices.some((c) => c.is_correct)) {
-                                errs.push(`${label}, Q${qi + 1}: Select a correct answer.`);
-                            }
+                        const filled = getFilledChoices(q.choices);
+                        if (filled.length < 2) {
+                            errs.push(`${label}, Q${qi + 1}: At least 2 filled choices are required (empty choices are ignored).`);
+                        } else if (!filled.some((c) => c.is_correct)) {
+                            errs.push(`${label}, Q${qi + 1}: Select a correct answer.`);
                         }
                     });
                 }
@@ -155,9 +156,16 @@ export default function QuestStagesPage({ questId, questData: rawQuestData, exis
         }
         setClientErrors([]);
         setSubmitting(true);
+        const stagesWithFilledChoicesOnly = stages.map((s) => ({
+            ...s,
+            questions: s.questions.map((q) => ({
+                ...q,
+                choices: getFilledChoices(q.choices),
+            })),
+        }));
         const finalStages = questData.is_elimination
-            ? stages
-            : stages.map((s) => ({
+            ? stagesWithFilledChoicesOnly
+            : stagesWithFilledChoicesOnly.map((s) => ({
                 ...s,
                 stage_deadline: questData.end_date || '',
                 max_survivors: '',
@@ -180,17 +188,30 @@ export default function QuestStagesPage({ questId, questData: rawQuestData, exis
             <Head title={`Quest Stage ${currentIdx + 1}`} />
             <div className="flex h-full flex-1 flex-col gap-6 rounded-xl p-4">
                 <div className="flex flex-wrap items-center justify-between gap-4">
-                    <h1 className="text-xl font-semibold">
-                        Stage {currentIdx + 1}
-                        {numStages > 1 && (
-                            <span className="ml-2 text-sm font-normal text-muted-foreground">
-                                of {numStages}
-                            </span>
+                    <div className="flex items-center gap-3">
+                        {currentIdx > 0 ? (
+                            <Button variant="ghost" size="icon" onClick={() => setCurrentIdx(currentIdx - 1)} aria-label="Previous stage">
+                                <ArrowLeft className="size-4" />
+                            </Button>
+                        ) : (
+                            <Button variant="ghost" size="icon" asChild>
+                                <Link
+                                    href={isEdit && questId ? `/quests/${questId}/edit` : '/quests/create'}
+                                    aria-label="Back to quest details"
+                                >
+                                    <ArrowLeft className="size-4" />
+                                </Link>
+                            </Button>
                         )}
-                    </h1>
-                    <Button variant="outline" size="sm" onClick={handleBack}>
-                        {currentIdx > 0 ? 'Previous stage' : 'Back to quest details'}
-                    </Button>
+                        <h1 className="text-xl font-semibold">
+                            Stage {currentIdx + 1}
+                            {numStages > 1 && (
+                                <span className="ml-2 text-sm font-normal text-muted-foreground">
+                                    of {numStages}
+                                </span>
+                            )}
+                        </h1>
+                    </div>
                 </div>
 
                 {hasErrors && (

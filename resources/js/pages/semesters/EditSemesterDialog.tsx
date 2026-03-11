@@ -1,3 +1,4 @@
+import { Button } from '@/components/ui/button';
 import {
     Dialog,
     DialogContent,
@@ -6,12 +7,12 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import {
-    SemesterFormFields,
-    type SemesterFormData,
+    SemesterFormFields
+    
 } from './SemesterFormFields';
+import type {SemesterFormData} from './SemesterFormFields';
 
 type Props = {
     open: boolean;

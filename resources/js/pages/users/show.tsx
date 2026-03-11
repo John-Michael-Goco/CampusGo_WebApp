@@ -1,8 +1,6 @@
 import { Head, Link, router } from '@inertiajs/react';
 import { ArrowLeft, User } from 'lucide-react';
 import { useMemo, useState } from 'react';
-import AppLayout from '@/layouts/app-layout';
-import type { BreadcrumbItem } from '@/types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -13,9 +11,11 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import AppLayout from '@/layouts/app-layout';
 import { QuestSearchInput } from '@/pages/quests/shared';
 import { formatQuestDate } from '@/pages/quests/shared';
 import { approvalStatusLabel, approvalStatusVariant } from '@/pages/quests/shared/approval-status';
+import type { BreadcrumbItem } from '@/types';
 
 type UserShow = {
     id: number;
@@ -54,9 +54,19 @@ type QuestParticipated = {
     joined_at: string | null;
 };
 
+type AchievementUnlocked = {
+    id: number;
+    achievement_id: number;
+    name: string;
+    description: string | null;
+    requirement_type: string | null;
+    earned_at: string | null;
+};
+
 type Props = {
     user: UserShow;
     can_change_role: boolean;
+    achievements_unlocked: AchievementUnlocked[];
     quests_created: QuestCreated[];
     quests_participated: QuestParticipated[];
 };
@@ -72,7 +82,20 @@ function participantStatusLabel(status: string): string {
     return map[status] ?? status;
 }
 
-export default function UserShowPage({ user, can_change_role, quests_created, quests_participated }: Props) {
+function formatDateTime(iso: string | null): string {
+    if (!iso) return '—';
+    try {
+        const d = new Date(iso);
+        return d.toLocaleString(undefined, {
+            dateStyle: 'medium',
+            timeStyle: 'short',
+        });
+    } catch {
+        return '—';
+    }
+}
+
+export default function UserShowPage({ user, can_change_role, achievements_unlocked, quests_created, quests_participated }: Props) {
     const [questSearch, setQuestSearch] = useState('');
     const [participationSearch, setParticipationSearch] = useState('');
     const [updatingRole, setUpdatingRole] = useState(false);
@@ -234,52 +257,92 @@ export default function UserShowPage({ user, can_change_role, quests_created, qu
                 </section>
 
                 {user.role === 'student' && (
-                    <section className="rounded-lg border bg-card p-4">
-                        <h2 className="mb-4 text-sm font-medium text-muted-foreground uppercase tracking-wide">
-                            Quests participated
-                        </h2>
-                        <div className="mb-4">
-                            <QuestSearchInput
-                                value={participationSearch}
-                                onChange={setParticipationSearch}
-                                placeholder="Search by quest title or status..."
-                            />
-                        </div>
-                        <div className="overflow-hidden rounded-md border">
-                            <table className="w-full text-sm">
-                                <thead>
-                                    <tr className="border-b bg-muted/50">
-                                        <th className="h-10 px-4 text-left font-medium">Quest</th>
-                                        <th className="h-10 px-4 text-left font-medium">Status</th>
-                                        <th className="h-10 px-4 text-left font-medium">Stage</th>
-                                        <th className="h-10 px-4 text-left font-medium">Quest status</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {filteredParticipations.length === 0 ? (
-                                        <tr>
-                                            <td colSpan={4} className="h-20 px-4 text-center text-muted-foreground">
-                                                {participationSearch.trim()
-                                                    ? 'No participations match your search.'
-                                                    : 'No quest participations yet.'}
-                                            </td>
+                    <>
+                        <section className="rounded-lg border bg-card p-4">
+                            <h2 className="mb-4 text-sm font-medium text-muted-foreground uppercase tracking-wide">
+                                Achievements unlocked
+                            </h2>
+                            <div className="overflow-hidden rounded-md border">
+                                <table className="w-full text-sm">
+                                    <thead>
+                                        <tr className="border-b bg-muted/50">
+                                            <th className="h-10 px-4 text-left font-medium">Achievement</th>
+                                            <th className="h-10 px-4 text-left font-medium">Description</th>
+                                            <th className="h-10 px-4 text-left font-medium">Earned at</th>
                                         </tr>
-                                    ) : (
-                                        filteredParticipations.map((p) => (
-                                            <tr key={p.id} className="border-b transition-colors hover:bg-muted/30">
-                                                <td className="px-4 py-3 font-medium">{p.quest_title}</td>
-                                                <td className="px-4 py-3">{participantStatusLabel(p.participant_status)}</td>
-                                                <td className="px-4 py-3">{p.current_stage}</td>
-                                                <td className="px-4 py-3 text-muted-foreground capitalize">
-                                                    {p.quest_status ?? '—'}
+                                    </thead>
+                                    <tbody>
+                                        {achievements_unlocked.length === 0 ? (
+                                            <tr>
+                                                <td colSpan={3} className="h-20 px-4 text-center text-muted-foreground">
+                                                    No achievements unlocked yet.
                                                 </td>
                                             </tr>
-                                        ))
-                                    )}
-                                </tbody>
-                            </table>
-                        </div>
-                    </section>
+                                        ) : (
+                                            achievements_unlocked.map((a) => (
+                                                <tr key={a.id} className="border-b transition-colors hover:bg-muted/30">
+                                                    <td className="px-4 py-3 font-medium">{a.name}</td>
+                                                    <td className="px-4 py-3 text-muted-foreground">
+                                                        {a.description ?? '—'}
+                                                    </td>
+                                                    <td className="px-4 py-3 text-muted-foreground">
+                                                        {formatDateTime(a.earned_at)}
+                                                    </td>
+                                                </tr>
+                                            ))
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </section>
+
+                        <section className="rounded-lg border bg-card p-4">
+                            <h2 className="mb-4 text-sm font-medium text-muted-foreground uppercase tracking-wide">
+                                Quests participated
+                            </h2>
+                            <div className="mb-4">
+                                <QuestSearchInput
+                                    value={participationSearch}
+                                    onChange={setParticipationSearch}
+                                    placeholder="Search by quest title or status..."
+                                />
+                            </div>
+                            <div className="overflow-hidden rounded-md border">
+                                <table className="w-full text-sm">
+                                    <thead>
+                                        <tr className="border-b bg-muted/50">
+                                            <th className="h-10 px-4 text-left font-medium">Quest</th>
+                                            <th className="h-10 px-4 text-left font-medium">Status</th>
+                                            <th className="h-10 px-4 text-left font-medium">Stage</th>
+                                            <th className="h-10 px-4 text-left font-medium">Quest status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {filteredParticipations.length === 0 ? (
+                                            <tr>
+                                                <td colSpan={4} className="h-20 px-4 text-center text-muted-foreground">
+                                                    {participationSearch.trim()
+                                                        ? 'No participations match your search.'
+                                                        : 'No quest participations yet.'}
+                                                </td>
+                                            </tr>
+                                        ) : (
+                                            filteredParticipations.map((p) => (
+                                                <tr key={p.id} className="border-b transition-colors hover:bg-muted/30">
+                                                    <td className="px-4 py-3 font-medium">{p.quest_title}</td>
+                                                    <td className="px-4 py-3">{participantStatusLabel(p.participant_status)}</td>
+                                                    <td className="px-4 py-3">{p.current_stage}</td>
+                                                    <td className="px-4 py-3 text-muted-foreground capitalize">
+                                                        {p.quest_status ?? '—'}
+                                                    </td>
+                                                </tr>
+                                            ))
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </section>
+                    </>
                 )}
 
                 {(user.role === 'admin' || user.role === 'professor') && (

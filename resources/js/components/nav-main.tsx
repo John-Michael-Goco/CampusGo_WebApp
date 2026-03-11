@@ -21,8 +21,8 @@ import {
     SidebarMenuSubButton,
     SidebarMenuSubItem,
 } from '@/components/ui/sidebar';
-import { useCurrentUrl } from '@/hooks/use-current-url';
 import { useSidebar } from '@/components/ui/sidebar';
+import { useCurrentUrl } from '@/hooks/use-current-url';
 import type { NavItem } from '@/types';
 
 function NavItemLink({ item }: { item: NavItem }) {
@@ -68,8 +68,13 @@ function NavItemCollapsible({ item }: { item: NavItem }) {
                     <DropdownMenuContent side="right" align="start" sideOffset={4} className="min-w-[10rem]">
                         {item.items?.map((sub) => (
                             <DropdownMenuItem key={sub.title} asChild>
-                                <Link href={sub.href} prefetch className="flex cursor-pointer">
-                                    {sub.title}
+                                <Link href={sub.href} prefetch className="flex cursor-pointer items-center justify-between gap-2">
+                                    <span>{sub.title}</span>
+                                    {sub.badge != null && sub.badge > 0 && (
+                                        <span className="flex size-5 min-w-[1.25rem] items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold text-primary-foreground">
+                                            {sub.badge > 99 ? '99+' : sub.badge}
+                                        </span>
+                                    )}
                                 </Link>
                             </DropdownMenuItem>
                         ))}
@@ -106,8 +111,13 @@ function NavItemCollapsible({ item }: { item: NavItem }) {
                                     isActive={isCurrentUrl(sub.href)}
                                     className="cursor-pointer"
                                 >
-                                    <Link href={sub.href} prefetch>
+                                    <Link href={sub.href} prefetch className="flex w-full items-center justify-between gap-2">
                                         <span>{sub.title}</span>
+                                        {sub.badge != null && sub.badge > 0 && (
+                                            <span className="flex size-5 min-w-[1.25rem] shrink-0 items-center justify-center rounded-full bg-primary text-[10px] font-semibold text-primary-foreground">
+                                                {sub.badge > 99 ? '99+' : sub.badge}
+                                            </span>
+                                        )}
                                     </Link>
                                 </SidebarMenuSubButton>
                             </SidebarMenuSubItem>

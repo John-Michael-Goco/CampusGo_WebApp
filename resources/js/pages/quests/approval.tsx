@@ -1,9 +1,15 @@
-import { Head, router } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
+import { Check, Eye, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
-import { Check, X } from 'lucide-react';
-import AppLayout from '@/layouts/app-layout';
-import type { BreadcrumbItem } from '@/types';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 import {
     Table,
     TableScroll,
@@ -12,12 +18,16 @@ import {
     tableCellClass,
     tableEmptyClass,
 } from '@/components/ui/table';
+import AppLayout from '@/layouts/app-layout';
+import type { BreadcrumbItem } from '@/types';
 import type { PendingQuest, PaginatedQuests } from './shared';
-import { QuestSearchInput, formatQuestDate } from './shared';
+import { QuestSearchInput, formatQuestDate, approvalStatusLabel, approvalStatusVariant } from './shared';
+
+type StatusFilter = 'all' | 'pending' | 'approved' | 'rejected';
 
 type Props = {
     quests: PaginatedQuests<PendingQuest>;
-    filters?: { search?: string };
+    filters?: { search?: string; status?: string };
 };
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -32,11 +42,23 @@ const approvalBodyRowClass =
 
 export default function QuestApprovalPage({ quests, filters = {} }: Props) {
     const [search, setSearch] = useState(filters.search ?? '');
+    const [statusFilter, setStatusFilter] = useState<StatusFilter>(
+        (filters.status as StatusFilter) || 'pending'
+    );
     const isInitialMount = useRef(true);
 
     useEffect(() => {
+        // Sync props to local state when filters change (e.g. from navigation)
+         
         setSearch(filters.search ?? '');
-    }, [filters.search]);
+        setStatusFilter((filters.status as StatusFilter) || 'pending');
+         
+    }, [filters.search, filters.status]);
+
+    const getParams = (overrides?: { search?: string; status?: StatusFilter }) => ({
+        search: (overrides?.search !== undefined ? overrides.search : search) || undefined,
+        status: (overrides?.status !== undefined ? overrides.status : statusFilter) || undefined,
+    });
 
     useEffect(() => {
         if (isInitialMount.current) {
@@ -44,10 +66,18 @@ export default function QuestApprovalPage({ quests, filters = {} }: Props) {
             return;
         }
         const t = setTimeout(() => {
-            router.get('/quests/approval', { search: search || undefined }, { preserveState: true });
+            router.get('/quests/approval', getParams(), { preserveState: true });
         }, 300);
         return () => clearTimeout(t);
+        // Intentionally only when search changes to avoid request loops
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [search]);
+
+    const handleStatusChange = (value: string) => {
+        const newStatus = (value === 'all' ? 'all' : value) as StatusFilter;
+        setStatusFilter(newStatus);
+        router.get('/quests/approval', getParams({ status: newStatus }), { preserveState: true });
+    };
 
     const handleApprove = (questId: number) => {
         router.put(`/quests/${questId}/approve`, { approval_status: 'approved' }, { preserveScroll: true });
@@ -65,7 +95,22 @@ export default function QuestApprovalPage({ quests, filters = {} }: Props) {
             <div className="flex h-full flex-1 flex-col gap-4 rounded-xl p-4">
                 <h1 className="text-xl font-semibold">Pending Approval</h1>
 
-                <QuestSearchInput value={search} onChange={setSearch} />
+                <div className="flex flex-wrap items-center gap-3">
+                    <div className="relative flex flex-1 min-w-[200px]">
+                        <QuestSearchInput value={search} onChange={setSearch} />
+                    </div>
+                    <Select value={statusFilter} onValueChange={handleStatusChange}>
+                        <SelectTrigger className="w-[180px]">
+                            <SelectValue placeholder="Status" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="pending">Pending</SelectItem>
+                            <SelectItem value="approved">Approved</SelectItem>
+                            <SelectItem value="rejected">Rejected</SelectItem>
+                            <SelectItem value="all">All</SelectItem>
+                        </SelectContent>
+                    </Select>
+                </div>
 
                 <Table className="border-orange-200/60 dark:border-orange-900/40 ring-1 ring-orange-200/20 dark:ring-orange-800/20">
                     <TableScroll>
@@ -74,6 +119,7 @@ export default function QuestApprovalPage({ quests, filters = {} }: Props) {
                                 <tr className={approvalHeaderRowClass}>
                                     <th className={tableHeadClass}>Title</th>
                                     <th className={tableHeadClass}>Type</th>
+                                    <th className={tableHeadClass}>Status</th>
                                     <th className={tableHeadClass}>Created</th>
                                     <th className={`${tableHeadClass} text-right`}>Actions</th>
                                 </tr>
@@ -81,8 +127,10 @@ export default function QuestApprovalPage({ quests, filters = {} }: Props) {
                             <tbody>
                                 {items.length === 0 ? (
                                     <tr className={approvalBodyRowClass}>
-                                        <td colSpan={4} className={tableEmptyClass}>
-                                            No quests pending approval.
+                                        <td colSpan={5} className={tableEmptyClass}>
+                                            {statusFilter === 'pending'
+                                                ? 'No quests pending approval.'
+                                                : 'No quests found.'}
                                         </td>
                                     </tr>
                                 ) : (
@@ -93,29 +141,48 @@ export default function QuestApprovalPage({ quests, filters = {} }: Props) {
                                         >
                                             <td className={`${tableCellClass} font-medium`}>{quest.title}</td>
                                             <td className={`${tableCellClass} capitalize`}>{quest.quest_type}</td>
+                                            <td className={tableCellClass}>
+                                                <Badge variant={approvalStatusVariant(quest.approval_status)}>
+                                                    {approvalStatusLabel(quest.approval_status)}
+                                                </Badge>
+                                            </td>
                                             <td className={`${tableCellClass} text-muted-foreground`}>
                                                 {formatQuestDate(quest.created_at)}
                                             </td>
                                             <td className={`${tableCellClass} text-right`}>
                                                 <div className="flex justify-end gap-2">
                                                     <Button
-                                                        type="button"
+                                                        variant="outline"
                                                         size="sm"
-                                                        variant="default"
-                                                        onClick={() => handleApprove(quest.id)}
+                                                        asChild
                                                     >
-                                                        <Check className="mr-1 size-4" />
-                                                        Approve
+                                                        <Link href={`/quests/${quest.id}?from=approval&approval_status_filter=${statusFilter}`}>
+                                                            <Eye className="mr-1 size-4" />
+                                                            View
+                                                        </Link>
                                                     </Button>
-                                                    <Button
-                                                        type="button"
-                                                        size="sm"
-                                                        variant="destructive"
-                                                        onClick={() => handleReject(quest.id)}
-                                                    >
-                                                        <X className="mr-1 size-4" />
-                                                        Reject
-                                                    </Button>
+                                                    {quest.approval_status === 'pending' && (
+                                                        <>
+                                                            <Button
+                                                                type="button"
+                                                                size="sm"
+                                                                variant="default"
+                                                                onClick={() => handleApprove(quest.id)}
+                                                            >
+                                                                <Check className="mr-1 size-4" />
+                                                                Approve
+                                                            </Button>
+                                                            <Button
+                                                                type="button"
+                                                                size="sm"
+                                                                variant="destructive"
+                                                                onClick={() => handleReject(quest.id)}
+                                                            >
+                                                                <X className="mr-1 size-4" />
+                                                                Reject
+                                                            </Button>
+                                                        </>
+                                                    )}
                                                 </div>
                                             </td>
                                         </tr>
@@ -128,7 +195,7 @@ export default function QuestApprovalPage({ quests, filters = {} }: Props) {
 
                 {quests.total > 0 && (
                     <p className="text-sm text-muted-foreground">
-                        Showing {items.length} of {quests.total} pending.
+                        Showing {items.length} of {quests.total}.
                     </p>
                 )}
             </div>

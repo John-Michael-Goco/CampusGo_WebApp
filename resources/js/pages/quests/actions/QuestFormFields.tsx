@@ -1,17 +1,12 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
 import { usePage } from '@inertiajs/react';
 import { parse, isValid } from 'date-fns';
 import { Info } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import InputError from '@/components/input-error';
 import { Checkbox } from '@/components/ui/checkbox';
+import { DateTimePicker } from '@/components/ui/date-time-picker';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-    Tooltip,
-    TooltipContent,
-    TooltipProvider,
-    TooltipTrigger,
-} from '@/components/ui/tooltip';
 import {
     Select,
     SelectContent,
@@ -20,7 +15,12 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { DateTimePicker } from '@/components/ui/date-time-picker';
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from '@/components/ui/tooltip';
 import type { CreateQuestFormData, EnrollmentSemester, QuestType, QuestionTypeLevel, TargetGroup } from './types';
 import {
     ACT_YEAR_LEVEL_OPTIONS,
@@ -75,6 +75,7 @@ export function QuestFormFields({ data, errors, setData, enrollmentSemester }: P
         target.course === 'ACT' ? ACT_YEAR_LEVEL_OPTIONS : YEAR_LEVEL_OPTIONS;
 
     useEffect(() => {
+        /* eslint-disable react-hooks/set-state-in-effect -- reset/load sections when course or year_level changes */
         if (!target.course || !target.year_level) {
             setSections([]);
             return;
@@ -88,6 +89,7 @@ export function QuestFormFields({ data, errors, setData, enrollmentSemester }: P
             .then((data: string[]) => setSections(data))
             .catch(() => setSections([]))
             .finally(() => setLoadingSections(false));
+        /* eslint-enable react-hooks/set-state-in-effect */
     }, [target.course, target.year_level]);
 
     const handleTargetTypeChange = (value: string) => {

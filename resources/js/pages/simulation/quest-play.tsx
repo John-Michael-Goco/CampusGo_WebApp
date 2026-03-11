@@ -1,6 +1,6 @@
 import { Head, Link, router, usePage } from '@inertiajs/react';
-import { useState } from 'react';
 import { ArrowLeft, CheckCircle2, XCircle, Send, Trophy, Clock } from 'lucide-react';
+import { useState } from 'react';
 
 type Choice = {
     id: number;

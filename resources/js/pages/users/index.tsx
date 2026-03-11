@@ -1,18 +1,17 @@
 import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
-import { useCallback, useEffect, useRef, useState } from 'react';
 import { ArrowLeft, ArrowRight } from 'lucide-react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import AppLayout from '@/layouts/app-layout';
 import type { BreadcrumbItem } from '@/types';
-import type { UsersIndexProps } from './types';
+import { CreateGamemasterDialog } from './CreateGamemasterDialog';
+import { DeleteUserDialog } from './DeleteUserDialog';
+import type { UserListItem, UsersIndexProps } from './types';
+import { UsersFilters } from './UsersFilters';
+import { UsersTable } from './UsersTable';
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Users', href: '/users' },
 ];
-import { CreateGamemasterDialog } from './CreateGamemasterDialog';
-import { DeleteUserDialog } from './DeleteUserDialog';
-import { UsersFilters } from './UsersFilters';
-import { UsersTable } from './UsersTable';
-import type { UserListItem } from './types';
 
 const ADD_ROLE_OPTIONS = [
     { value: 'admin', label: 'Admin' },
@@ -67,6 +66,8 @@ export default function UsersIndex({
     };
 
     useEffect(() => {
+        // Sync props to local state when filters change (e.g. from navigation)
+         
         setSearch(filters.search);
     }, [filters.search]);
 
@@ -84,6 +85,8 @@ export default function UsersIndex({
             }, { preserveState: true });
         }, 300);
         return () => clearTimeout(t);
+        // Intentionally only when search changes to avoid request loops
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [search]);
 
     const updateFilters = useCallback(

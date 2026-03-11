@@ -7,6 +7,7 @@ use App\Models\MasterUser;
 use App\Models\PointTransaction;
 use App\Models\Quest;
 use App\Models\QuestParticipant;
+use App\Models\User;
 use App\Models\QuestQuestionChoice;
 use App\Models\Submission;
 use App\Models\Semester;
@@ -20,15 +21,20 @@ use Inertia\Response;
 class QuestController extends Controller
 {
     /**
-     * Show pending quests (admin only: approve or reject).
+     * Show quests for approval (admin only). Filter by approval status via dropdown.
      */
     public function pending(Request $request): Response
     {
         $search = (string) $request->query('search', '');
+        $status = (string) $request->query('status', 'pending');
 
         $query = Quest::query()
-            ->where('approval_status', 'pending')
+            ->with(['creator:id,name'])
             ->orderByDesc('created_at');
+
+        if (in_array($status, ['pending', 'approved', 'rejected'], true)) {
+            $query->where('approval_status', $status);
+        }
 
         if ($search !== '') {
             $query->where(function ($q) use ($search) {
@@ -41,20 +47,25 @@ class QuestController extends Controller
 
         return Inertia::render('quests/approval', [
             'quests' => $quests,
-            'filters' => ['search' => $search],
+            'filters' => ['search' => $search, 'status' => $status],
         ]);
     }
 
     /**
-     * Show quests created by the current user (gamemaster: "Created Quests").
+     * Show quests created by the current user (gamemaster: "Created Quests" / professor "Approval"). Filter by approval status via dropdown.
      */
     public function createdByMe(Request $request): Response
     {
         $search = (string) $request->query('search', '');
+        $status = (string) $request->query('status', 'pending');
 
         $query = Quest::query()
             ->where('created_by', $request->user()->id)
             ->orderByDesc('created_at');
+
+        if (in_array($status, ['pending', 'approved', 'rejected'], true)) {
+            $query->where('approval_status', $status);
+        }
 
         if ($search !== '') {
             $query->where(function ($q) use ($search) {
@@ -67,12 +78,12 @@ class QuestController extends Controller
 
         return Inertia::render('quests/created', [
             'quests' => $quests,
-            'filters' => ['search' => $search],
+            'filters' => ['search' => $search, 'status' => $status],
         ]);
     }
 
     /**
-     * Show quest history: completed or cancelled quests. Professor sees only their created quests; admin sees all.
+     * Show quest history: completed or cancelled quests. Admin and professor see all; use "Created by me" filter to restrict.
      */
     public function history(Request $request): Response
     {
@@ -86,9 +97,7 @@ class QuestController extends Controller
             ->whereIn('status', ['completed', 'cancelled'])
             ->orderByDesc('updated_at');
 
-        if ($user->role === 'professor') {
-            $query->where('created_by', $user->id);
-        } elseif ($createdByMe) {
+        if ($createdByMe) {
             $query->where('created_by', $user->id);
         }
 
@@ -242,8 +251,8 @@ class QuestController extends Controller
                 'max_participants' => $questInput['max_participants'] ? (int) $questInput['max_participants'] : 0,
                 'created_by' => $user->id,
                 'approval_status' => $isAdmin ? 'approved' : 'pending',
-                'creation_payment_status' => $isAdmin ? 'paid' : 'pending',
-                'creation_cost_points' => $isAdmin ? 0 : 0,
+                'creation_payment_status' => ($isAdmin || $user->role === 'professor') ? 'paid' : 'pending',
+                'creation_cost_points' => ($isAdmin || $user->role === 'professor') ? 0 : 0,
                 'start_date' => $questInput['start_date'] ?: null,
                 'end_date' => $questInput['end_date'] ?: null,
                 'semester_id' => $semesterId,
@@ -276,11 +285,16 @@ class QuestController extends Controller
                             'question_type' => 'multiple_choice',
                         ]);
 
-                        foreach ($qInput['choices'] ?? [] as $sortOrder => $choiceInput) {
+                        $sortOrder = 0;
+                        foreach ($qInput['choices'] ?? [] as $choiceInput) {
+                            $choiceText = trim((string) ($choiceInput['choice_text'] ?? ''));
+                            if ($choiceText === '') {
+                                continue;
+                            }
                             QuestQuestionChoice::create([
                                 'quest_question_id' => $question->id,
-                                'choice_text' => $choiceInput['choice_text'] ?? '',
-                                'sort_order' => $sortOrder,
+                                'choice_text' => $choiceText,
+                                'sort_order' => $sortOrder++,
                                 'is_correct' => (bool) ($choiceInput['is_correct'] ?? false),
                             ]);
                         }
@@ -302,7 +316,7 @@ class QuestController extends Controller
     /**
      * Show a single quest (read-only view).
      */
-    public function show(Quest $quest): Response
+    public function show(Request $request, Quest $quest): Response
     {
         $quest->load('targetGroups', 'stages.questions.choices', 'creator:id,name', 'participants.user:id,name,email,profile_image');
 
@@ -329,6 +343,7 @@ class QuestController extends Controller
                 ];
             })->all();
             return [
+                'id' => $stage->id,
                 'stage_number' => $stage->stage_number,
                 'location_hint' => $stage->location_hint,
                 'max_survivors' => $stage->max_survivors,
@@ -366,6 +381,18 @@ class QuestController extends Controller
             return $payload;
         })->values()->all();
 
+        $from = $request->query('from');
+        $createdStatus = $request->query('created_status');
+        $approvalStatusFilter = $request->query('approval_status_filter');
+        $activeSearch = $request->query('active_search');
+        $activeQuestType = $request->query('active_quest_type');
+        $activeCreatedByMe = $request->query('active_created_by_me');
+        $activeSortBy = $request->query('active_sort_by');
+        $activeSortDir = $request->query('active_sort_dir');
+        $historySearch = $request->query('history_search');
+        $historyQuestType = $request->query('history_quest_type');
+        $historyCreatedByMe = $request->query('history_created_by_me');
+
         return Inertia::render('quests/show', [
             'quest' => [
                 'id' => $quest->id,
@@ -386,6 +413,73 @@ class QuestController extends Controller
                 'stages' => $stages,
                 'participants' => $participants,
             ],
+            'from' => $from,
+            'created_status' => $createdStatus,
+            'approval_status_filter' => $approvalStatusFilter,
+            'active_search' => $activeSearch,
+            'active_quest_type' => $activeQuestType,
+            'active_created_by_me' => $activeCreatedByMe,
+            'active_sort_by' => $activeSortBy,
+            'active_sort_dir' => $activeSortDir,
+            'history_search' => $historySearch,
+            'history_quest_type' => $historyQuestType,
+            'history_created_by_me' => $historyCreatedByMe,
+        ]);
+    }
+
+    /**
+     * Show a print-friendly page with all stage QR codes (2 per page).
+     * Admin: any quest. Professor: only quests they created that are approved (not pending/rejected).
+     */
+    public function printQr(Request $request, Quest $quest): Response
+    {
+        $user = $request->user();
+        if ($user->role === 'admin') {
+            // allow
+        } elseif ($user->role === 'professor' && (int) $quest->created_by === (int) $user->id) {
+            // allow professor to print QR for any quest they created (active, history, etc.)
+        } else {
+            abort(403, 'You do not have permission to print QR codes for this quest.');
+        }
+
+        $quest->load('stages');
+
+        $stages = $quest->stages->sortBy('stage_number')->values()->map(fn ($stage) => [
+            'id' => $stage->id,
+            'stage_number' => $stage->stage_number,
+        ])->all();
+
+        $from = $request->query('from');
+        $list = $request->query('list');
+        $createdStatus = $request->query('created_status');
+        $approvalStatusFilter = $request->query('approval_status_filter');
+        $activeSearch = $request->query('active_search');
+        $activeQuestType = $request->query('active_quest_type');
+        $activeCreatedByMe = $request->query('active_created_by_me');
+        $activeSortBy = $request->query('active_sort_by');
+        $activeSortDir = $request->query('active_sort_dir');
+        $historySearch = $request->query('history_search');
+        $historyQuestType = $request->query('history_quest_type');
+        $historyCreatedByMe = $request->query('history_created_by_me');
+
+        return Inertia::render('quests/print-qr', [
+            'quest' => [
+                'id' => $quest->id,
+                'title' => $quest->title,
+            ],
+            'stages' => $stages,
+            'from' => $from,
+            'list' => $list,
+            'created_status' => $createdStatus,
+            'approval_status_filter' => $approvalStatusFilter,
+            'active_search' => $activeSearch,
+            'active_quest_type' => $activeQuestType,
+            'active_created_by_me' => $activeCreatedByMe,
+            'active_sort_by' => $activeSortBy,
+            'active_sort_dir' => $activeSortDir,
+            'history_search' => $historySearch,
+            'history_quest_type' => $historyQuestType,
+            'history_created_by_me' => $historyCreatedByMe,
         ]);
     }
 
@@ -558,11 +652,16 @@ class QuestController extends Controller
                             'question_type' => 'multiple_choice',
                         ]);
 
-                        foreach ($qInput['choices'] ?? [] as $sortOrder => $choiceInput) {
+                        $sortOrder = 0;
+                        foreach ($qInput['choices'] ?? [] as $choiceInput) {
+                            $choiceText = trim((string) ($choiceInput['choice_text'] ?? ''));
+                            if ($choiceText === '') {
+                                continue;
+                            }
                             QuestQuestionChoice::create([
                                 'quest_question_id' => $question->id,
-                                'choice_text' => $choiceInput['choice_text'] ?? '',
-                                'sort_order' => $sortOrder,
+                                'choice_text' => $choiceText,
+                                'sort_order' => $sortOrder++,
                                 'is_correct' => (bool) ($choiceInput['is_correct'] ?? false),
                             ]);
                         }
@@ -618,6 +717,11 @@ class QuestController extends Controller
 
         ActivityLog::log($user->id, ActivityLog::ACTION_QUEST_DELETED, $title);
 
+        $referer = $request->header('Referer', '');
+        if (str_contains($referer, 'from=history')) {
+            return redirect()->route('quests.history')->with('success', 'Quest deleted.');
+        }
+
         return back()->with('success', 'Quest deleted.');
     }
 
@@ -631,12 +735,18 @@ class QuestController extends Controller
             'creation_payment_status' => ['nullable', 'string', 'in:paid,pending'],
         ]);
 
+        $creator = User::find($quest->created_by);
+        $isCreatorProfessor = $creator && $creator->role === 'professor';
+
         $updates = [
             'approval_status' => $validated['approval_status'],
             'creation_payment_status' => $request->user()->role === 'admin' && isset($validated['creation_payment_status'])
                 ? $validated['creation_payment_status']
-                : $quest->creation_payment_status,
+                : ($isCreatorProfessor ? 'paid' : $quest->creation_payment_status),
         ];
+        if ($isCreatorProfessor) {
+            $updates['creation_cost_points'] = 0;
+        }
         if ($validated['approval_status'] === 'rejected') {
             $updates['status'] = 'cancelled';
         }
@@ -644,6 +754,11 @@ class QuestController extends Controller
 
         $action = $validated['approval_status'] === 'approved' ? 'approved' : 'rejected';
         ActivityLog::log($request->user()->id, ActivityLog::ACTION_QUEST_UPDATED, sprintf('%s – %s', $quest->title, $action));
+
+        $referer = $request->header('Referer', '');
+        if (str_contains($referer, 'from=approval')) {
+            return redirect()->route('quests.approval')->with('success', 'Quest ' . $action . '.');
+        }
 
         return back()->with('success', 'Quest ' . $action . '.');
     }

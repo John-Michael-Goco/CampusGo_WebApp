@@ -1,6 +1,6 @@
 import { Head, Link, router } from '@inertiajs/react';
-import { cn } from '@/lib/utils';
 import { Trophy } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 export type SimulationLeaderboardEntry = {
     rank: number;

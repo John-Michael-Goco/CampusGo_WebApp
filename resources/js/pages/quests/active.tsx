@@ -1,6 +1,6 @@
 import { Head, Link, router, usePage } from '@inertiajs/react';
-import { useEffect, useRef, useState } from 'react';
 import { ArrowLeft, ArrowRight } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 import { sileo } from 'sileo';
 import AppLayout from '@/layouts/app-layout';
 import type { BreadcrumbItem } from '@/types';
@@ -18,13 +18,17 @@ export default function ActiveQuestsPage({
     quests,
     filters,
 }: ActiveQuestsPageProps) {
-    const canManageQuests = (usePage().props as { auth?: { canManageQuests?: boolean } }).auth?.canManageQuests ?? false;
+    const pageProps = usePage().props as { auth?: { canManageQuests?: boolean; user?: { id: number } } };
+    const canManageQuests = pageProps.auth?.canManageQuests ?? false;
+    const currentUserId = pageProps.auth?.user?.id;
     const questItems = quests.data ?? [];
     const [search, setSearch] = useState(filters.search);
     const [deletingQuest, setDeletingQuest] = useState<ActiveQuest | null>(null);
     const isInitialMount = useRef(true);
 
     useEffect(() => {
+        // Sync props to local state when filters change (e.g. from navigation)
+         
         setSearch(filters.search);
     }, [filters.search]);
 
@@ -47,6 +51,8 @@ export default function ActiveQuestsPage({
             );
         }, 300);
         return () => clearTimeout(t);
+        // Intentionally only when search changes to avoid request loops
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [search]);
 
     const applyFilters = (overrides: Partial<typeof filters> = {}) => {
@@ -63,6 +69,15 @@ export default function ActiveQuestsPage({
             { preserveState: true }
         );
     };
+
+    const getActiveReturnParams = () => ({
+        from: 'active',
+        active_search: search || undefined,
+        active_quest_type: filters.quest_type || undefined,
+        active_created_by_me: filters.created_by_me ? '1' : undefined,
+        active_sort_by: filters.sort_by,
+        active_sort_dir: filters.sort_dir,
+    });
 
     const handleDeleteConfirm = () => {
         if (!deletingQuest) return;
@@ -99,10 +114,12 @@ export default function ActiveQuestsPage({
 
                 <ActiveTable
                     quests={questItems}
-                    onView={(quest) => router.get(`/quests/${quest.id}`)}
+                    onView={(quest) => router.get(`/quests/${quest.id}`, getActiveReturnParams())}
                     onEdit={(quest) => router.get(`/quests/${quest.id}/edit`)}
                     onDelete={setDeletingQuest}
                     canManage={canManageQuests}
+                    currentUserId={currentUserId}
+                    activeReturnParams={getActiveReturnParams()}
                 />
 
                 {canManageQuests && (

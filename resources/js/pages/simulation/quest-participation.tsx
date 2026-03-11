@@ -1,9 +1,9 @@
 import { Head, Link, router, usePage } from '@inertiajs/react';
-import { useState } from 'react';
 import {
-    Swords, Play, Trophy, XCircle, Clock, CheckCircle2,
-    Zap, Shield, Users, MapPin, ChevronDown, Calendar,
+    Swords, Play, Trophy, XCircle, Clock,
+    Zap, Shield, MapPin, ChevronDown,
 } from 'lucide-react';
+import { useState } from 'react';
 
 type Participation = {
     id: number;

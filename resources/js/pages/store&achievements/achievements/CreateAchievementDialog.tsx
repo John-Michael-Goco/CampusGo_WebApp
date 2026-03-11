@@ -1,3 +1,4 @@
+import { Button } from '@/components/ui/button';
 import {
     Dialog,
     DialogContent,
@@ -6,13 +7,13 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
-import type { QuestOption } from './types';
 import {
-    AchievementFormFields,
-    type AchievementFormData,
+    AchievementFormFields
+    
 } from './AchievementFormFields';
+import type {AchievementFormData} from './AchievementFormFields';
+import type { QuestOption } from './types';
 
 type Props = {
     open: boolean;
