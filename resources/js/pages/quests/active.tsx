@@ -99,7 +99,7 @@ export default function ActiveQuestsPage({
 
                 <ActiveTable
                     quests={questItems}
-                    onView={() => {}}
+                    onView={(quest) => router.get(`/quests/${quest.id}`)}
                     onEdit={(quest) => router.get(`/quests/${quest.id}/edit`)}
                     onDelete={setDeletingQuest}
                     canManage={canManageQuests}

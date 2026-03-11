@@ -109,12 +109,12 @@ function QuestDetail({ quest }: { quest: AvailableQuest }) {
                         </>
                     )}
 
-                    {quest.max_participants > 0 && (
-                        <>
-                            <span className="text-zinc-500 dark:text-zinc-400">Participants</span>
-                            <span className="font-medium">{quest.current_participants} / {quest.max_participants}</span>
-                        </>
-                    )}
+                    <>
+                        <span className="text-zinc-500 dark:text-zinc-400">Participants</span>
+                        <span className="font-medium">
+                            {quest.current_participants} / {quest.max_participants > 0 ? quest.max_participants : 'Unlimited'}
+                        </span>
+                    </>
 
                     <span className="text-zinc-500 dark:text-zinc-400">Starts</span>
                     <span className="font-medium">{formatDate(quest.start_date)}</span>

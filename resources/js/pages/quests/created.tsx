@@ -1,8 +1,16 @@
 import { Head, Link, router, usePage } from '@inertiajs/react';
-import { ArrowLeft, ArrowRight, Pencil, Search, Trash2 } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Eye, Pencil, Search, Trash2 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import AppLayout from '@/layouts/app-layout';
 import type { BreadcrumbItem } from '@/types';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -30,10 +38,12 @@ type Props = {
     filters?: { search?: string };
 };
 
-const breadcrumbs: BreadcrumbItem[] = [
-    { title: 'Quests', href: '/quests/active' },
-    { title: 'Created Quests', href: '/quests/created' },
-];
+function getBreadcrumbs(isAdmin: boolean): BreadcrumbItem[] {
+    return [
+        { title: 'Quests', href: '/quests/active' },
+        { title: isAdmin ? 'Created Quests' : 'Approval', href: '/quests/created' },
+    ];
+}
 
 function statusLabel(status: string): string {
     if (status === 'approved') return 'Approved';
@@ -49,10 +59,12 @@ function statusVariant(status: string): 'default' | 'secondary' | 'destructive' 
 
 export default function CreatedQuestsPage({ quests, filters = {} }: Props) {
     const [deletingId, setDeletingId] = useState<number | null>(null);
+    const [cancelConfirmQuest, setCancelConfirmQuest] = useState<CreatedQuest | null>(null);
     const [search, setSearch] = useState(filters.search ?? '');
     const isInitialMount = useRef(true);
     const isAdmin = (usePage().props as { auth?: { isAdmin?: boolean } }).auth?.isAdmin ?? false;
     const items = quests.data ?? [];
+    const pageTitle = isAdmin ? 'Created Quests' : 'Approval';
 
     useEffect(() => {
         setSearch(filters.search ?? '');
@@ -79,11 +91,20 @@ export default function CreatedQuestsPage({ quests, filters = {} }: Props) {
         });
     };
 
+    const handleCancelConfirm = () => {
+        if (!cancelConfirmQuest) return;
+        router.delete(`/quests/${cancelConfirmQuest.id}`, {
+            preserveScroll: true,
+            onSuccess: () => setCancelConfirmQuest(null),
+            onFinish: () => setCancelConfirmQuest(null),
+        });
+    };
+
     return (
-        <AppLayout breadcrumbs={breadcrumbs}>
-            <Head title="Created Quests" />
+        <AppLayout breadcrumbs={getBreadcrumbs(isAdmin)}>
+            <Head title={pageTitle} />
             <div className="flex h-full flex-1 flex-col gap-4 rounded-xl p-4">
-                <h1 className="text-xl font-semibold">Created Quests</h1>
+                <h1 className="text-xl font-semibold">{pageTitle}</h1>
 
                 <div className="relative flex w-full">
                     <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -138,45 +159,58 @@ export default function CreatedQuestsPage({ quests, filters = {} }: Props) {
                                                     : '—'}
                                             </td>
                                             <td className="px-4 py-3 text-right">
-                                                {isAdmin ? (
-                                                    <div className="flex justify-end gap-1">
-                                                        <Button
-                                                            type="button"
-                                                            variant="ghost"
-                                                            size="icon"
-                                                            className="size-8"
-                                                            asChild
-                                                        >
-                                                            <Link href={`/quests/${quest.id}/edit`} aria-label="View / Edit">
-                                                                <Pencil className="size-4" />
-                                                            </Link>
-                                                        </Button>
-                                                        <Button
-                                                            type="button"
-                                                            variant="ghost"
-                                                            size="icon"
-                                                            className="size-8 text-destructive hover:text-destructive"
-                                                            disabled={deletingId === quest.id}
-                                                            onClick={() => handleDelete(quest)}
-                                                            aria-label="Delete"
-                                                        >
-                                                            <Trash2 className="size-4" />
-                                                        </Button>
-                                                    </div>
-                                                ) : (
-                                                    quest.approval_status === 'pending' && (
-                                                        <Button
-                                                            type="button"
-                                                            size="sm"
-                                                            variant="destructive"
-                                                            disabled={deletingId === quest.id}
-                                                            onClick={() => handleDelete(quest)}
-                                                        >
-                                                            <Trash2 className="mr-1 size-4" />
-                                                            {deletingId === quest.id ? 'Deleting…' : 'Cancel / Delete'}
-                                                        </Button>
-                                                    )
-                                                )}
+                                                <div className="flex justify-end gap-1">
+                                                    <Button
+                                                        type="button"
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="size-8"
+                                                        asChild
+                                                    >
+                                                        <Link href={`/quests/${quest.id}`} aria-label="View">
+                                                            <Eye className="size-4" />
+                                                        </Link>
+                                                    </Button>
+                                                    {isAdmin ? (
+                                                        <>
+                                                            <Button
+                                                                type="button"
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                className="size-8"
+                                                                asChild
+                                                            >
+                                                                <Link href={`/quests/${quest.id}/edit`} aria-label="Edit">
+                                                                    <Pencil className="size-4" />
+                                                                </Link>
+                                                            </Button>
+                                                            <Button
+                                                                type="button"
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                className="size-8 text-destructive hover:text-destructive"
+                                                                disabled={deletingId === quest.id}
+                                                                onClick={() => handleDelete(quest)}
+                                                                aria-label="Delete"
+                                                            >
+                                                                <Trash2 className="size-4" />
+                                                            </Button>
+                                                        </>
+                                                    ) : (
+                                                        quest.approval_status === 'pending' && (
+                                                            <Button
+                                                                type="button"
+                                                                size="sm"
+                                                                variant="destructive"
+                                                                disabled={deletingId === quest.id}
+                                                                onClick={() => setCancelConfirmQuest(quest)}
+                                                            >
+                                                                <Trash2 className="mr-1 size-4" />
+                                                                Cancel
+                                                            </Button>
+                                                        )
+                                                    )}
+                                                </div>
                                             </td>
                                         </tr>
                                     ))
@@ -185,6 +219,27 @@ export default function CreatedQuestsPage({ quests, filters = {} }: Props) {
                         </table>
                     </div>
                 </div>
+
+                <Dialog open={!!cancelConfirmQuest} onOpenChange={(open) => !open && setCancelConfirmQuest(null)}>
+                    <DialogContent className="sm:max-w-md">
+                        <DialogHeader>
+                            <DialogTitle>Cancel quest</DialogTitle>
+                            <DialogDescription>
+                                Are you sure you want to cancel <strong>{cancelConfirmQuest?.title}</strong>? This
+                                will remove the quest and it will no longer be submitted for approval. This action
+                                cannot be undone.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <DialogFooter>
+                            <Button type="button" variant="outline" onClick={() => setCancelConfirmQuest(null)}>
+                                Keep
+                            </Button>
+                            <Button type="button" variant="destructive" onClick={handleCancelConfirm}>
+                                Cancel quest
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
 
                 {quests.total > 0 && (
                     <div className="flex items-center justify-between gap-4 border-t pt-4">

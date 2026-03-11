@@ -3,12 +3,45 @@
 namespace App\Http\Controllers\Simulation;
 
 use App\Http\Controllers\Controller;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class UserDetailsController extends Controller
 {
+    private const PROFILE_IMAGE_DIR = 'profile-images';
+
+    /**
+     * Update the current user's profile image (simulation).
+     */
+    public function update(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'profile_image' => ['nullable', 'image', 'mimes:jpeg,png,jpg,gif,webp', 'max:2048'],
+            'remove_profile_image' => ['nullable', 'boolean'],
+        ]);
+
+        $user = $request->user();
+
+        if (! empty($validated['remove_profile_image']) && $user->profile_image) {
+            Storage::disk('public')->delete($user->profile_image);
+            $user->profile_image = null;
+        }
+
+        if (isset($validated['profile_image']) && $validated['profile_image']) {
+            if ($user->profile_image) {
+                Storage::disk('public')->delete($user->profile_image);
+            }
+            $path = $validated['profile_image']->store(self::PROFILE_IMAGE_DIR, 'public');
+            $user->profile_image = $path;
+        }
+
+        $user->save();
+
+        return back();
+    }
     /**
      * Show the current user's details (simulation screen, display only).
      */
@@ -25,6 +58,7 @@ class UserDetailsController extends Controller
                 'name' => $user->name,
                 'email' => $user->email,
                 'role' => $user->role,
+                'avatar' => $user->avatar,
                 'points_balance' => (int) $user->points_balance,
                 'level' => (int) $user->level,
                 'total_completed_quests' => (int) $user->total_completed_quests,

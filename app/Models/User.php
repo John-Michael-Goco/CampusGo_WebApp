@@ -26,12 +26,32 @@ class User extends Authenticatable
         'email',
         'password',
         'role',
+        'profile_image',
         'points_balance',
         'level',
         'total_completed_quests',
         'quests_won',
         'total_xp_earned',
     ];
+
+    /**
+     * Appended attributes (computed for API / frontend).
+     *
+     * @var list<string>
+     */
+    protected $appends = ['avatar'];
+
+    /**
+     * Avatar URL for display (profile image or null if not set).
+     * File is stored in storage/app/public/profile-images/ (served at /storage/profile-images/).
+     */
+    public function getAvatarAttribute(): ?string
+    {
+        if (empty($this->profile_image)) {
+            return null;
+        }
+        return asset('storage/'.$this->profile_image);
+    }
 
     /**
      * Get the master record (student or professor) when this user is linked to one.

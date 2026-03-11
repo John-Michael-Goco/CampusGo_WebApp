@@ -95,6 +95,9 @@ Route::get('simulation/transactions', [SimulationPointTransactionsController::cl
 Route::get('simulation/profile', [SimulationUserDetailsController::class, 'index'])
     ->middleware('auth')
     ->name('simulation.profile');
+Route::patch('simulation/profile', [SimulationUserDetailsController::class, 'update'])
+    ->middleware('auth')
+    ->name('simulation.profile.update');
 Route::post('simulation/achievements/simulate-level-up', [AchievementSimulationController::class, 'simulateLevelUp'])
     ->middleware('auth');
 Route::post('simulation/achievements/simulate-quest-win', [AchievementSimulationController::class, 'simulateQuestWin'])
@@ -159,6 +162,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('quests/create/stages', [QuestController::class, 'stages'])->name('quests.create.stages');
     Route::post('quests', [QuestController::class, 'store'])->name('quests.store');
     Route::put('quests/{quest}/approve', [QuestController::class, 'approve'])->middleware('admin')->name('quests.approve');
+    Route::get('quests/{quest}', [QuestController::class, 'show'])->name('quests.show');
     Route::get('quests/{quest}/edit', [QuestController::class, 'edit'])->middleware('admin')->name('quests.edit');
     Route::get('quests/{quest}/edit/stages', [QuestController::class, 'editStages'])->middleware('admin')->name('quests.edit.stages');
     Route::put('quests/{quest}', [QuestController::class, 'update'])->middleware('admin')->name('quests.update');

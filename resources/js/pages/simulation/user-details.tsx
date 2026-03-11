@@ -1,11 +1,16 @@
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
 import { User } from 'lucide-react';
+import { useRef, useState } from 'react';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
 
 export type SimulationUserDetails = {
     id: number;
     name: string;
     email: string;
     role: string;
+    avatar?: string | null;
     points_balance: number;
     level: number;
     total_completed_quests: number;
@@ -43,7 +48,48 @@ function DetailRow({
     );
 }
 
+function getInitials(name: string | null | undefined): string {
+    if (!name || !name.trim()) return '?';
+    const parts = name.trim().split(/\s+/);
+    if (parts.length >= 2) {
+        return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase().slice(0, 2);
+    }
+    return name.slice(0, 2).toUpperCase();
+}
+
 export default function SimulationUserDetails({ user }: Props) {
+    const initials = getInitials(user.name);
+    const formRef = useRef<HTMLFormElement>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+    const [saving, setSaving] = useState(false);
+
+    const displayAvatar = previewUrl ?? user.avatar ?? null;
+
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (previewUrl) URL.revokeObjectURL(previewUrl);
+        if (file) setPreviewUrl(URL.createObjectURL(file));
+        else setPreviewUrl(null);
+    };
+
+    const handlePhotoSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+        e.preventDefault();
+        const form = formRef.current;
+        if (!form) return;
+        const formData = new FormData(form);
+        formData.set('_method', 'PATCH');
+        const fileInput = form.querySelector<HTMLInputElement>('input[name="profile_image"]');
+        if (fileInput?.files?.[0]) formData.set('profile_image', fileInput.files[0]);
+        if (!formData.has('remove_profile_image')) formData.set('remove_profile_image', '0');
+        setSaving(true);
+        router.post('/simulation/profile', formData, {
+            forceFormData: true,
+            preserveScroll: true,
+            onFinish: () => setSaving(false),
+        });
+    };
+
     return (
         <>
             <Head title="My profile (simulation)" />
@@ -56,17 +102,86 @@ export default function SimulationUserDetails({ user }: Props) {
                     <div className="flex-1 overflow-y-auto flex flex-col">
                         <div className="p-4 pb-2 flex flex-col items-center gap-1 border-b border-zinc-200 dark:border-zinc-700">
                             <div className="flex items-center justify-center gap-2">
-                                <User className="size-8 text-amber-600 dark:text-amber-400" />
+                                <Avatar className="size-12 shrink-0 overflow-hidden rounded-full border-2 border-amber-500 dark:border-amber-400">
+                                    <AvatarImage src={displayAvatar ?? undefined} alt={user.name} />
+                                    <AvatarFallback className="rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300 text-sm font-medium">
+                                        {user.name ? initials : <User className="size-6" />}
+                                    </AvatarFallback>
+                                </Avatar>
                                 <h1 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
                                     My profile
                                 </h1>
                             </div>
                             <p className="text-xs text-amber-600 dark:text-amber-400 font-medium">
-                                Simulation — display only
+                                Simulation
                             </p>
                         </div>
 
                         <div className="p-4 flex-1 space-y-4">
+                            <section>
+                                <h2 className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400 mb-2">
+                                    Profile photo
+                                </h2>
+                                <form
+                                    ref={formRef}
+                                    onSubmit={handlePhotoSubmit}
+                                    className="rounded-xl bg-zinc-100 dark:bg-zinc-700/50 px-4 py-3 border border-zinc-200 dark:border-zinc-600 space-y-3"
+                                >
+                                    <div className="flex items-center gap-3">
+                                        <Avatar className="size-14 shrink-0 overflow-hidden rounded-full border-2 border-amber-500 dark:border-amber-400">
+                                            <AvatarImage src={displayAvatar ?? undefined} alt={user.name} />
+                                            <AvatarFallback className="rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300 text-sm font-medium">
+                                                {user.name ? initials : <User className="size-7" />}
+                                            </AvatarFallback>
+                                        </Avatar>
+                                        <div className="flex-1 space-y-2">
+                                            <input
+                                                ref={fileInputRef}
+                                                id="sim_profile_image"
+                                                name="profile_image"
+                                                type="file"
+                                                accept="image/jpeg,image/png,image/gif,image/webp"
+                                                className="hidden"
+                                                onChange={handleFileChange}
+                                            />
+                                            <div className="flex flex-wrap items-center gap-2">
+                                                <Button
+                                                    type="button"
+                                                    variant="outline"
+                                                    size="sm"
+                                                    className="border-amber-500/50 text-amber-700 dark:text-amber-300"
+                                                    onClick={() => fileInputRef.current?.click()}
+                                                >
+                                                    Choose photo
+                                                </Button>
+                                                {(user.avatar || previewUrl) && (
+                                                    <Label className="flex cursor-pointer items-center gap-1.5 text-sm text-zinc-600 dark:text-zinc-400">
+                                                        <input
+                                                            type="checkbox"
+                                                            name="remove_profile_image"
+                                                            value="1"
+                                                            className="rounded border-zinc-400"
+                                                        />
+                                                        Remove photo
+                                                    </Label>
+                                                )}
+                                            </div>
+                                            <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                                                JPG, PNG, GIF or WebP. Max 2MB. Same photo on web and app.
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <Button
+                                        type="submit"
+                                        size="sm"
+                                        disabled={saving}
+                                        className="w-full bg-amber-500 hover:bg-amber-600 dark:bg-amber-600 dark:hover:bg-amber-700"
+                                    >
+                                        {saving ? 'Saving…' : 'Save photo'}
+                                    </Button>
+                                </form>
+                            </section>
+
                             <section>
                                 <h2 className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400 mb-2">
                                     Account

@@ -31,6 +31,7 @@ const questSubItemsAdmin: Array<{ title: string; href: string; icon: null }> = [
 
 const questSubItemsProfessor: Array<{ title: string; href: string; icon: null }> = [
     { title: 'Active', href: '/quests/active', icon: null },
+    { title: 'Approval', href: '/quests/created', icon: null },
     { title: 'History', href: '/quests/history', icon: null },
 ];
 

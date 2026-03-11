@@ -65,18 +65,16 @@ export function ActiveTable({ quests, onView, onEdit, onDelete, canManage = true
                             <th className="h-11 px-4 text-left font-medium">
                                 Participants
                             </th>
-                            {canManage && (
-                                <th className="h-11 px-4 text-right font-medium">
-                                    Actions
-                                </th>
-                            )}
+                            <th className="h-11 px-4 text-right font-medium">
+                                Actions
+                            </th>
                         </tr>
                     </thead>
                     <tbody>
                         {quests.length === 0 ? (
                             <tr>
                                 <td
-                                    colSpan={canManage ? 9 : 8}
+                                    colSpan={9}
                                     className="h-24 px-4 text-center text-muted-foreground"
                                 >
                                     No active quests found.
@@ -112,47 +110,48 @@ export function ActiveTable({ quests, onView, onEdit, onDelete, canManage = true
                                         {quest.reward_points}
                                     </td>
                                     <td className="px-4 py-3">
-                                        {quest.current_participants}
-                                        {quest.max_participants
-                                            ? ` / ${quest.max_participants}`
-                                            : ''}
+                                        {quest.max_participants != null && quest.max_participants > 0
+                                            ? `${quest.current_participants} / ${quest.max_participants}`
+                                            : `${quest.current_participants} / Unlimited`}
                                     </td>
-                                    {canManage && (
-                                        <td className="px-4 py-3 text-right">
-                                            <div className="flex justify-end gap-1">
-                                                <Button
-                                                    type="button"
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    className="size-8"
-                                                    onClick={() => onView(quest)}
-                                                    aria-label="View"
-                                                >
-                                                    <Eye className="size-4" />
-                                                </Button>
-                                                <Button
-                                                    type="button"
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    className="size-8"
-                                                    onClick={() => onEdit(quest)}
-                                                    aria-label="Edit"
-                                                >
-                                                    <Pencil className="size-4" />
-                                                </Button>
-                                                <Button
-                                                    type="button"
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    className="size-8 text-destructive hover:text-destructive"
-                                                    onClick={() => onDelete(quest)}
-                                                    aria-label="Delete"
-                                                >
-                                                    <Trash2 className="size-4" />
-                                                </Button>
-                                            </div>
-                                        </td>
-                                    )}
+                                    <td className="px-4 py-3 text-right">
+                                        <div className="flex justify-end gap-1">
+                                            <Button
+                                                type="button"
+                                                variant="ghost"
+                                                size="icon"
+                                                className="size-8"
+                                                onClick={() => onView(quest)}
+                                                aria-label="View"
+                                            >
+                                                <Eye className="size-4" />
+                                            </Button>
+                                            {canManage && (
+                                                <>
+                                                    <Button
+                                                        type="button"
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="size-8"
+                                                        onClick={() => onEdit(quest)}
+                                                        aria-label="Edit"
+                                                    >
+                                                        <Pencil className="size-4" />
+                                                    </Button>
+                                                    <Button
+                                                        type="button"
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="size-8 text-destructive hover:text-destructive"
+                                                        onClick={() => onDelete(quest)}
+                                                        aria-label="Delete"
+                                                    >
+                                                        <Trash2 className="size-4" />
+                                                    </Button>
+                                                </>
+                                            )}
+                                        </div>
+                                    </td>
                                 </tr>
                             ))
                         )}

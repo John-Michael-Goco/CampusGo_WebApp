@@ -297,6 +297,83 @@ class QuestController extends Controller
     }
 
     /**
+     * Show a single quest (read-only view).
+     */
+    public function show(Quest $quest): Response
+    {
+        $quest->load('targetGroups', 'stages.questions.choices', 'creator:id,name', 'participants.user:id,name,email,profile_image');
+
+        $target = $quest->targetGroups->first();
+        $targetDisplay = $target && ($target->course || $target->year_level || $target->section)
+            ? trim(implode(' ', array_filter([
+                $target->course,
+                $target->year_level ? 'Yr ' . $target->year_level : null,
+                $target->section,
+            ])))
+            : 'Everyone';
+
+        $stages = $quest->stages->sortBy('stage_number')->values()->map(function ($stage) {
+            $questions = $stage->questions->map(function ($question) {
+                $choices = $question->choices->sortBy('sort_order')->values()->map(fn ($c) => [
+                    'choice_text' => $c->choice_text,
+                    'is_correct' => $c->is_correct,
+                ])->all();
+                return [
+                    'question_text' => $question->question_text,
+                    'question_type' => $question->question_type,
+                    'choices' => $choices,
+                ];
+            })->all();
+            return [
+                'stage_number' => $stage->stage_number,
+                'location_hint' => $stage->location_hint,
+                'max_survivors' => $stage->max_survivors,
+                'passing_score' => $stage->passing_score,
+                'minimum_participants' => $stage->minimum_participants,
+                'stage_deadline' => $stage->stage_deadline?->format('Y-m-d H:i'),
+                'questions' => $questions,
+            ];
+        })->all();
+
+        $participants = $quest->participants->map(function ($p) {
+            $user = $p->user;
+            return [
+                'id' => $p->id,
+                'current_stage' => $p->current_stage,
+                'status' => $p->status,
+                'user' => $user ? [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email ?? null,
+                    'avatar' => $user->avatar,
+                ] : null,
+            ];
+        })->values()->all();
+
+        return Inertia::render('quests/show', [
+            'quest' => [
+                'id' => $quest->id,
+                'title' => $quest->title,
+                'description' => $quest->description,
+                'quest_type' => $quest->quest_type,
+                'question_type' => $quest->question_type,
+                'is_elimination' => $quest->is_elimination,
+                'reward_points' => $quest->reward_points,
+                'reward_custom_prize' => $quest->reward_custom_prize,
+                'max_participants' => $quest->max_participants,
+                'start_date' => $quest->start_date?->format('Y-m-d H:i'),
+                'end_date' => $quest->end_date?->format('Y-m-d H:i'),
+                'status' => $quest->status,
+                'approval_status' => $quest->approval_status,
+                'creator' => $quest->creator ? ['id' => $quest->creator->id, 'name' => $quest->creator->name] : null,
+                'target_display' => $targetDisplay,
+                'stages' => $stages,
+                'participants' => $participants,
+            ],
+        ]);
+    }
+
+    /**
      * Show the edit-quest form (step 1).
      */
     public function edit(Request $request, Quest $quest): Response
