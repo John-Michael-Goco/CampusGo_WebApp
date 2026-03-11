@@ -10,6 +10,16 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import {
+    Table,
+    TableScroll,
+    TableElement,
+    tableHeaderRowClass,
+    tableBodyRowClass,
+    tableHeadClass,
+    tableCellClass,
+    tableEmptyClass,
+} from '@/components/ui/table';
 import type { HistoryQuest, PaginatedQuests } from './shared';
 import {
     QuestSearchInput,
@@ -111,23 +121,23 @@ export default function QuestHistoryPage({ quests, filters = {} }: Props) {
                     </Select>
                 </div>
 
-                <div className="overflow-hidden rounded-lg border bg-card">
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-sm">
+                <Table>
+                    <TableScroll>
+                        <TableElement>
                             <thead>
-                                <tr className="border-b bg-muted/50">
-                                    <th className="h-11 px-4 text-left font-medium">Title</th>
-                                    <th className="h-11 px-4 text-left font-medium">Type</th>
-                                    <th className="h-11 px-4 text-left font-medium">Created by</th>
-                                    <th className="h-11 px-4 text-left font-medium">Outcome</th>
-                                    <th className="h-11 px-4 text-left font-medium">Created</th>
-                                    <th className="h-11 px-4 text-left font-medium">Ended</th>
+                                <tr className={tableHeaderRowClass}>
+                                    <th className={tableHeadClass}>Title</th>
+                                    <th className={tableHeadClass}>Type</th>
+                                    <th className={tableHeadClass}>Created by</th>
+                                    <th className={tableHeadClass}>Outcome</th>
+                                    <th className={tableHeadClass}>Created</th>
+                                    <th className={tableHeadClass}>Ended</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {items.length === 0 ? (
-                                    <tr>
-                                        <td colSpan={6} className="h-24 px-4 text-center text-muted-foreground">
+                                    <tr className={tableBodyRowClass}>
+                                        <td colSpan={6} className={tableEmptyClass}>
                                             No completed or cancelled quests found.
                                         </td>
                                     </tr>
@@ -135,31 +145,31 @@ export default function QuestHistoryPage({ quests, filters = {} }: Props) {
                                     items.map((quest) => (
                                         <tr
                                             key={quest.id}
-                                            className="border-b transition-colors hover:bg-muted/30"
+                                            className={tableBodyRowClass}
                                         >
-                                            <td className="px-4 py-3 font-medium">{quest.title}</td>
-                                            <td className="px-4 py-3 capitalize">{quest.quest_type}</td>
-                                            <td className="px-4 py-3 text-muted-foreground">
+                                            <td className={`${tableCellClass} font-medium`}>{quest.title}</td>
+                                            <td className={`${tableCellClass} capitalize`}>{quest.quest_type}</td>
+                                            <td className={`${tableCellClass} text-muted-foreground`}>
                                                 {quest.creator?.name ?? '—'}
                                             </td>
-                                            <td className="px-4 py-3">
+                                            <td className={tableCellClass}>
                                                 <Badge variant={outcomeVariant(quest)}>
                                                     {outcomeLabel(quest)}
                                                 </Badge>
                                             </td>
-                                            <td className="px-4 py-3 text-muted-foreground">
+                                            <td className={`${tableCellClass} text-muted-foreground`}>
                                                 {formatQuestDate(quest.created_at)}
                                             </td>
-                                            <td className="px-4 py-3 text-muted-foreground">
+                                            <td className={`${tableCellClass} text-muted-foreground`}>
                                                 {formatQuestDate(quest.updated_at)}
                                             </td>
                                         </tr>
                                     ))
                                 )}
                             </tbody>
-                        </table>
-                    </div>
-                </div>
+                        </TableElement>
+                    </TableScroll>
+                </Table>
 
                 {quests.total > 0 && (
                     <QuestPagination

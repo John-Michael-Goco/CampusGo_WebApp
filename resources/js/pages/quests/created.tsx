@@ -13,6 +13,16 @@ import {
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import {
+    Table,
+    TableScroll,
+    TableElement,
+    tableHeaderRowClass,
+    tableBodyRowClass,
+    tableHeadClass,
+    tableCellClass,
+    tableEmptyClass,
+} from '@/components/ui/table';
 import type { CreatedQuest, PaginatedQuests } from './shared';
 import {
     QuestSearchInput,
@@ -85,22 +95,22 @@ export default function CreatedQuestsPage({ quests, filters = {} }: Props) {
 
                 <QuestSearchInput value={search} onChange={setSearch} />
 
-                <div className="overflow-hidden rounded-lg border bg-card">
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-sm">
+                <Table>
+                    <TableScroll>
+                        <TableElement>
                             <thead>
-                                <tr className="border-b bg-muted/50">
-                                    <th className="h-11 px-4 text-left font-medium">Title</th>
-                                    <th className="h-11 px-4 text-left font-medium">Type</th>
-                                    <th className="h-11 px-4 text-left font-medium">Status</th>
-                                    <th className="h-11 px-4 text-left font-medium">Created</th>
-                                    <th className="h-11 px-4 text-right font-medium">Actions</th>
+                                <tr className={tableHeaderRowClass}>
+                                    <th className={tableHeadClass}>Title</th>
+                                    <th className={tableHeadClass}>Type</th>
+                                    <th className={tableHeadClass}>Status</th>
+                                    <th className={tableHeadClass}>Created</th>
+                                    <th className={`${tableHeadClass} text-right`}>Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {items.length === 0 ? (
-                                    <tr>
-                                        <td colSpan={5} className="h-24 px-4 text-center text-muted-foreground">
+                                    <tr className={tableBodyRowClass}>
+                                        <td colSpan={5} className={tableEmptyClass}>
                                             You have not created any quests yet.
                                         </td>
                                     </tr>
@@ -108,19 +118,19 @@ export default function CreatedQuestsPage({ quests, filters = {} }: Props) {
                                     items.map((quest) => (
                                         <tr
                                             key={quest.id}
-                                            className="border-b transition-colors hover:bg-muted/30"
+                                            className={tableBodyRowClass}
                                         >
-                                            <td className="px-4 py-3 font-medium">{quest.title}</td>
-                                            <td className="px-4 py-3 capitalize">{quest.quest_type}</td>
-                                            <td className="px-4 py-3">
+                                            <td className={`${tableCellClass} font-medium`}>{quest.title}</td>
+                                            <td className={`${tableCellClass} capitalize`}>{quest.quest_type}</td>
+                                            <td className={tableCellClass}>
                                                 <Badge variant={approvalStatusVariant(quest.approval_status)}>
                                                     {approvalStatusLabel(quest.approval_status)}
                                                 </Badge>
                                             </td>
-                                            <td className="px-4 py-3 text-muted-foreground">
+                                            <td className={`${tableCellClass} text-muted-foreground`}>
                                                 {formatQuestDate(quest.created_at)}
                                             </td>
-                                            <td className="px-4 py-3 text-right">
+                                            <td className={`${tableCellClass} text-right`}>
                                                 <div className="flex justify-end gap-1">
                                                     <Button
                                                         type="button"
@@ -178,9 +188,9 @@ export default function CreatedQuestsPage({ quests, filters = {} }: Props) {
                                     ))
                                 )}
                             </tbody>
-                        </table>
-                    </div>
-                </div>
+                        </TableElement>
+                    </TableScroll>
+                </Table>
 
                 <Dialog open={!!cancelConfirmQuest} onOpenChange={(open) => !open && setCancelConfirmQuest(null)}>
                     <DialogContent className="sm:max-w-md">

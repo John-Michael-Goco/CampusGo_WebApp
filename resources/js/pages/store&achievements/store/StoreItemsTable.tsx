@@ -1,5 +1,15 @@
 import { ArrowDown, ArrowUp, ArrowUpDown, Pencil, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import {
+    Table,
+    TableScroll,
+    TableElement,
+    tableHeaderRowClass,
+    tableBodyRowClass,
+    tableHeadClass,
+    tableCellClass,
+    tableEmptyClass,
+} from '@/components/ui/table';
 import type { StoreItem, StoreItemsFilters } from './types';
 
 function formatDate(iso: string | null): string {
@@ -55,12 +65,12 @@ export function StoreItemsTable({
     canManage = true,
 }: Props) {
     return (
-        <div className="overflow-hidden rounded-lg border bg-card">
-            <div className="overflow-x-auto">
-                <table className="w-full text-sm">
+        <Table>
+            <TableScroll>
+                <TableElement>
                     <thead>
-                        <tr className="border-b bg-muted/50">
-                            <th className="h-11 px-4 text-left font-medium">
+                        <tr className={tableHeaderRowClass}>
+                            <th className={tableHeadClass}>
                                 <button
                                     type="button"
                                     className="inline-flex items-center hover:underline"
@@ -74,10 +84,10 @@ export function StoreItemsTable({
                                     />
                                 </button>
                             </th>
-                            <th className="h-11 px-4 text-left font-medium">
+                            <th className={tableHeadClass}>
                                 Description
                             </th>
-                            <th className="h-11 px-4 text-left font-medium">
+                            <th className={tableHeadClass}>
                                 <button
                                     type="button"
                                     className="inline-flex items-center hover:underline"
@@ -91,7 +101,7 @@ export function StoreItemsTable({
                                     />
                                 </button>
                             </th>
-                            <th className="h-11 px-4 text-left font-medium">
+                            <th className={tableHeadClass}>
                                 <button
                                     type="button"
                                     className="inline-flex items-center hover:underline"
@@ -105,13 +115,13 @@ export function StoreItemsTable({
                                     />
                                 </button>
                             </th>
-                            <th className="h-11 px-4 text-left font-medium">
+                            <th className={tableHeadClass}>
                                 Start date
                             </th>
-                            <th className="h-11 px-4 text-left font-medium">
+                            <th className={tableHeadClass}>
                                 End date
                             </th>
-                            <th className="h-11 px-4 text-left font-medium">
+                            <th className={tableHeadClass}>
                                 <button
                                     type="button"
                                     className="inline-flex items-center hover:underline"
@@ -126,7 +136,7 @@ export function StoreItemsTable({
                                 </button>
                             </th>
                             {canManage && (
-                                <th className="h-11 px-4 text-right font-medium">
+                                <th className={`${tableHeadClass} text-right`}>
                                     Actions
                                 </th>
                             )}
@@ -134,10 +144,10 @@ export function StoreItemsTable({
                     </thead>
                     <tbody>
                         {storeItems.length === 0 ? (
-                            <tr>
+                            <tr className={tableBodyRowClass}>
                                 <td
                                     colSpan={canManage ? 8 : 7}
-                                    className="h-24 px-4 text-center text-muted-foreground"
+                                    className={tableEmptyClass}
                                 >
                                     No store items found.
                                 </td>
@@ -146,7 +156,7 @@ export function StoreItemsTable({
                             storeItems.map((item) => (
                                 <tr
                                     key={item.id}
-                                    className="border-b transition-colors hover:bg-muted/30"
+                                    className={tableBodyRowClass}
                                 >
                                     <td className="px-4 py-3 font-medium">
                                         {item.name}
@@ -154,10 +164,10 @@ export function StoreItemsTable({
                                     <td className="max-w-[200px] truncate px-4 py-3 text-muted-foreground">
                                         {item.description ?? '—'}
                                     </td>
-                                    <td className="px-4 py-3">
+                                    <td className={tableCellClass}>
                                         {item.cost_points}
                                     </td>
-                                    <td className="px-4 py-3">
+                                    <td className={tableCellClass}>
                                         {item.stock}
                                     </td>
                                     <td className="px-4 py-3 text-muted-foreground">
@@ -166,7 +176,7 @@ export function StoreItemsTable({
                                     <td className="px-4 py-3 text-muted-foreground">
                                         {formatDate(item.end_date)}
                                     </td>
-                                    <td className="px-4 py-3">
+                                    <td className={tableCellClass}>
                                         {item.is_visible ? 'Yes' : 'No'}
                                     </td>
                                     {canManage && (
@@ -199,8 +209,8 @@ export function StoreItemsTable({
                             ))
                         )}
                     </tbody>
-                </table>
-            </div>
-        </div>
+                </TableElement>
+            </TableScroll>
+        </Table>
     );
 }

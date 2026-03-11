@@ -96,11 +96,11 @@ export function AppSidebar() {
     const mainNavItems = buildMainNavItems(auth?.isAdmin ?? false);
 
     return (
-        <Sidebar collapsible="icon" variant="inset">
-            <SidebarHeader>
+        <Sidebar collapsible="icon" variant="inset" className="border-r border-sidebar-border/80">
+            <SidebarHeader className="border-b border-sidebar-border/80 bg-sidebar-accent/30 pb-2">
                 <SidebarMenu>
                     <SidebarMenuItem>
-                        <SidebarMenuButton size="lg" asChild>
+                        <SidebarMenuButton size="lg" asChild className="rounded-xl hover:bg-sidebar-accent/60">
                             <Link href={dashboard()} prefetch>
                                 <AppLogo />
                             </Link>
@@ -109,11 +109,11 @@ export function AppSidebar() {
                 </SidebarMenu>
             </SidebarHeader>
 
-            <SidebarContent>
+            <SidebarContent className="gap-1">
                 <NavMain items={mainNavItems} />
             </SidebarContent>
 
-            <SidebarFooter>
+            <SidebarFooter className="border-t border-sidebar-border/80 bg-sidebar-accent/20 pt-2">
                 <NavUser />
             </SidebarFooter>
         </Sidebar>

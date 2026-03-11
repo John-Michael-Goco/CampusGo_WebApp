@@ -1,6 +1,16 @@
 import { ArrowDown, ArrowUp, ArrowUpDown, Pencil, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
+    Table,
+    TableScroll,
+    TableElement,
+    tableHeaderRowClass,
+    tableBodyRowClass,
+    tableHeadClass,
+    tableCellClass,
+    tableEmptyClass,
+} from '@/components/ui/table';
+import {
     REQUIREMENT_TYPE_OPTIONS,
     type Achievement,
     type AchievementsFilters,
@@ -61,12 +71,12 @@ export function AchievementsTable({
     canManage = true,
 }: Props) {
     return (
-        <div className="rounded-lg border bg-card overflow-hidden">
-            <div className="overflow-x-auto">
-                <table className="w-full text-sm">
+        <Table>
+            <TableScroll>
+                <TableElement>
                     <thead>
-                        <tr className="border-b bg-muted/50">
-                            <th className="h-11 px-4 text-left font-medium">
+                        <tr className={tableHeaderRowClass}>
+                            <th className={tableHeadClass}>
                                 <button
                                     type="button"
                                     className="inline-flex items-center hover:underline"
@@ -80,10 +90,10 @@ export function AchievementsTable({
                                     />
                                 </button>
                             </th>
-                            <th className="h-11 px-4 text-left font-medium">
+                            <th className={tableHeadClass}>
                                 Description
                             </th>
-                            <th className="h-11 px-4 text-left font-medium">
+                            <th className={tableHeadClass}>
                                 <button
                                     type="button"
                                     className="inline-flex items-center hover:underline"
@@ -97,7 +107,7 @@ export function AchievementsTable({
                                     />
                                 </button>
                             </th>
-                            <th className="h-11 px-4 text-left font-medium">
+                            <th className={tableHeadClass}>
                                 <button
                                     type="button"
                                     className="inline-flex items-center hover:underline"
@@ -112,7 +122,7 @@ export function AchievementsTable({
                                 </button>
                             </th>
                             {canManage && (
-                                <th className="h-11 px-4 text-right font-medium">
+                                <th className={`${tableHeadClass} text-right`}>
                                     Actions
                                 </th>
                             )}
@@ -120,10 +130,10 @@ export function AchievementsTable({
                     </thead>
                     <tbody>
                         {achievements.length === 0 ? (
-                            <tr>
+                            <tr className={tableBodyRowClass}>
                                 <td
                                     colSpan={canManage ? 5 : 4}
-                                    className="h-24 px-4 text-center text-muted-foreground"
+                                    className={tableEmptyClass}
                                 >
                                     No achievements found.
                                 </td>
@@ -132,24 +142,24 @@ export function AchievementsTable({
                             achievements.map((achievement) => (
                                 <tr
                                     key={achievement.id}
-                                    className="border-b transition-colors hover:bg-muted/30"
+                                    className={tableBodyRowClass}
                                 >
-                                    <td className="px-4 py-3 font-medium">
+                                    <td className={`${tableCellClass} font-medium`}>
                                         {achievement.name}
                                     </td>
-                                    <td className="max-w-[280px] truncate px-4 py-3 text-muted-foreground">
+                                    <td className={`${tableCellClass} max-w-[280px] truncate text-muted-foreground`}>
                                         {achievement.description ?? '—'}
                                     </td>
-                                    <td className="px-4 py-3">
+                                    <td className={tableCellClass}>
                                         {requirementTypeLabel(
                                             achievement.requirement_type
                                         )}
                                     </td>
-                                    <td className="px-4 py-3">
+                                    <td className={tableCellClass}>
                                         {requirementValueDisplay(achievement, quests)}
                                     </td>
                                     {canManage && (
-                                        <td className="px-4 py-3 text-right">
+                                        <td className={`${tableCellClass} text-right`}>
                                             <div className="flex justify-end gap-2">
                                                 <Button
                                                     type="button"
@@ -182,8 +192,8 @@ export function AchievementsTable({
                             ))
                         )}
                     </tbody>
-                </table>
-            </div>
-        </div>
+                </TableElement>
+            </TableScroll>
+        </Table>
     );
 }

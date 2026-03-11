@@ -1,6 +1,17 @@
 import { Link } from '@inertiajs/react';
 import { ArrowDown, ArrowUp, ArrowUpDown, Eye, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import {
+    Table,
+    TableScroll,
+    TableElement,
+    tableHeaderRowClass,
+    tableBodyRowClass,
+    tableHeadClass,
+    tableCellClass,
+    tableEmptyClass,
+} from '@/components/ui/table';
+import { cn } from '@/lib/utils';
 import { maskEmail, type UserListItem, type UsersFilters } from './types';
 
 function SortIcon({
@@ -36,12 +47,12 @@ type Props = {
 
 export function UsersTable({ users, filters, onSort, onDelete, canManage = false }: Props) {
     return (
-        <div className="rounded-lg border bg-card overflow-hidden">
-            <div className="overflow-x-auto">
-                <table className="w-full text-sm">
+        <Table>
+            <TableScroll>
+                <TableElement>
                     <thead>
-                        <tr className="border-b bg-muted/50">
-                            <th className="h-11 px-4 text-left font-medium">
+                        <tr className={tableHeaderRowClass}>
+                            <th className={tableHeadClass}>
                                 <button
                                     type="button"
                                     className="inline-flex items-center hover:underline"
@@ -55,10 +66,10 @@ export function UsersTable({ users, filters, onSort, onDelete, canManage = false
                                     />
                                 </button>
                             </th>
-                            <th className="h-11 px-4 text-left font-medium">
+                            <th className={tableHeadClass}>
                                 Email
                             </th>
-                            <th className="h-11 px-4 text-left font-medium">
+                            <th className={tableHeadClass}>
                                 <button
                                     type="button"
                                     className="inline-flex items-center hover:underline"
@@ -72,7 +83,7 @@ export function UsersTable({ users, filters, onSort, onDelete, canManage = false
                                     />
                                 </button>
                             </th>
-                            <th className="h-11 px-4 text-left font-medium">
+                            <th className={tableHeadClass}>
                                 <button
                                     type="button"
                                     className="inline-flex items-center hover:underline"
@@ -86,7 +97,7 @@ export function UsersTable({ users, filters, onSort, onDelete, canManage = false
                                     />
                                 </button>
                             </th>
-                            <th className="h-11 px-4 text-left font-medium">
+                            <th className={tableHeadClass}>
                                 <button
                                     type="button"
                                     className="inline-flex items-center hover:underline"
@@ -100,17 +111,17 @@ export function UsersTable({ users, filters, onSort, onDelete, canManage = false
                                     />
                                 </button>
                             </th>
-                            <th className="h-11 px-4 text-right font-medium">
+                            <th className={cn(tableHeadClass, 'text-right')}>
                                 Actions
                             </th>
                         </tr>
                     </thead>
                     <tbody>
                         {users.length === 0 ? (
-                            <tr>
+                            <tr className={tableBodyRowClass}>
                                 <td
                                     colSpan={6}
-                                    className="h-24 px-4 text-center text-muted-foreground"
+                                    className={tableEmptyClass}
                                 >
                                     No users found.
                                 </td>
@@ -119,22 +130,22 @@ export function UsersTable({ users, filters, onSort, onDelete, canManage = false
                             users.map((user) => (
                                 <tr
                                     key={user.id}
-                                    className="border-b transition-colors hover:bg-muted/30"
+                                    className={tableBodyRowClass}
                                 >
-                                    <td className="px-4 py-3">{user.name}</td>
-                                    <td className="px-4 py-3 font-mono text-muted-foreground">
+                                    <td className={tableCellClass}>{user.name}</td>
+                                    <td className={cn(tableCellClass, 'font-mono text-muted-foreground')}>
                                         {maskEmail(user.email)}
                                     </td>
-                                    <td className="px-4 py-3 capitalize">
+                                    <td className={cn(tableCellClass, 'capitalize')}>
                                         {user.role}
                                     </td>
-                                    <td className="px-4 py-3">
+                                    <td className={tableCellClass}>
                                         {pointsDisplay(user)}
                                     </td>
-                                    <td className="px-4 py-3">
+                                    <td className={tableCellClass}>
                                         {user.level ?? 1}
                                     </td>
-                                    <td className="px-4 py-3 text-right">
+                                    <td className={cn(tableCellClass, 'text-right')}>
                                         <div className="flex items-center justify-end gap-1">
                                             <Button
                                                 type="button"
@@ -166,8 +177,8 @@ export function UsersTable({ users, filters, onSort, onDelete, canManage = false
                             ))
                         )}
                     </tbody>
-                </table>
-            </div>
-        </div>
+                </TableElement>
+            </TableScroll>
+        </Table>
     );
 }

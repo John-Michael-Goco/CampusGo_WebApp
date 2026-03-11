@@ -1,6 +1,16 @@
 import { ArrowDown, ArrowUp, ArrowUpDown, Eye, Pencil, Trash2 } from 'lucide-react';
 import { Link } from '@inertiajs/react';
 import { Button } from '@/components/ui/button';
+import {
+    Table,
+    TableScroll,
+    TableElement,
+    tableHeaderRowClass,
+    tableBodyRowClass,
+    tableHeadClass,
+    tableCellClass,
+    tableEmptyClass,
+} from '@/components/ui/table';
 import type { Semester, SemestersFilters } from './types';
 
 function formatDate(dateStr: string): string {
@@ -56,12 +66,12 @@ export function SemestersTable({
     canManage = true,
 }: Props) {
     return (
-        <div className="overflow-hidden rounded-lg border bg-card">
-            <div className="overflow-x-auto">
-                <table className="w-full text-sm">
+        <Table>
+            <TableScroll>
+                <TableElement>
                     <thead>
-                        <tr className="border-b bg-muted/50">
-                            <th className="h-11 px-4 text-left font-medium">
+                        <tr className={tableHeaderRowClass}>
+                            <th className={tableHeadClass}>
                                 <button
                                     type="button"
                                     className="inline-flex items-center hover:underline"
@@ -75,7 +85,7 @@ export function SemestersTable({
                                     />
                                 </button>
                             </th>
-                            <th className="h-11 px-4 text-left font-medium">
+                            <th className={tableHeadClass}>
                                 <button
                                     type="button"
                                     className="inline-flex items-center hover:underline"
@@ -89,7 +99,7 @@ export function SemestersTable({
                                     />
                                 </button>
                             </th>
-                            <th className="h-11 px-4 text-left font-medium">
+                            <th className={tableHeadClass}>
                                 <button
                                     type="button"
                                     className="inline-flex items-center hover:underline"
@@ -103,11 +113,11 @@ export function SemestersTable({
                                     />
                                 </button>
                             </th>
-                            <th className="h-11 px-4 text-left font-medium">
+                            <th className={tableHeadClass}>
                                 Current
                             </th>
                             {canManage && (
-                                <th className="h-11 px-4 text-right font-medium">
+                                <th className={`${tableHeadClass} text-right`}>
                                     Actions
                                 </th>
                             )}
@@ -115,10 +125,10 @@ export function SemestersTable({
                     </thead>
                     <tbody>
                         {semesters.length === 0 ? (
-                            <tr>
+                            <tr className={tableBodyRowClass}>
                                 <td
                                     colSpan={canManage ? 5 : 4}
-                                    className="h-24 px-4 text-center text-muted-foreground"
+                                    className={tableEmptyClass}
                                 >
                                     No semesters found.
                                 </td>
@@ -127,22 +137,22 @@ export function SemestersTable({
                             semesters.map((semester) => (
                                 <tr
                                     key={semester.id}
-                                    className="border-b transition-colors hover:bg-muted/30"
+                                    className={tableBodyRowClass}
                                 >
-                                    <td className="px-4 py-3 font-medium">
+                                    <td className={`${tableCellClass} font-medium`}>
                                         {semester.name}
                                     </td>
-                                    <td className="px-4 py-3 text-muted-foreground">
+                                    <td className={`${tableCellClass} text-muted-foreground`}>
                                         {formatDate(semester.start_date)}
                                     </td>
-                                    <td className="px-4 py-3 text-muted-foreground">
+                                    <td className={`${tableCellClass} text-muted-foreground`}>
                                         {formatDate(semester.end_date)}
                                     </td>
-                                    <td className="px-4 py-3">
+                                    <td className={tableCellClass}>
                                         {semester.is_current ? 'Yes' : 'No'}
                                     </td>
                                     {canManage && (
-                                        <td className="px-4 py-3 text-right">
+                                        <td className={`${tableCellClass} text-right`}>
                                             <div className="flex justify-end gap-2">
                                                 <Button
                                                     variant="ghost"
@@ -184,8 +194,8 @@ export function SemestersTable({
                             ))
                         )}
                     </tbody>
-                </table>
-            </div>
-        </div>
+                </TableElement>
+            </TableScroll>
+        </Table>
     );
 }

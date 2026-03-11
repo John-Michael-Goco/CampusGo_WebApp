@@ -1,5 +1,15 @@
 import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp } from 'lucide-react';
 import { Link } from '@inertiajs/react';
+import {
+    Table,
+    TableScroll,
+    TableElement,
+    tableHeaderRowClass,
+    tableBodyRowClass,
+    tableHeadClass,
+    tableCellClass,
+    tableEmptyClass,
+} from '@/components/ui/table';
 import type { PointTransactionItem, PointTransactionsFilters } from './types';
 import { getTransactionTypeLabel } from './types';
 
@@ -53,12 +63,12 @@ export function PointTransactionsTable({
 }: Props) {
     return (
         <>
-            <div className="overflow-hidden rounded-lg border bg-card">
-                <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
+            <Table>
+                <TableScroll>
+                    <TableElement>
                         <thead>
-                            <tr className="border-b bg-muted/50">
-                                <th className="h-11 px-4 text-left font-medium">
+                            <tr className={tableHeaderRowClass}>
+                                <th className={tableHeadClass}>
                                     <button
                                         type="button"
                                         className="inline-flex items-center hover:underline"
@@ -68,26 +78,26 @@ export function PointTransactionsTable({
                                         <SortIcon sortDir={filters.sort_dir} />
                                     </button>
                                 </th>
-                                <th className="h-11 px-4 text-left font-medium">
+                                <th className={tableHeadClass}>
                                     Time
                                 </th>
-                                <th className="h-11 px-4 text-left font-medium">
+                                <th className={tableHeadClass}>
                                     User
                                 </th>
-                                <th className="h-11 px-4 text-left font-medium">
+                                <th className={tableHeadClass}>
                                     Type
                                 </th>
-                                <th className="h-11 px-4 text-right font-medium">
+                                <th className={`${tableHeadClass} text-right`}>
                                     Amount
                                 </th>
                             </tr>
                         </thead>
                         <tbody>
                             {transactions.length === 0 ? (
-                                <tr>
+                                <tr className={tableBodyRowClass}>
                                     <td
                                         colSpan={5}
-                                        className="h-24 px-4 text-center text-muted-foreground"
+                                        className={tableEmptyClass}
                                     >
                                         No point transactions found.
                                     </td>
@@ -96,21 +106,23 @@ export function PointTransactionsTable({
                                 transactions.map((tx) => (
                                     <tr
                                         key={tx.id}
-                                        className="border-b transition-colors hover:bg-muted/30"
+                                        className={tableBodyRowClass}
                                     >
-                                        <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
+                                        <td className={`${tableCellClass} whitespace-nowrap text-muted-foreground`}>
                                             {formatDate(tx.created_at)}
                                         </td>
-                                        <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
+                                        <td className={`${tableCellClass} whitespace-nowrap text-muted-foreground`}>
                                             {formatTime(tx.created_at)}
                                         </td>
-                                        <td className="px-4 py-3">
-                                            {tx.user?.name ?? '—'}
+                                        <td className={tableCellClass}>
+                                            <Link href={`/users/${tx.user_id}`} className="hover:underline text-primary">
+                                                {tx.user?.name ?? '—'}
+                                            </Link>
                                         </td>
-                                        <td className="px-4 py-3">
+                                        <td className={tableCellClass}>
                                             {getTransactionTypeLabel(tx.transaction_type)}
                                         </td>
-                                        <td className="px-4 py-3 text-right font-medium tabular-nums">
+                                        <td className={`${tableCellClass} text-right font-medium tabular-nums`}>
                                             {tx.amount >= 0 ? (
                                                 <span className="text-green-600 dark:text-green-400">
                                                     +{tx.amount}
@@ -125,9 +137,9 @@ export function PointTransactionsTable({
                                 ))
                             )}
                         </tbody>
-                    </table>
-                </div>
-            </div>
+                    </TableElement>
+                </TableScroll>
+            </Table>
 
             {pagination.total > 0 && (
                 <div className="flex items-center justify-between gap-4 border-t pt-4">

@@ -1,6 +1,16 @@
 import { Eye, Pencil, Trash2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import {
+    Table,
+    TableScroll,
+    TableElement,
+    tableHeaderRowClass,
+    tableBodyRowClass,
+    tableHeadClass,
+    tableCellClass,
+    tableEmptyClass,
+} from '@/components/ui/table';
 import type { ActiveQuest, QuestStatus } from './types';
 
 function formatDate(dateStr: string | null): string {
@@ -36,46 +46,46 @@ type Props = {
 
 export function ActiveTable({ quests, onView, onEdit, onDelete, canManage = true }: Props) {
     return (
-        <div className="overflow-hidden rounded-lg border bg-card">
-            <div className="overflow-x-auto">
-                <table className="w-full text-sm">
+        <Table>
+            <TableScroll>
+                <TableElement>
                     <thead>
-                        <tr className="border-b bg-muted/50">
-                            <th className="h-11 px-4 text-left font-medium">
+                        <tr className={tableHeaderRowClass}>
+                            <th className={tableHeadClass}>
                                 Title
                             </th>
-                            <th className="h-11 px-4 text-left font-medium">
+                            <th className={tableHeadClass}>
                                 Type
                             </th>
-                            <th className="h-11 px-4 text-left font-medium">
+                            <th className={tableHeadClass}>
                                 Status
                             </th>
-                            <th className="h-11 px-4 text-left font-medium">
+                            <th className={tableHeadClass}>
                                 Start date
                             </th>
-                            <th className="h-11 px-4 text-left font-medium">
+                            <th className={tableHeadClass}>
                                 End date
                             </th>
-                            <th className="h-11 px-4 text-left font-medium">
+                            <th className={tableHeadClass}>
                                 Created by
                             </th>
-                            <th className="h-11 px-4 text-left font-medium">
+                            <th className={tableHeadClass}>
                                 Reward (pts)
                             </th>
-                            <th className="h-11 px-4 text-left font-medium">
+                            <th className={tableHeadClass}>
                                 Participants
                             </th>
-                            <th className="h-11 px-4 text-right font-medium">
+                            <th className={`${tableHeadClass} text-right`}>
                                 Actions
                             </th>
                         </tr>
                     </thead>
                     <tbody>
                         {quests.length === 0 ? (
-                            <tr>
+                            <tr className={tableBodyRowClass}>
                                 <td
                                     colSpan={9}
-                                    className="h-24 px-4 text-center text-muted-foreground"
+                                    className={tableEmptyClass}
                                 >
                                     No active quests found.
                                 </td>
@@ -84,37 +94,37 @@ export function ActiveTable({ quests, onView, onEdit, onDelete, canManage = true
                             quests.map((quest) => (
                                 <tr
                                     key={quest.id}
-                                    className="border-b transition-colors hover:bg-muted/30"
+                                    className={tableBodyRowClass}
                                 >
-                                    <td className="px-4 py-3 font-medium">
+                                    <td className={`${tableCellClass} font-medium`}>
                                         {quest.title}
                                     </td>
-                                    <td className="px-4 py-3 capitalize">
+                                    <td className={`${tableCellClass} capitalize`}>
                                         {quest.quest_type}
                                     </td>
-                                    <td className="px-4 py-3">
+                                    <td className={tableCellClass}>
                                         <Badge variant={STATUS_VARIANT[quest.status]} className="capitalize">
                                             {quest.status}
                                         </Badge>
                                     </td>
-                                    <td className="px-4 py-3 text-muted-foreground">
+                                    <td className={`${tableCellClass} text-muted-foreground`}>
                                         {formatDate(quest.start_date)}
                                     </td>
-                                    <td className="px-4 py-3 text-muted-foreground">
+                                    <td className={`${tableCellClass} text-muted-foreground`}>
                                         {formatDate(quest.end_date)}
                                     </td>
-                                    <td className="px-4 py-3 text-muted-foreground">
+                                    <td className={`${tableCellClass} text-muted-foreground`}>
                                         {quest.creator?.name ?? '—'}
                                     </td>
-                                    <td className="px-4 py-3">
+                                    <td className={tableCellClass}>
                                         {quest.reward_points}
                                     </td>
-                                    <td className="px-4 py-3">
+                                    <td className={tableCellClass}>
                                         {quest.max_participants != null && quest.max_participants > 0
                                             ? `${quest.current_participants} / ${quest.max_participants}`
                                             : `${quest.current_participants} / Unlimited`}
                                     </td>
-                                    <td className="px-4 py-3 text-right">
+                                    <td className={`${tableCellClass} text-right`}>
                                         <div className="flex justify-end gap-1">
                                             <Button
                                                 type="button"
@@ -156,8 +166,8 @@ export function ActiveTable({ quests, onView, onEdit, onDelete, canManage = true
                             ))
                         )}
                     </tbody>
-                </table>
-            </div>
-        </div>
+                </TableElement>
+            </TableScroll>
+        </Table>
     );
 }

@@ -1,7 +1,17 @@
-import { Head, router } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
 import { cn } from '@/lib/utils';
 import AppLayout from '@/layouts/app-layout';
 import type { BreadcrumbItem } from '@/types';
+import {
+    Table,
+    TableScroll,
+    TableElement,
+    tableHeaderRowClass,
+    tableBodyRowClass,
+    tableHeadClass,
+    tableCellClass,
+    tableEmptyClass,
+} from '@/components/ui/table';
 import type { LeaderboardPeriod, LeaderboardsPageProps } from './types';
 import { PERIOD_LABELS } from './types';
 
@@ -44,28 +54,28 @@ export default function LeaderboardsIndex({
                     </div>
                 </div>
 
-                <div className="overflow-hidden rounded-lg border bg-card">
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-sm">
+                <Table>
+                    <TableScroll>
+                        <TableElement>
                             <thead>
-                                <tr className="border-b bg-muted/50">
-                                    <th className="h-11 px-4 text-left font-medium">
+                                <tr className={tableHeaderRowClass}>
+                                    <th className={tableHeadClass}>
                                         Rank
                                     </th>
-                                    <th className="h-11 px-4 text-left font-medium">
+                                    <th className={tableHeadClass}>
                                         User
                                     </th>
-                                    <th className="h-11 px-4 text-right font-medium">
+                                    <th className={cn(tableHeadClass, 'text-right')}>
                                         {valueLabel}
                                     </th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {entries.length === 0 ? (
-                                    <tr>
+                                    <tr className={tableBodyRowClass}>
                                         <td
                                             colSpan={3}
-                                            className="h-24 px-4 text-center text-muted-foreground"
+                                            className={tableEmptyClass}
                                         >
                                             No entries for this period.
                                         </td>
@@ -74,24 +84,26 @@ export default function LeaderboardsIndex({
                                     entries.map((entry) => (
                                         <tr
                                             key={entry.user_id}
-                                            className="border-b transition-colors hover:bg-muted/30"
+                                            className={tableBodyRowClass}
                                         >
-                                            <td className="whitespace-nowrap px-4 py-3 font-medium tabular-nums text-muted-foreground">
+                                            <td className={cn(tableCellClass, 'whitespace-nowrap font-medium tabular-nums text-muted-foreground')}>
                                                 #{entry.rank}
                                             </td>
-                                            <td className="px-4 py-3">
-                                                {entry.user_name}
+                                            <td className={tableCellClass}>
+                                                <Link href={`/users/${entry.user_id}`} className="hover:underline font-medium text-primary">
+                                                    {entry.user_name}
+                                                </Link>
                                             </td>
-                                            <td className="px-4 py-3 text-right font-medium tabular-nums">
+                                            <td className={cn(tableCellClass, 'text-right font-medium tabular-nums')}>
                                                 {entry.value.toLocaleString()}
                                             </td>
                                         </tr>
                                     ))
                                 )}
                             </tbody>
-                        </table>
-                    </div>
-                </div>
+                        </TableElement>
+                    </TableScroll>
+                </Table>
             </div>
         </AppLayout>
     );

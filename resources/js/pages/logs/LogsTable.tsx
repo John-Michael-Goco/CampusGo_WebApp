@@ -1,5 +1,15 @@
 import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp } from 'lucide-react';
 import { Link } from '@inertiajs/react';
+import {
+    Table,
+    TableScroll,
+    TableElement,
+    tableHeaderRowClass,
+    tableBodyRowClass,
+    tableHeadClass,
+    tableCellClass,
+    tableEmptyClass,
+} from '@/components/ui/table';
 import type { LogEntry, LogsFilters } from './types';
 import { getActionDetail, getActionDisplayLabel, getActionKey } from './types';
 
@@ -53,12 +63,12 @@ export function LogsTable({
 }: Props) {
     return (
         <>
-            <div className="overflow-hidden rounded-lg border bg-card">
-                <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
+            <Table>
+                <TableScroll>
+                    <TableElement>
                         <thead>
-                            <tr className="border-b bg-muted/50">
-                                <th className="h-11 px-4 text-left font-medium">
+                            <tr className={tableHeaderRowClass}>
+                                <th className={tableHeadClass}>
                                     <button
                                         type="button"
                                         className="inline-flex items-center hover:underline"
@@ -68,23 +78,23 @@ export function LogsTable({
                                         <SortIcon sortDir={filters.sort_dir} />
                                     </button>
                                 </th>
-                                <th className="h-11 px-4 text-left font-medium">
+                                <th className={tableHeadClass}>
                                     Time
                                 </th>
-                                <th className="h-11 px-4 text-left font-medium">
+                                <th className={tableHeadClass}>
                                     Action
                                 </th>
-                                <th className="h-11 px-4 text-left font-medium">
+                                <th className={tableHeadClass}>
                                     By
                                 </th>
                             </tr>
                         </thead>
                         <tbody>
                             {logs.length === 0 ? (
-                                <tr>
+                                <tr className={tableBodyRowClass}>
                                     <td
                                         colSpan={4}
-                                        className="h-24 px-4 text-center text-muted-foreground"
+                                        className={tableEmptyClass}
                                     >
                                         No logs yet.
                                     </td>
@@ -97,15 +107,15 @@ export function LogsTable({
                                     return (
                                         <tr
                                             key={log.id}
-                                            className="border-b transition-colors hover:bg-muted/30"
+                                            className={tableBodyRowClass}
                                         >
-                                            <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
+                                            <td className={`${tableCellClass} whitespace-nowrap text-muted-foreground`}>
                                                 {formatDate(log.timestamp)}
                                             </td>
-                                            <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
+                                            <td className={`${tableCellClass} whitespace-nowrap text-muted-foreground`}>
                                                 {formatTime(log.timestamp)}
                                             </td>
-                                            <td className="px-4 py-3">
+                                            <td className={tableCellClass}>
                                                 {getActionDisplayLabel(
                                                     log.action
                                                 )}
@@ -115,17 +125,19 @@ export function LogsTable({
                                                     </span>
                                                 )}
                                             </td>
-                                            <td className="px-4 py-3">
-                                                {log.user?.name ?? '—'}
+                                            <td className={tableCellClass}>
+                                                <Link href={`/users/${log.user_id}`} className="hover:underline text-primary">
+                                                    {log.user?.name ?? '—'}
+                                                </Link>
                                             </td>
                                         </tr>
                                     );
                                 })
                             )}
                         </tbody>
-                    </table>
-                </div>
-            </div>
+                    </TableElement>
+                </TableScroll>
+            </Table>
 
             {pagination.total > 0 && (
                 <div className="flex items-center justify-between gap-4 border-t pt-4">

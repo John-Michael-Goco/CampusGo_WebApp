@@ -1,5 +1,15 @@
 import { ArrowDown, ArrowUp, ArrowUpDown, Pencil, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import {
+    Table,
+    TableScroll,
+    TableElement,
+    tableHeaderRowClass,
+    tableBodyRowClass,
+    tableHeadClass,
+    tableCellClass,
+    tableEmptyClass,
+} from '@/components/ui/table';
 import type { Student, StudentsFilters } from './types';
 
 function SortIcon({
@@ -39,12 +49,12 @@ export function StudentsTable({
     canManage = true,
 }: Props) {
     return (
-        <div className="rounded-lg border bg-card overflow-hidden">
-            <div className="overflow-x-auto">
-                <table className="w-full text-sm">
+        <Table>
+            <TableScroll>
+                <TableElement>
                     <thead>
-                        <tr className="border-b bg-muted/50">
-                            <th className="h-11 px-4 text-left font-medium">
+                        <tr className={tableHeaderRowClass}>
+                            <th className={tableHeadClass}>
                                 <button
                                     type="button"
                                     className="inline-flex items-center hover:underline"
@@ -58,7 +68,7 @@ export function StudentsTable({
                                     />
                                 </button>
                             </th>
-                            <th className="h-11 px-4 text-left font-medium">
+                            <th className={tableHeadClass}>
                                 <button
                                     type="button"
                                     className="inline-flex items-center hover:underline"
@@ -72,16 +82,16 @@ export function StudentsTable({
                                     />
                                 </button>
                             </th>
-                            <th className="h-11 px-4 text-left font-medium">
+                            <th className={tableHeadClass}>
                                 First name
                             </th>
-                            <th className="h-11 px-4 text-left font-medium">
+                            <th className={tableHeadClass}>
                                 Course
                             </th>
-                            <th className="h-11 px-4 text-left font-medium">
+                            <th className={tableHeadClass}>
                                 Year level
                             </th>
-                            <th className="h-11 px-4 text-left font-medium">
+                            <th className={tableHeadClass}>
                                 <button
                                     type="button"
                                     className="inline-flex items-center hover:underline"
@@ -95,14 +105,14 @@ export function StudentsTable({
                                     />
                                 </button>
                             </th>
-                            <th className="h-11 px-4 text-left font-medium">
+                            <th className={tableHeadClass}>
                                 Is registered
                             </th>
-                            <th className="h-11 px-4 text-left font-medium">
+                            <th className={tableHeadClass}>
                                 Is enrolled
                             </th>
                             {canManage && (
-                                <th className="h-11 px-4 text-right font-medium">
+                                <th className={`${tableHeadClass} text-right`}>
                                     Actions
                                 </th>
                             )}
@@ -110,10 +120,10 @@ export function StudentsTable({
                     </thead>
                     <tbody>
                         {students.length === 0 ? (
-                            <tr>
+                            <tr className={tableBodyRowClass}>
                                 <td
                                     colSpan={canManage ? 9 : 8}
-                                    className="h-24 px-4 text-center text-muted-foreground"
+                                    className={tableEmptyClass}
                                 >
                                     No students found.
                                 </td>
@@ -122,27 +132,27 @@ export function StudentsTable({
                             students.map((student) => (
                                 <tr
                                     key={student.id}
-                                    className="border-b transition-colors hover:bg-muted/30"
+                                    className={tableBodyRowClass}
                                 >
                                     <td className="px-4 py-3 font-mono text-muted-foreground">
                                         {student.student_number}
                                     </td>
-                                    <td className="px-4 py-3">
+                                    <td className={tableCellClass}>
                                         {student.last_name}
                                     </td>
-                                    <td className="px-4 py-3">
+                                    <td className={tableCellClass}>
                                         {student.first_name}
                                     </td>
-                                    <td className="px-4 py-3">
+                                    <td className={tableCellClass}>
                                         {student.course}
                                     </td>
-                                    <td className="px-4 py-3">
+                                    <td className={tableCellClass}>
                                         {student.year_level}
                                     </td>
-                                    <td className="px-4 py-3">
+                                    <td className={tableCellClass}>
                                         {student.section ?? '—'}
                                     </td>
-                                    <td className="px-4 py-3">
+                                    <td className={tableCellClass}>
                                         {student.is_registered ? (
                                             <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800 dark:bg-green-900/30 dark:text-green-400">
                                                 Yes
@@ -153,7 +163,7 @@ export function StudentsTable({
                                             </span>
                                         )}
                                     </td>
-                                    <td className="px-4 py-3">
+                                    <td className={tableCellClass}>
                                         {student.is_enrolled ? (
                                             <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800 dark:bg-green-900/30 dark:text-green-400">
                                                 Yes
@@ -194,8 +204,8 @@ export function StudentsTable({
                             ))
                         )}
                     </tbody>
-                </table>
-            </div>
-        </div>
+                </TableElement>
+            </TableScroll>
+        </Table>
     );
 }

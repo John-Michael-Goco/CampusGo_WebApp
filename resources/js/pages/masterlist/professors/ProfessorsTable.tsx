@@ -1,5 +1,15 @@
 import { ArrowDown, ArrowUp, ArrowUpDown, Pencil, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import {
+    Table,
+    TableScroll,
+    TableElement,
+    tableHeaderRowClass,
+    tableBodyRowClass,
+    tableHeadClass,
+    tableCellClass,
+    tableEmptyClass,
+} from '@/components/ui/table';
 import type { Professor, ProfessorsFilters } from './types';
 
 function SortIcon({
@@ -39,12 +49,12 @@ export function ProfessorsTable({
     canManage = true,
 }: Props) {
     return (
-        <div className="rounded-lg border bg-card overflow-hidden">
-            <div className="overflow-x-auto">
-                <table className="w-full text-sm">
+        <Table>
+            <TableScroll>
+                <TableElement>
                     <thead>
-                        <tr className="border-b bg-muted/50">
-                            <th className="h-11 px-4 text-left font-medium">
+                        <tr className={tableHeaderRowClass}>
+                            <th className={tableHeadClass}>
                                 <button
                                     type="button"
                                     className="inline-flex items-center hover:underline"
@@ -58,7 +68,7 @@ export function ProfessorsTable({
                                     />
                                 </button>
                             </th>
-                            <th className="h-11 px-4 text-left font-medium">
+                            <th className={tableHeadClass}>
                                 <button
                                     type="button"
                                     className="inline-flex items-center hover:underline"
@@ -72,14 +82,14 @@ export function ProfessorsTable({
                                     />
                                 </button>
                             </th>
-                            <th className="h-11 px-4 text-left font-medium">
+                            <th className={tableHeadClass}>
                                 First name
                             </th>
-                            <th className="h-11 px-4 text-left font-medium">
+                            <th className={tableHeadClass}>
                                 Is registered
                             </th>
                             {canManage && (
-                                <th className="h-11 px-4 text-right font-medium">
+                                <th className={`${tableHeadClass} text-right`}>
                                     Actions
                                 </th>
                             )}
@@ -87,10 +97,10 @@ export function ProfessorsTable({
                     </thead>
                     <tbody>
                         {professors.length === 0 ? (
-                            <tr>
+                            <tr className={tableBodyRowClass}>
                                 <td
                                     colSpan={canManage ? 5 : 4}
-                                    className="h-24 px-4 text-center text-muted-foreground"
+                                    className={tableEmptyClass}
                                 >
                                     No professors found.
                                 </td>
@@ -99,18 +109,18 @@ export function ProfessorsTable({
                             professors.map((professor) => (
                                 <tr
                                     key={professor.id}
-                                    className="border-b transition-colors hover:bg-muted/30"
+                                    className={tableBodyRowClass}
                                 >
-                                    <td className="px-4 py-3 font-mono text-muted-foreground">
+                                    <td className={`${tableCellClass} font-mono text-muted-foreground`}>
                                         {professor.employee_id}
                                     </td>
-                                    <td className="px-4 py-3">
+                                    <td className={tableCellClass}>
                                         {professor.last_name}
                                     </td>
-                                    <td className="px-4 py-3">
+                                    <td className={tableCellClass}>
                                         {professor.first_name}
                                     </td>
-                                    <td className="px-4 py-3">
+                                    <td className={tableCellClass}>
                                         {professor.is_registered ? (
                                             <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800 dark:bg-green-900/30 dark:text-green-400">
                                                 Yes
@@ -122,7 +132,7 @@ export function ProfessorsTable({
                                         )}
                                     </td>
                                     {canManage && (
-                                        <td className="px-4 py-3 text-right">
+                                        <td className={`${tableCellClass} text-right`}>
                                             <div className="flex justify-end gap-2">
                                                 <Button
                                                     type="button"
@@ -151,8 +161,8 @@ export function ProfessorsTable({
                             ))
                         )}
                     </tbody>
-                </table>
-            </div>
-        </div>
+                </TableElement>
+            </TableScroll>
+        </Table>
     );
 }

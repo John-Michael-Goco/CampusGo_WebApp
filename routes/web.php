@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AchievementController;
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\LeaderboardController;
 use App\Http\Controllers\QuestController;
 use App\Http\Controllers\LogController;
@@ -120,7 +121,7 @@ Route::post('simulation/quests/{participant}/submit', [QuestParticipationControl
 
 
 Route::middleware(['auth', 'verified'])->group(function () {
-    Route::inertia('dashboard', 'dashboard')->name('dashboard');
+    Route::get('dashboard', DashboardController::class)->name('dashboard');
 
     // Semesters (Academic management) — store/update/destroy admin only
     Route::get('semesters', [SemesterController::class, 'index'])->name('semesters.index');

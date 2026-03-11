@@ -4,6 +4,16 @@ import { Check, X } from 'lucide-react';
 import AppLayout from '@/layouts/app-layout';
 import type { BreadcrumbItem } from '@/types';
 import { Button } from '@/components/ui/button';
+import {
+    Table,
+    TableScroll,
+    TableElement,
+    tableHeaderRowClass,
+    tableBodyRowClass,
+    tableHeadClass,
+    tableCellClass,
+    tableEmptyClass,
+} from '@/components/ui/table';
 import type { PendingQuest, PaginatedQuests } from './shared';
 import { QuestSearchInput, formatQuestDate } from './shared';
 
@@ -54,21 +64,21 @@ export default function QuestApprovalPage({ quests, filters = {} }: Props) {
 
                 <QuestSearchInput value={search} onChange={setSearch} />
 
-                <div className="overflow-hidden rounded-lg border bg-card">
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-sm">
+                <Table>
+                    <TableScroll>
+                        <TableElement>
                             <thead>
-                                <tr className="border-b bg-muted/50">
-                                    <th className="h-11 px-4 text-left font-medium">Title</th>
-                                    <th className="h-11 px-4 text-left font-medium">Type</th>
-                                    <th className="h-11 px-4 text-left font-medium">Created</th>
-                                    <th className="h-11 px-4 text-right font-medium">Actions</th>
+                                <tr className={tableHeaderRowClass}>
+                                    <th className={tableHeadClass}>Title</th>
+                                    <th className={tableHeadClass}>Type</th>
+                                    <th className={tableHeadClass}>Created</th>
+                                    <th className={`${tableHeadClass} text-right`}>Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {items.length === 0 ? (
-                                    <tr>
-                                        <td colSpan={4} className="h-24 px-4 text-center text-muted-foreground">
+                                    <tr className={tableBodyRowClass}>
+                                        <td colSpan={4} className={tableEmptyClass}>
                                             No quests pending approval.
                                         </td>
                                     </tr>
@@ -76,14 +86,14 @@ export default function QuestApprovalPage({ quests, filters = {} }: Props) {
                                     items.map((quest) => (
                                         <tr
                                             key={quest.id}
-                                            className="border-b transition-colors hover:bg-muted/30"
+                                            className={tableBodyRowClass}
                                         >
-                                            <td className="px-4 py-3 font-medium">{quest.title}</td>
-                                            <td className="px-4 py-3 capitalize">{quest.quest_type}</td>
-                                            <td className="px-4 py-3 text-muted-foreground">
+                                            <td className={`${tableCellClass} font-medium`}>{quest.title}</td>
+                                            <td className={`${tableCellClass} capitalize`}>{quest.quest_type}</td>
+                                            <td className={`${tableCellClass} text-muted-foreground`}>
                                                 {formatQuestDate(quest.created_at)}
                                             </td>
-                                            <td className="px-4 py-3 text-right">
+                                            <td className={`${tableCellClass} text-right`}>
                                                 <div className="flex justify-end gap-2">
                                                     <Button
                                                         type="button"
@@ -109,9 +119,9 @@ export default function QuestApprovalPage({ quests, filters = {} }: Props) {
                                     ))
                                 )}
                             </tbody>
-                        </table>
-                    </div>
-                </div>
+                        </TableElement>
+                    </TableScroll>
+                </Table>
 
                 {quests.total > 0 && (
                     <p className="text-sm text-muted-foreground">
