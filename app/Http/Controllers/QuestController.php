@@ -76,7 +76,7 @@ class QuestController extends Controller
             $questData = json_decode((string) $request->query('questData', '{}'), true);
         }
 
-        return Inertia::render('quests/create', [
+        return Inertia::render('quests/actions/form', [
             'questData' => $questData,
             'enrollmentSemester' => $this->getAvailableEnrollmentSemester(),
         ]);
@@ -89,7 +89,7 @@ class QuestController extends Controller
     {
         $questData = json_decode((string) $request->query('questData', '{}'), true) ?: [];
 
-        return Inertia::render('quests/create/stages', [
+        return Inertia::render('quests/actions/stages', [
             'questData' => $questData,
         ]);
     }
@@ -232,7 +232,7 @@ class QuestController extends Controller
             $questData = json_decode((string) $request->query('questData', '{}'), true) ?: $questData;
         }
 
-        return Inertia::render('quests/edit', [
+        return Inertia::render('quests/actions/form', [
             'questId' => $quest->id,
             'questData' => $questData,
             'enrollmentSemester' => $this->getAvailableEnrollmentSemester($quest->id),
@@ -272,7 +272,7 @@ class QuestController extends Controller
             ];
         })->all();
 
-        return Inertia::render('quests/edit/stages', [
+        return Inertia::render('quests/actions/stages', [
             'questId' => $quest->id,
             'questData' => $questData,
             'existingStages' => $stagesData,

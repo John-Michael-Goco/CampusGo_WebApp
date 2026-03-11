@@ -8,6 +8,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
+import type { QuestOption } from './types';
 import {
     AchievementFormFields,
     type AchievementFormData,
@@ -26,6 +27,7 @@ type Props = {
         processing: boolean;
     };
     onSubmit: () => void;
+    quests?: QuestOption[];
 };
 
 export function EditAchievementDialog({
@@ -33,6 +35,7 @@ export function EditAchievementDialog({
     onOpenChange,
     form,
     onSubmit,
+    quests = [],
 }: Props) {
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
@@ -48,6 +51,7 @@ export function EditAchievementDialog({
                     data={form.data}
                     errors={form.errors}
                     setData={form.setData}
+                    quests={quests}
                 />
                 <DialogFooter>
                     <Button

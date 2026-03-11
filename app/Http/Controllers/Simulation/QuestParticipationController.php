@@ -3,12 +3,15 @@
 namespace App\Http\Controllers\Simulation;
 
 use App\Http\Controllers\Controller;
+use App\Models\Achievement;
 use App\Models\ActivityLog;
 use App\Models\Enrollment;
 use App\Models\PointTransaction;
 use App\Models\Quest;
 use App\Models\QuestParticipant;
 use App\Models\Semester;
+use App\Models\UserAchievement;
+use App\Models\UserInventory;
 use App\Models\Submission;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -608,6 +611,16 @@ class QuestParticipationController extends Controller
             ]);
         }
 
+        if ($quest->reward_custom_prize) {
+            UserInventory::create([
+                'user_id' => $user->id,
+                'item_id' => null,
+                'quantity' => 1,
+                'custom_prize_description' => $quest->reward_custom_prize,
+                'source_quest_id' => $quest->id,
+            ]);
+        }
+
         $user->refresh();
         $newLevel = (int) floor(($user->total_xp_earned ?? 0) / 100);
         if ($newLevel !== (int) $user->level) {
@@ -620,6 +633,26 @@ class QuestParticipationController extends Controller
                 Enrollment::firstOrCreate(
                     ['user_id' => $user->id, 'semester' => $semester->name],
                     ['is_enrolled' => true],
+                );
+            }
+        }
+
+        // Award "complete specific quest" achievements for this quest
+        $questAchievements = Achievement::where('requirement_type', Achievement::REQUIREMENT_TYPE_COMPLETE_QUEST)
+            ->where('requirement_value', $quest->id)
+            ->get();
+        foreach ($questAchievements as $achievement) {
+            $exists = UserAchievement::where('user_id', $user->id)->where('achievement_id', $achievement->id)->exists();
+            if (! $exists) {
+                UserAchievement::create([
+                    'user_id' => $user->id,
+                    'achievement_id' => $achievement->id,
+                    'earned_at' => now(),
+                ]);
+                ActivityLog::log(
+                    $user->id,
+                    ActivityLog::ACTION_ACHIEVEMENT_EARNED,
+                    sprintf('%s (id %s)', $achievement->name, $achievement->id)
                 );
             }
         }

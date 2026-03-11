@@ -22,6 +22,7 @@ const breadcrumbs: BreadcrumbItem[] = [
 
 export default function AchievementsPage({
     achievements,
+    quests = [],
     filters,
 }: AchievementsPageProps) {
     const achievementItems = achievements.data ?? [];
@@ -209,6 +210,7 @@ export default function AchievementsPage({
                 <AchievementsTable
                     achievements={achievementItems}
                     filters={filters}
+                    quests={quests}
                     onSort={handleSort}
                     onEdit={openEdit}
                     onDelete={setDeletingAchievement}
@@ -275,6 +277,7 @@ export default function AchievementsPage({
                     onOpenChange={setCreateOpen}
                     form={createForm}
                     onSubmit={handleCreateSubmit}
+                    quests={quests}
                 />
 
                 <EditAchievementDialog
@@ -284,6 +287,7 @@ export default function AchievementsPage({
                     }
                     form={editForm}
                     onSubmit={handleEditSubmit}
+                    quests={quests}
                 />
 
                 <DeleteAchievementDialog

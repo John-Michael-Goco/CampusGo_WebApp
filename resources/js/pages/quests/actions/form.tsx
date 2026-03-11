@@ -5,20 +5,15 @@ import AppLayout from '@/layouts/app-layout';
 import type { BreadcrumbItem } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { QuestFormFields } from './create/QuestFormFields';
-import type { CreateQuestFormData, EnrollmentSemester } from './create/types';
-import { INITIAL_FORM_DATA } from './create/types';
+import { QuestFormFields } from './QuestFormFields';
+import type { CreateQuestFormData, EnrollmentSemester } from './types';
+import { INITIAL_FORM_DATA } from './types';
 
 type PageProps = {
+    questId?: number;
     questData?: CreateQuestFormData | null;
     enrollmentSemester?: EnrollmentSemester;
 };
-
-const breadcrumbs: BreadcrumbItem[] = [
-    { title: 'Quests', href: '/quests/active' },
-    { title: 'Active', href: '/quests/active' },
-    { title: 'Create quest', href: '/quests/create' },
-];
 
 const QUEST_TEMPLATES = [
     {
@@ -33,7 +28,7 @@ const QUEST_TEMPLATES = [
     },
     {
         name: 'QR + Quiz',
-        description: 'Find the QR code, then answer questions. Pass each stage\'s quiz to advance. Pass the last stage to win.',
+        description: "Find the QR code, then answer questions. Pass each stage's quiz to advance. Pass the last stage to win.",
         settings: [
             'Question type: Multiple choice',
             'Stages: 1+',
@@ -62,11 +57,18 @@ const QUEST_TEMPLATES = [
     },
 ];
 
-export default function CreateQuestPage() {
-    const { questData, enrollmentSemester } = usePage<PageProps>().props;
+export default function QuestFormPage() {
+    const { questId, questData, enrollmentSemester } = usePage<PageProps>().props;
+    const isEdit = typeof questId === 'number';
     const form = useForm<CreateQuestFormData>(questData ?? { ...INITIAL_FORM_DATA });
     const [guideOpen, setGuideOpen] = useState(false);
     const [clientErrors, setClientErrors] = useState<Record<string, string>>({});
+
+    const breadcrumbs: BreadcrumbItem[] = [
+        { title: 'Quests', href: '/quests/active' },
+        { title: 'Active', href: '/quests/active' },
+        { title: isEdit ? 'Edit quest' : 'Create quest', href: isEdit ? `/quests/${questId}/edit` : '/quests/create' },
+    ];
 
     const validateStep1 = (): Record<string, string> => {
         const e: Record<string, string> = {};
@@ -87,51 +89,57 @@ export default function CreateQuestPage() {
             return;
         }
         setClientErrors({});
-        router.get('/quests/create/stages', { questData: JSON.stringify(form.data) });
+        if (isEdit) {
+            router.get(`/quests/${questId}/edit/stages`, { questData: JSON.stringify(form.data) });
+        } else {
+            router.get('/quests/create/stages', { questData: JSON.stringify(form.data) });
+        }
     };
 
     const mergedErrors = { ...form.errors, ...clientErrors };
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
-            <Head title="Create Quest" />
+            <Head title={isEdit ? 'Edit Quest' : 'Create Quest'} />
             <div className="flex h-full flex-1 flex-col gap-6 rounded-xl p-4">
                 <div className="flex flex-wrap items-center justify-between gap-4">
-                    <h1 className="text-xl font-semibold">Create Quest</h1>
+                    <h1 className="text-xl font-semibold">{isEdit ? 'Edit Quest' : 'Create Quest'}</h1>
                     <Button variant="outline" size="sm" asChild>
                         <Link href="/quests/active">Back to active quests</Link>
                     </Button>
                 </div>
 
                 <div className="mx-auto w-full max-w-4xl">
-                    <Collapsible open={guideOpen} onOpenChange={setGuideOpen} className="mb-6">
-                        <CollapsibleTrigger className="flex w-full items-center gap-2 rounded-lg border bg-muted/30 px-4 py-3 text-left transition-colors hover:bg-muted/50">
-                            <Lightbulb className="size-4 shrink-0 text-amber-500" />
-                            <span className="flex-1 text-sm font-medium">Quest templates &amp; setup guide</span>
-                            <ChevronDown className={`size-4 shrink-0 text-muted-foreground transition-transform ${guideOpen ? 'rotate-180' : ''}`} />
-                        </CollapsibleTrigger>
-                        <CollapsibleContent>
-                            <div className="mt-2 grid gap-3 sm:grid-cols-2">
-                                {QUEST_TEMPLATES.map((tpl) => (
-                                    <div
-                                        key={tpl.name}
-                                        className="rounded-lg border bg-white dark:bg-zinc-900 p-4"
-                                    >
-                                        <h3 className="text-sm font-semibold">{tpl.name}</h3>
-                                        <p className="mt-1 text-xs text-muted-foreground">{tpl.description}</p>
-                                        <ul className="mt-2 space-y-0.5">
-                                            {tpl.settings.map((s, i) => (
-                                                <li key={i} className="flex items-start gap-1.5 text-xs text-muted-foreground">
-                                                    <span className="mt-1 block size-1 shrink-0 rounded-full bg-muted-foreground/50" />
-                                                    {s}
-                                                </li>
-                                            ))}
-                                        </ul>
-                                    </div>
-                                ))}
-                            </div>
-                        </CollapsibleContent>
-                    </Collapsible>
+                    {!isEdit && (
+                        <Collapsible open={guideOpen} onOpenChange={setGuideOpen} className="mb-6">
+                            <CollapsibleTrigger className="flex w-full items-center gap-2 rounded-lg border bg-muted/30 px-4 py-3 text-left transition-colors hover:bg-muted/50">
+                                <Lightbulb className="size-4 shrink-0 text-amber-500" />
+                                <span className="flex-1 text-sm font-medium">Quest templates &amp; setup guide</span>
+                                <ChevronDown className={`size-4 shrink-0 text-muted-foreground transition-transform ${guideOpen ? 'rotate-180' : ''}`} />
+                            </CollapsibleTrigger>
+                            <CollapsibleContent>
+                                <div className="mt-2 grid gap-3 sm:grid-cols-2">
+                                    {QUEST_TEMPLATES.map((tpl) => (
+                                        <div
+                                            key={tpl.name}
+                                            className="rounded-lg border bg-white dark:bg-zinc-900 p-4"
+                                        >
+                                            <h3 className="text-sm font-semibold">{tpl.name}</h3>
+                                            <p className="mt-1 text-xs text-muted-foreground">{tpl.description}</p>
+                                            <ul className="mt-2 space-y-0.5">
+                                                {tpl.settings.map((s, i) => (
+                                                    <li key={i} className="flex items-start gap-1.5 text-xs text-muted-foreground">
+                                                        <span className="mt-1 block size-1 shrink-0 rounded-full bg-muted-foreground/50" />
+                                                        {s}
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        </div>
+                                    ))}
+                                </div>
+                            </CollapsibleContent>
+                        </Collapsible>
+                    )}
 
                     <QuestFormFields
                         data={form.data}
@@ -144,10 +152,7 @@ export default function CreateQuestPage() {
                         <Button variant="outline" asChild>
                             <Link href="/quests/active">Cancel</Link>
                         </Button>
-                        <Button
-                            type="button"
-                            onClick={handleContinue}
-                        >
+                        <Button type="button" onClick={handleContinue}>
                             Continue
                         </Button>
                     </div>

@@ -35,9 +35,30 @@ Route::get('simulation/store', function () {
 
     /** @var \App\Models\User|null $user */
     $user = Auth::user();
-    $inventory = $user
-        ? $user->inventory()->with('storeItem')->orderByDesc('acquired_at')->get()
-        : [];
+    $inventory = [];
+    if ($user) {
+        $inventory = $user->inventory()->with(['storeItem', 'quest' => fn ($q) => $q->select('id', 'reward_custom_prize')])
+            ->orderByDesc('acquired_at')
+            ->get()
+            ->map(function ($entry) {
+                $arr = $entry->toArray();
+                if ($entry->item_id === null) {
+                    $description = null;
+                    if ($entry->relationLoaded('quest') && $entry->quest) {
+                        $description = $entry->quest->reward_custom_prize ?? $entry->custom_prize_description;
+                    } else {
+                        $description = $entry->custom_prize_description;
+                    }
+                    $arr['custom_prize_description'] = $description !== null && trim((string) $description) !== ''
+                        ? trim((string) $description)
+                        : 'Quest reward';
+                }
+                unset($arr['quest']);
+                return $arr;
+            })
+            ->values()
+            ->all();
+    }
 
     return \Inertia\Inertia::render('simulation/store', [
         'storeItems' => $storeItems,

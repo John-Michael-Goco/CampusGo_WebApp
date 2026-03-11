@@ -14,10 +14,12 @@ export type SimulationStoreItem = {
 
 export type SimulationInventoryEntry = {
     id: number;
-    item_id: number;
+    item_id: number | null;
     quantity: number;
     acquired_at: string;
-    store_item?: { id: number; name: string };
+    store_item?: { id: number; name: string } | null;
+    custom_prize_description?: string | null;
+    source_quest_id?: number | null;
 };
 
 export type SimulationStudentSearchResult = {
@@ -55,23 +57,55 @@ function isItemAvailableNow(item: SimulationStoreItem): boolean {
     return true;
 }
 
-/** Merge inventory entries by item_id so same product stacks in one row. */
-function mergeInventory(entries: SimulationInventoryEntry[]): { item_id: number; name: string; quantity: number }[] {
-    const byItem = new Map<number, { name: string; quantity: number }>();
+export type MergedInventoryRow = {
+    key: string | number;
+    item_id: number | null;
+    name: string;
+    quantity: number;
+    isCustom: boolean;
+    /** Set for custom prize rows; used when calling "Use" */
+    inventoryId?: number;
+};
+
+/** Merge inventory entries: by item_id for store items, by id for custom prizes (no merging). */
+function mergeInventory(entries: SimulationInventoryEntry[]): MergedInventoryRow[] {
+    const storeByItem = new Map<number, { name: string; quantity: number }>();
+    const customRows: MergedInventoryRow[] = [];
+
     for (const e of entries) {
-        const name = e.store_item?.name ?? `Item #${e.item_id}`;
-        const existing = byItem.get(e.item_id);
-        if (existing) {
-            existing.quantity += e.quantity;
+        const isCustom = e.item_id == null;
+        if (isCustom) {
+            const name = (e.custom_prize_description && String(e.custom_prize_description).trim())
+                ? String(e.custom_prize_description).trim()
+                : 'Quest reward';
+            customRows.push({
+                key: `custom-${e.id}`,
+                item_id: null,
+                name,
+                quantity: e.quantity,
+                isCustom: true,
+                inventoryId: e.id,
+            });
         } else {
-            byItem.set(e.item_id, { name, quantity: e.quantity });
+            const name = e.store_item?.name ?? `Item #${e.item_id}`;
+            const existing = storeByItem.get(e.item_id);
+            if (existing) {
+                existing.quantity += e.quantity;
+            } else {
+                storeByItem.set(e.item_id, { name, quantity: e.quantity });
+            }
         }
     }
-    return Array.from(byItem.entries()).map(([item_id, { name, quantity }]) => ({
+
+    const storeRows: MergedInventoryRow[] = Array.from(storeByItem.entries()).map(([item_id, { name, quantity }]) => ({
+        key: item_id,
         item_id,
         name,
         quantity,
+        isCustom: false,
     }));
+
+    return [...storeRows, ...customRows];
 }
 
 export default function SimulationStore({
@@ -84,6 +118,7 @@ export default function SimulationStore({
     const status = flash?.status;
     const [redeemingId, setRedeemingId] = useState<number | null>(null);
     const [usingItemId, setUsingItemId] = useState<number | null>(null);
+    const [usingInventoryId, setUsingInventoryId] = useState<number | null>(null);
 
     const [transferOpen, setTransferOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
@@ -151,6 +186,14 @@ export default function SimulationStore({
         router.post('/simulation/inventory/use', { store_item_id: storeItemId }, {
             preserveScroll: true,
             onFinish: () => setUsingItemId(null),
+        });
+    };
+
+    const handleUseCustom = (inventoryId: number) => {
+        setUsingInventoryId(inventoryId);
+        router.post('/simulation/inventory/use', { inventory_id: inventoryId }, {
+            preserveScroll: true,
+            onFinish: () => setUsingInventoryId(null),
         });
     };
 
@@ -286,7 +329,7 @@ export default function SimulationStore({
                                 <ul className="space-y-2">
                                     {mergedInventory.map((row) => (
                                         <li
-                                            key={row.item_id}
+                                            key={row.key}
                                             className="flex items-center justify-between gap-2 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800/80 px-3 py-2"
                                         >
                                             <span className="text-sm text-zinc-700 dark:text-zinc-300 min-w-0 truncate">
@@ -294,11 +337,22 @@ export default function SimulationStore({
                                             </span>
                                             <button
                                                 type="button"
-                                                disabled={row.quantity <= 0 || usingItemId === row.item_id}
-                                                onClick={() => handleUse(row.item_id)}
+                                                disabled={
+                                                    row.quantity <= 0 ||
+                                                    (row.isCustom
+                                                        ? usingInventoryId === row.inventoryId
+                                                        : row.item_id != null && usingItemId === row.item_id)
+                                                }
+                                                onClick={() =>
+                                                    row.isCustom && row.inventoryId != null
+                                                        ? handleUseCustom(row.inventoryId)
+                                                        : row.item_id != null && handleUse(row.item_id)
+                                                }
                                                 className="shrink-0 rounded-md bg-amber-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-amber-700 disabled:opacity-50 disabled:pointer-events-none"
                                             >
-                                                {usingItemId === row.item_id ? 'Using…' : 'Use'}
+                                                {row.isCustom
+                                                    ? (usingInventoryId === row.inventoryId ? 'Using…' : 'Use')
+                                                    : (row.item_id != null && usingItemId === row.item_id ? 'Using…' : 'Use')}
                                             </button>
                                         </li>
                                     ))}

@@ -2,6 +2,7 @@ export const REQUIREMENT_TYPE_OPTIONS = [
     { value: 'quest_count', label: 'Quest count' },
     { value: 'level', label: 'Level' },
     { value: 'quest_win', label: 'Quests win' },
+    { value: 'complete_quest', label: 'Complete specific quest' },
 ] as const;
 
 export type Achievement = {
@@ -28,7 +29,13 @@ export type PaginatedAchievements = {
     next_page_url: string | null;
 };
 
+export type QuestOption = {
+    id: number;
+    title: string;
+};
+
 export type AchievementsPageProps = {
     achievements: PaginatedAchievements;
+    quests: QuestOption[];
     filters: AchievementsFilters;
 };

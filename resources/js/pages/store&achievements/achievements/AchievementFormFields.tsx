@@ -7,6 +7,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import type { QuestOption } from './types';
 import { REQUIREMENT_TYPE_OPTIONS } from './types';
 
 export type AchievementFormData = {
@@ -24,6 +25,7 @@ type Props = {
         field: keyof AchievementFormData,
         value: string | number
     ) => void;
+    quests?: QuestOption[];
 };
 
 export function AchievementFormFields({
@@ -31,6 +33,7 @@ export function AchievementFormFields({
     data,
     errors,
     setData,
+    quests = [],
 }: Props) {
     return (
         <div className="grid gap-4">
@@ -94,23 +97,45 @@ export function AchievementFormFields({
             </div>
             <div className="grid gap-2">
                 <Label htmlFor={`${idPrefix}-requirement_value`}>
-                    Requirement value
+                    {data.requirement_type === 'complete_quest'
+                        ? 'Quest'
+                        : 'Requirement value'}
                 </Label>
-                <Input
-                    id={`${idPrefix}-requirement_value`}
-                    type="number"
-                    min={0}
-                    value={data.requirement_value}
-                    onChange={(e) =>
-                        setData(
-                            'requirement_value',
-                            e.target.value === ''
-                                ? ''
-                                : parseInt(e.target.value, 10)
-                        )
-                    }
-                    placeholder="e.g. 5"
-                />
+                {data.requirement_type === 'complete_quest' ? (
+                    <Select
+                        value={data.requirement_value === '' ? '' : String(data.requirement_value)}
+                        onValueChange={(v) =>
+                            setData('requirement_value', v === '' ? '' : parseInt(v, 10))
+                        }
+                    >
+                        <SelectTrigger id={`${idPrefix}-requirement_value`}>
+                            <SelectValue placeholder="Select a quest" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {quests.map((q) => (
+                                <SelectItem key={q.id} value={String(q.id)}>
+                                    {q.title}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                ) : (
+                    <Input
+                        id={`${idPrefix}-requirement_value`}
+                        type="number"
+                        min={0}
+                        value={data.requirement_value}
+                        onChange={(e) =>
+                            setData(
+                                'requirement_value',
+                                e.target.value === ''
+                                    ? ''
+                                    : parseInt(e.target.value, 10)
+                            )
+                        }
+                        placeholder="e.g. 5"
+                    />
+                )}
                 {errors.requirement_value && (
                     <p className="text-sm text-destructive">
                         {errors.requirement_value}

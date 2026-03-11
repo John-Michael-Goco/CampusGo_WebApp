@@ -24,6 +24,7 @@ type DateTimePickerProps = {
     placeholder?: string;
     disabled?: boolean;
     minDate?: Date;
+    maxDate?: Date;
     showTime?: boolean;
     side?: 'top' | 'bottom';
 };
@@ -49,6 +50,7 @@ export function DateTimePicker({
     placeholder,
     disabled,
     minDate,
+    maxDate,
     showTime = true,
     side = 'top',
 }: DateTimePickerProps) {
@@ -129,7 +131,11 @@ export function DateTimePicker({
                     mode="single"
                     selected={date}
                     onSelect={handleDaySelect}
-                    disabled={minDate ? { before: minDate } : undefined}
+                    disabled={
+                        minDate || maxDate
+                            ? { ...(minDate && { before: minDate }), ...(maxDate && { after: maxDate }) }
+                            : undefined
+                    }
                     defaultMonth={date}
                 />
                 {showTime && (

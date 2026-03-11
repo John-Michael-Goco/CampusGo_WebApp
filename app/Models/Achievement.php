@@ -9,10 +9,11 @@ class Achievement extends Model
 {
     public $timestamps = false;
 
-    /** Allowed requirement_type values: quest_count, level, quest_win */
+    /** Allowed requirement_type values: quest_count, level, quest_win, complete_quest */
     public const REQUIREMENT_TYPE_QUEST_COUNT = 'quest_count';
     public const REQUIREMENT_TYPE_LEVEL = 'level';
     public const REQUIREMENT_TYPE_QUEST_WIN = 'quest_win';
+    public const REQUIREMENT_TYPE_COMPLETE_QUEST = 'complete_quest';
 
     protected $fillable = [
         'name',

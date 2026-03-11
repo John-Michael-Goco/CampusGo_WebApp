@@ -1,23 +1,49 @@
-import { Trash2, Plus } from 'lucide-react';
+import { Trash2, Plus, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
 import { DateTimePicker } from '@/components/ui/date-time-picker';
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from '@/components/ui/tooltip';
 import type { StageFormData, QuestionType, Question, Choice } from './stages-types';
 import { createEmptyQuestion, EMPTY_CHOICE } from './stages-types';
 import type { QuestType, QuestionTypeLevel } from './types';
+
+function parseQuestDate(value: string | ''): Date | undefined {
+    if (!value || typeof value !== 'string') return undefined;
+    const d = new Date(value);
+    return Number.isNaN(d.getTime()) ? undefined : d;
+}
 
 type Props = {
     stage: StageFormData;
     questType: QuestType;
     questionType: QuestionTypeLevel;
     isElimination: boolean;
+    /** Quest-level max participants; used to cap first stage's max survivors */
+    questMaxParticipants?: number | '';
+    /** Quest start/end from first form; stage deadline must be within this range */
+    questStartDate?: string | '';
+    questEndDate?: string | '';
     onChange: (stage: StageFormData) => void;
 };
 
-export function StageForm({ stage, questType, questionType, isElimination, onChange }: Props) {
+export function StageForm({
+    stage,
+    questType,
+    questionType,
+    isElimination,
+    questMaxParticipants,
+    questStartDate,
+    questEndDate,
+    onChange,
+}: Props) {
     const isEnrollment = questType === 'enrollment';
 
     const update = <K extends keyof StageFormData>(key: K, value: StageFormData[K]) => {
@@ -88,35 +114,91 @@ export function StageForm({ stage, questType, questionType, isElimination, onCha
             {isElimination && (
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                     <div className="grid gap-2">
-                        <Label>Max survivors</Label>
+                        <Label>
+                            Max survivors
+                            {stage.stage_number === 1 && typeof questMaxParticipants === 'number' && questMaxParticipants > 0 && (
+                                <span className="ml-1.5 text-muted-foreground font-normal">
+                                    (max {questMaxParticipants} from quest)
+                                </span>
+                            )}
+                        </Label>
                         <Input
                             type="number"
                             min={1}
+                            max={stage.stage_number === 1 && typeof questMaxParticipants === 'number' && questMaxParticipants > 0 ? questMaxParticipants : undefined}
                             value={stage.max_survivors}
-                            onChange={(e) =>
-                                update('max_survivors', e.target.value === '' ? '' : parseInt(e.target.value, 10) || 1)
-                            }
+                            onChange={(e) => {
+                                const raw = e.target.value === '' ? '' : parseInt(e.target.value, 10) || 1;
+                                let newMax = raw;
+                                if (stage.stage_number === 1 && typeof questMaxParticipants === 'number' && questMaxParticipants > 0 && typeof raw === 'number' && raw > questMaxParticipants) {
+                                    newMax = questMaxParticipants;
+                                }
+                                const finalMax = typeof newMax === 'number' ? newMax : 0;
+                                const currentMin = typeof stage.minimum_participants === 'number' ? stage.minimum_participants : 0;
+                                if (finalMax > 0 && currentMin > finalMax) {
+                                    onChange({
+                                        ...stage,
+                                        max_survivors: newMax as number | '',
+                                        minimum_participants: finalMax,
+                                    });
+                                } else {
+                                    update('max_survivors', newMax as number | '');
+                                }
+                            }}
                             placeholder="e.g. 20"
                         />
                     </div>
                     <div className="grid gap-2">
-                        <Label>Min participants</Label>
+                        <Label className="flex items-center gap-1.5">
+                            Min participants
+                            <TooltipProvider>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Info className="size-4 text-muted-foreground cursor-help" aria-label="Info" />
+                                    </TooltipTrigger>
+                                    <TooltipContent side="top" className="max-w-xs">
+                                        If minimum participants is not met by the stage deadline, the stage (and quest) will be considered failed or cancelled. Cannot exceed max survivors.
+                                    </TooltipContent>
+                                </Tooltip>
+                            </TooltipProvider>
+                        </Label>
                         <Input
                             type="number"
                             min={1}
+                            max={typeof stage.max_survivors === 'number' && stage.max_survivors > 0 ? stage.max_survivors : undefined}
                             value={stage.minimum_participants}
-                            onChange={(e) =>
-                                update('minimum_participants', e.target.value === '' ? '' : parseInt(e.target.value, 10) || 1)
-                            }
+                            onChange={(e) => {
+                                const raw = e.target.value === '' ? '' : parseInt(e.target.value, 10) || 1;
+                                const cap = typeof stage.max_survivors === 'number' && stage.max_survivors > 0 ? stage.max_survivors : undefined;
+                                if (typeof raw === 'number' && cap !== undefined && raw > cap) {
+                                    update('minimum_participants', cap);
+                                } else {
+                                    update('minimum_participants', raw);
+                                }
+                            }}
                             placeholder="e.g. 5"
                         />
                     </div>
                     <div className="grid gap-2">
-                        <Label>Stage deadline</Label>
+                        <Label className="flex items-center gap-1.5">
+                            Stage deadline
+                            <TooltipProvider>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Info className="size-4 text-muted-foreground cursor-help" aria-label="Info" />
+                                    </TooltipTrigger>
+                                    <TooltipContent side="top" className="max-w-xs">
+                                        Must be within the quest start and end dates. If minimum participants is not met by this deadline, the stage will be marked failed or cancelled.
+                                    </TooltipContent>
+                                </Tooltip>
+                            </TooltipProvider>
+                        </Label>
                         <DateTimePicker
                             value={stage.stage_deadline}
                             onChange={(val) => update('stage_deadline', val)}
                             placeholder="Pick deadline"
+                            minDate={parseQuestDate(questStartDate ?? '')}
+                            maxDate={parseQuestDate(questEndDate ?? '')}
                         />
                     </div>
                 </div>

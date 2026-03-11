@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use App\Models\Quest;
 
 class UserInventory extends Model
 {
@@ -36,5 +37,10 @@ class UserInventory extends Model
     public function storeItem(): BelongsTo
     {
         return $this->belongsTo(StoreItem::class, 'item_id');
+    }
+
+    public function quest(): BelongsTo
+    {
+        return $this->belongsTo(Quest::class, 'source_quest_id');
     }
 }

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Achievement;
 use App\Models\ActivityLog;
+use App\Models\Quest;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -11,7 +12,7 @@ use Inertia\Response;
 
 class AchievementController extends Controller
 {
-    private const REQUIREMENT_TYPES = ['quest_count', 'level', 'quest_win'];
+    private const REQUIREMENT_TYPES = ['quest_count', 'level', 'quest_win', 'complete_quest'];
 
     /**
      * Display the achievements list with search.
@@ -40,8 +41,11 @@ class AchievementController extends Controller
 
         $achievements = $query->paginate(15)->withQueryString();
 
+        $quests = Quest::orderBy('title')->get(['id', 'title']);
+
         return Inertia::render('store&achievements/achievements', [
             'achievements' => $achievements,
+            'quests' => $quests,
             'filters' => [
                 'search' => $request->query('search', ''),
                 'sort_by' => $sortBy,
@@ -52,12 +56,16 @@ class AchievementController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
-        $validated = $request->validate([
+        $rules = [
             'name' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string', 'max:2000'],
-            'requirement_type' => ['required', 'string', 'in:quest_count,level,quest_win'],
+            'requirement_type' => ['required', 'string', 'in:quest_count,level,quest_win,complete_quest'],
             'requirement_value' => ['required', 'integer', 'min:0'],
-        ]);
+        ];
+        if ($request->input('requirement_type') === 'complete_quest') {
+            $rules['requirement_value'] = ['required', 'integer', 'min:1', 'exists:quests,id'];
+        }
+        $validated = $request->validate($rules);
 
         $achievement = Achievement::create($validated);
 
@@ -74,12 +82,16 @@ class AchievementController extends Controller
 
     public function update(Request $request, Achievement $achievement): RedirectResponse
     {
-        $validated = $request->validate([
+        $rules = [
             'name' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string', 'max:2000'],
-            'requirement_type' => ['required', 'string', 'in:quest_count,level,quest_win'],
+            'requirement_type' => ['required', 'string', 'in:quest_count,level,quest_win,complete_quest'],
             'requirement_value' => ['required', 'integer', 'min:0'],
-        ]);
+        ];
+        if ($request->input('requirement_type') === 'complete_quest') {
+            $rules['requirement_value'] = ['required', 'integer', 'min:1', 'exists:quests,id'];
+        }
+        $validated = $request->validate($rules);
 
         $achievement->update($validated);
 

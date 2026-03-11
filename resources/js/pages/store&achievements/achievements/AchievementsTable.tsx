@@ -4,6 +4,7 @@ import {
     REQUIREMENT_TYPE_OPTIONS,
     type Achievement,
     type AchievementsFilters,
+    type QuestOption,
 } from './types';
 
 function SortIcon({
@@ -30,9 +31,18 @@ function requirementTypeLabel(value: string): string {
     return opt?.label ?? value;
 }
 
+function requirementValueDisplay(achievement: Achievement, quests: QuestOption[]): string {
+    if (achievement.requirement_type === 'complete_quest') {
+        const q = quests.find((x) => x.id === achievement.requirement_value);
+        return q ? q.title : `Quest #${achievement.requirement_value}`;
+    }
+    return String(achievement.requirement_value);
+}
+
 type Props = {
     achievements: Achievement[];
     filters: AchievementsFilters;
+    quests?: QuestOption[];
     onSort: (
         column: 'name' | 'requirement_type' | 'requirement_value'
     ) => void;
@@ -43,6 +53,7 @@ type Props = {
 export function AchievementsTable({
     achievements,
     filters,
+    quests = [],
     onSort,
     onEdit,
     onDelete,
@@ -131,7 +142,7 @@ export function AchievementsTable({
                                         )}
                                     </td>
                                     <td className="px-4 py-3">
-                                        {achievement.requirement_value}
+                                        {requirementValueDisplay(achievement, quests)}
                                     </td>
                                     <td className="px-4 py-3 text-right">
                                         <div className="flex justify-end gap-2">

@@ -12,7 +12,7 @@ return new class extends Migration
             $table->id();
             $table->string('name');
             $table->text('description')->nullable();
-            $table->enum('requirement_type', ['quest_count', 'level', 'quest_win']);
+            $table->enum('requirement_type', ['quest_count', 'level', 'quest_win', 'complete_quest']);
             $table->unsignedInteger('requirement_value');
         });
     }

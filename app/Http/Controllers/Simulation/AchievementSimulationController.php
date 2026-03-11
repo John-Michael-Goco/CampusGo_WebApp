@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Simulation;
 use App\Http\Controllers\Controller;
 use App\Models\Achievement;
 use App\Models\ActivityLog;
+use App\Models\QuestParticipant;
 use App\Models\User;
 use App\Models\UserAchievement;
 use Illuminate\Http\RedirectResponse;
@@ -21,6 +22,9 @@ class AchievementSimulationController extends Controller
     public function index(Request $request): Response
     {
         $user = Auth::user();
+        if (! $user instanceof User) {
+            abort(403);
+        }
         $user->load(['userAchievements.achievement']);
 
         $earnedIds = $user->userAchievements->pluck('achievement_id')->toArray();
@@ -59,6 +63,9 @@ class AchievementSimulationController extends Controller
     public function simulateLevelUp(Request $request): RedirectResponse
     {
         $user = Auth::user();
+        if (! $user instanceof User) {
+            abort(403);
+        }
         $user->increment('level');
         $user->refresh();
         $unlocked = $this->checkAndAwardAchievements($user);
@@ -71,6 +78,9 @@ class AchievementSimulationController extends Controller
     public function simulateQuestWin(Request $request): RedirectResponse
     {
         $user = Auth::user();
+        if (! $user instanceof User) {
+            abort(403);
+        }
         $user->increment('quests_won');
         $user->refresh();
         $unlocked = $this->checkAndAwardAchievements($user);
@@ -83,6 +93,9 @@ class AchievementSimulationController extends Controller
     public function simulateQuestParticipation(Request $request): RedirectResponse
     {
         $user = Auth::user();
+        if (! $user instanceof User) {
+            abort(403);
+        }
         $user->increment('total_completed_quests');
         $user->refresh();
         $unlocked = $this->checkAndAwardAchievements($user);
@@ -108,6 +121,12 @@ class AchievementSimulationController extends Controller
                     break;
                 case 'quest_win':
                     $met = ($user->quests_won ?? 0) >= $achievement->requirement_value;
+                    break;
+                case 'complete_quest':
+                    $met = QuestParticipant::where('user_id', $user->id)
+                        ->where('quest_id', $achievement->requirement_value)
+                        ->where('status', 'winner')
+                        ->exists();
                     break;
             }
             if ($met) {
