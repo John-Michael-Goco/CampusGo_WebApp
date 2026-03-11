@@ -17,6 +17,98 @@ use Inertia\Response;
 class QuestController extends Controller
 {
     /**
+     * Show pending quests (admin only: approve or reject).
+     */
+    public function pending(Request $request): Response
+    {
+        $search = (string) $request->query('search', '');
+
+        $query = Quest::query()
+            ->where('approval_status', 'pending')
+            ->orderByDesc('created_at');
+
+        if ($search !== '') {
+            $query->where(function ($q) use ($search) {
+                $q->where('title', 'like', '%' . $search . '%')
+                    ->orWhere('description', 'like', '%' . $search . '%');
+            });
+        }
+
+        $quests = $query->paginate(15)->withQueryString();
+
+        return Inertia::render('quests/approval', [
+            'quests' => $quests,
+            'filters' => ['search' => $search],
+        ]);
+    }
+
+    /**
+     * Show quests created by the current user (gamemaster: "Created Quests").
+     */
+    public function createdByMe(Request $request): Response
+    {
+        $search = (string) $request->query('search', '');
+
+        $query = Quest::query()
+            ->where('created_by', $request->user()->id)
+            ->orderByDesc('created_at');
+
+        if ($search !== '') {
+            $query->where(function ($q) use ($search) {
+                $q->where('title', 'like', '%' . $search . '%')
+                    ->orWhere('description', 'like', '%' . $search . '%');
+            });
+        }
+
+        $quests = $query->paginate(15)->withQueryString();
+
+        return Inertia::render('quests/created', [
+            'quests' => $quests,
+            'filters' => ['search' => $search],
+        ]);
+    }
+
+    /**
+     * Show quest history: completed or cancelled quests. Professor sees only their created quests; admin sees all.
+     */
+    public function history(Request $request): Response
+    {
+        $search = (string) $request->query('search', '');
+        $questType = (string) $request->query('quest_type', '');
+        $createdByMe = $request->query('created_by_me') === '1';
+        $user = $request->user();
+
+        $query = Quest::query()
+            ->with(['creator:id,name'])
+            ->whereIn('status', ['completed', 'cancelled'])
+            ->orderByDesc('updated_at');
+
+        if ($user->role === 'professor') {
+            $query->where('created_by', $user->id);
+        } elseif ($createdByMe) {
+            $query->where('created_by', $user->id);
+        }
+
+        if ($questType !== '' && in_array($questType, ['daily', 'event', 'custom', 'enrollment'], true)) {
+            $query->where('quest_type', $questType);
+        }
+
+        if ($search !== '') {
+            $query->where(function ($q) use ($search) {
+                $q->where('title', 'like', '%' . $search . '%')
+                    ->orWhere('description', 'like', '%' . $search . '%');
+            });
+        }
+
+        $quests = $query->paginate(15)->withQueryString();
+
+        return Inertia::render('quests/history', [
+            'quests' => $quests,
+            'filters' => ['search' => $search, 'quest_type' => $questType, 'created_by_me' => $createdByMe],
+        ]);
+    }
+
+    /**
      * Show active quests (approved & ongoing/upcoming).
      */
     public function active(Request $request): Response
@@ -24,6 +116,7 @@ class QuestController extends Controller
         $filters = [
             'search' => (string) $request->query('search', ''),
             'quest_type' => (string) $request->query('quest_type', ''),
+            'created_by_me' => $request->query('created_by_me') === '1',
             'sort_by' => (string) $request->query('sort_by', 'start_date'),
             'sort_dir' => (string) $request->query('sort_dir', 'desc'),
         ];
@@ -34,8 +127,13 @@ class QuestController extends Controller
         $sortDir = $filters['sort_dir'] === 'asc' ? 'asc' : 'desc';
 
         $query = Quest::query()
+            ->with(['creator:id,name'])
             ->where('approval_status', 'approved')
             ->whereIn('status', ['upcoming', 'ongoing']);
+
+        if ($filters['created_by_me']) {
+            $query->where('created_by', $request->user()->id);
+        }
 
         if ($filters['search'] !== '') {
             $search = $filters['search'];
@@ -56,6 +154,7 @@ class QuestController extends Controller
             ->withQueryString([
                 'search' => $filters['search'] ?: null,
                 'quest_type' => $filters['quest_type'] ?: null,
+                'created_by_me' => $filters['created_by_me'] ? '1' : null,
                 'sort_by' => $sortBy,
                 'sort_dir' => $sortDir,
             ]);
@@ -108,6 +207,10 @@ class QuestController extends Controller
         $isAdmin = $user->role === 'admin';
         $questInput = $request->input('quest');
 
+        if (! $isAdmin && ! in_array($questInput['quest_type'] ?? '', ['custom', 'event'], true)) {
+            return back()->withErrors(['quest.quest_type' => 'Gamemasters can only create Custom or Event quests.']);
+        }
+
         if ($questInput['quest_type'] === 'enrollment' && $questInput['question_type'] !== 'qr_scan') {
             return back()->withErrors(['quest.question_type' => 'Enrollment quests must use QR scan only.']);
         }
@@ -137,7 +240,7 @@ class QuestController extends Controller
                 'created_by' => $user->id,
                 'approval_status' => $isAdmin ? 'approved' : 'pending',
                 'creation_payment_status' => $isAdmin ? 'paid' : 'pending',
-                'creation_cost_points' => $isAdmin ? 0 : ((int) ($questInput['creation_cost_points'] ?? 0) ?: null),
+                'creation_cost_points' => $isAdmin ? 0 : 0,
                 'start_date' => $questInput['start_date'] ?: null,
                 'end_date' => $questInput['end_date'] ?: null,
                 'semester_id' => $semesterId,
@@ -382,16 +485,52 @@ class QuestController extends Controller
     }
 
     /**
-     * Soft-delete a quest.
+     * Soft-delete a quest. Admin: any quest. Professor: only own pending quests (cancel).
      */
     public function destroy(Request $request, Quest $quest): RedirectResponse
     {
+        $user = $request->user();
+        if ($user->role === 'admin') {
+            // Admin can delete any quest.
+        } elseif ($user->role === 'professor' && (int) $quest->created_by === (int) $user->id && $quest->approval_status === 'pending') {
+            // Professor can only cancel/delete their own pending quests.
+        } else {
+            abort(403, 'You can only cancel your own quests that are still pending approval.');
+        }
+
         $title = $quest->title;
         $quest->delete();
 
-        ActivityLog::log($request->user()->id, ActivityLog::ACTION_QUEST_DELETED, $title);
+        ActivityLog::log($user->id, ActivityLog::ACTION_QUEST_DELETED, $title);
 
         return back()->with('success', 'Quest deleted.');
+    }
+
+    /**
+     * Update quest approval status. Admin and gamemaster can approve or reject pending quests.
+     */
+    public function approve(Request $request, Quest $quest): RedirectResponse
+    {
+        $validated = $request->validate([
+            'approval_status' => ['required', 'string', 'in:approved,rejected'],
+            'creation_payment_status' => ['nullable', 'string', 'in:paid,pending'],
+        ]);
+
+        $updates = [
+            'approval_status' => $validated['approval_status'],
+            'creation_payment_status' => $request->user()->role === 'admin' && isset($validated['creation_payment_status'])
+                ? $validated['creation_payment_status']
+                : $quest->creation_payment_status,
+        ];
+        if ($validated['approval_status'] === 'rejected') {
+            $updates['status'] = 'cancelled';
+        }
+        $quest->update($updates);
+
+        $action = $validated['approval_status'] === 'approved' ? 'approved' : 'rejected';
+        ActivityLog::log($request->user()->id, ActivityLog::ACTION_QUEST_UPDATED, sprintf('%s – %s', $quest->title, $action));
+
+        return back()->with('success', 'Quest ' . $action . '.');
     }
 
     /**

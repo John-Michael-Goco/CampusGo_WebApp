@@ -1,4 +1,4 @@
-import { Head, Link, router, useForm } from '@inertiajs/react';
+import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ArrowLeft, ArrowRight } from 'lucide-react';
 import AppLayout from '@/layouts/app-layout';
@@ -33,6 +33,7 @@ export default function UsersIndex({
     available_professors,
     filters,
 }: UsersIndexProps) {
+    const canManageUsers = (usePage().props as { auth?: { canManageUsers?: boolean } }).auth?.canManageUsers ?? false;
     const userItems = users.data ?? [];
     const [search, setSearch] = useState(filters.search);
     const [createOpen, setCreateOpen] = useState(false);
@@ -143,6 +144,7 @@ export default function UsersIndex({
                     filters={filters}
                     onFiltersChange={updateFilters}
                     onOpenCreate={() => setCreateOpen(true)}
+                    canManage={canManageUsers}
                 />
 
                 <UsersTable
@@ -151,6 +153,7 @@ export default function UsersIndex({
                     onSort={handleSort}
                     onEdit={setEditingUser}
                     onDelete={setDeletingUser}
+                    canManage={canManageUsers}
                 />
 
                 {users.total > 0 && (
@@ -200,31 +203,34 @@ export default function UsersIndex({
                     </div>
                 )}
 
-                <CreateGamemasterDialog
-                    open={createOpen}
-                    onOpenChange={setCreateOpen}
-                    availableProfessors={available_professors}
-                    form={createForm}
-                    roleOptions={ADD_ROLE_OPTIONS}
-                    onSubmit={handleCreateSubmit}
-                />
+                {canManageUsers && (
+                    <>
+                        <CreateGamemasterDialog
+                            open={createOpen}
+                            onOpenChange={setCreateOpen}
+                            availableProfessors={available_professors}
+                            form={createForm}
+                            roleOptions={ADD_ROLE_OPTIONS}
+                            onSubmit={handleCreateSubmit}
+                        />
+                        <EditUserDialog
+                            open={editingUser !== null}
+                            onOpenChange={(open) => !open && setEditingUser(null)}
+                            user={editingUser}
+                            form={editForm}
+                            roleOptions={ADD_ROLE_OPTIONS}
+                            onSubmit={handleEditSubmit}
+                        />
+                        <DeleteUserDialog
+                            user={deletingUser}
+                            open={deletingUser !== null}
+                            onOpenChange={(open) => !open && setDeletingUser(null)}
+                            onConfirm={handleDeleteConfirm}
+                            processing={isDeleting}
+                        />
+                    </>
+                )}
 
-                <EditUserDialog
-                    open={editingUser !== null}
-                    onOpenChange={(open) => !open && setEditingUser(null)}
-                    user={editingUser}
-                    form={editForm}
-                    roleOptions={ADD_ROLE_OPTIONS}
-                    onSubmit={handleEditSubmit}
-                />
-
-                <DeleteUserDialog
-                    user={deletingUser}
-                    open={deletingUser !== null}
-                    onOpenChange={(open) => !open && setDeletingUser(null)}
-                    onConfirm={handleDeleteConfirm}
-                    processing={isDeleting}
-                />
             </div>
         </AppLayout>
     );

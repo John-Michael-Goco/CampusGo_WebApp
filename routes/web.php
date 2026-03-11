@@ -119,29 +119,29 @@ Route::post('simulation/quests/{participant}/submit', [QuestParticipationControl
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::inertia('dashboard', 'dashboard')->name('dashboard');
 
-    // Semesters (Academic management)
+    // Semesters (Academic management) — store/update/destroy admin only
     Route::get('semesters', [SemesterController::class, 'index'])->name('semesters.index');
     Route::get('semesters/{semester}', [SemesterController::class, 'show'])->name('semesters.show');
-    Route::post('semesters', [SemesterController::class, 'store'])->name('semesters.store');
-    Route::put('semesters/{semester}', [SemesterController::class, 'update'])->name('semesters.update');
-    Route::delete('semesters/{semester}', [SemesterController::class, 'destroy'])->name('semesters.destroy');
+    Route::post('semesters', [SemesterController::class, 'store'])->middleware('admin')->name('semesters.store');
+    Route::put('semesters/{semester}', [SemesterController::class, 'update'])->middleware('admin')->name('semesters.update');
+    Route::delete('semesters/{semester}', [SemesterController::class, 'destroy'])->middleware('admin')->name('semesters.destroy');
 
-    // Masterlist
+    // Masterlist — store/update/destroy admin only
     Route::get('masterlist/students', [StudentController::class, 'index'])->name('masterlist.students');
-    Route::post('masterlist/students', [StudentController::class, 'store'])->name('masterlist.students.store');
-    Route::put('masterlist/students/{student_masterlist}', [StudentController::class, 'update'])->name('masterlist.students.update');
-    Route::delete('masterlist/students/{student_masterlist}', [StudentController::class, 'destroy'])->name('masterlist.students.destroy');
+    Route::post('masterlist/students', [StudentController::class, 'store'])->middleware('admin')->name('masterlist.students.store');
+    Route::put('masterlist/students/{student_masterlist}', [StudentController::class, 'update'])->middleware('admin')->name('masterlist.students.update');
+    Route::delete('masterlist/students/{student_masterlist}', [StudentController::class, 'destroy'])->middleware('admin')->name('masterlist.students.destroy');
 
     Route::get('masterlist/professors', [ProfessorController::class, 'index'])->name('masterlist.professors');
-    Route::post('masterlist/professors', [ProfessorController::class, 'store'])->name('masterlist.professors.store');
-    Route::put('masterlist/professors/{professor_masterlist}', [ProfessorController::class, 'update'])->name('masterlist.professors.update');
-    Route::delete('masterlist/professors/{professor_masterlist}', [ProfessorController::class, 'destroy'])->name('masterlist.professors.destroy');
+    Route::post('masterlist/professors', [ProfessorController::class, 'store'])->middleware('admin')->name('masterlist.professors.store');
+    Route::put('masterlist/professors/{professor_masterlist}', [ProfessorController::class, 'update'])->middleware('admin')->name('masterlist.professors.update');
+    Route::delete('masterlist/professors/{professor_masterlist}', [ProfessorController::class, 'destroy'])->middleware('admin')->name('masterlist.professors.destroy');
 
-    // Users
+    // Users — store/update/destroy admin only (gamemaster view only)
     Route::get('users', [UserController::class, 'index'])->name('users.index');
-    Route::post('users', [UserController::class, 'store'])->name('users.store');
-    Route::put('users/{user}', [UserController::class, 'update'])->name('users.update');
-    Route::delete('users/{user}', [UserController::class, 'destroy'])->name('users.destroy');
+    Route::post('users', [UserController::class, 'store'])->middleware('admin')->name('users.store');
+    Route::put('users/{user}', [UserController::class, 'update'])->middleware('admin')->name('users.update');
+    Route::delete('users/{user}', [UserController::class, 'destroy'])->middleware('admin')->name('users.destroy');
 
     // Logs & Point Transactions
     Route::get('logs', [LogController::class, 'index'])->name('logs.index');
@@ -150,26 +150,30 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Leaderboards
     Route::get('leaderboards', [LeaderboardController::class, 'index'])->name('leaderboards.index');
 
-    // Quests
+    // Quests — professor: create (custom/event), Created Quests, cancel own pending; admin: full + Approval
     Route::get('quests/active', [QuestController::class, 'active'])->name('quests.active');
+    Route::get('quests/approval', [QuestController::class, 'pending'])->middleware('admin')->name('quests.approval');
+    Route::get('quests/created', [QuestController::class, 'createdByMe'])->name('quests.created');
+    Route::get('quests/history', [QuestController::class, 'history'])->name('quests.history');
     Route::get('quests/create', [QuestController::class, 'create'])->name('quests.create');
     Route::get('quests/create/stages', [QuestController::class, 'stages'])->name('quests.create.stages');
     Route::post('quests', [QuestController::class, 'store'])->name('quests.store');
-    Route::get('quests/{quest}/edit', [QuestController::class, 'edit'])->name('quests.edit');
-    Route::get('quests/{quest}/edit/stages', [QuestController::class, 'editStages'])->name('quests.edit.stages');
-    Route::put('quests/{quest}', [QuestController::class, 'update'])->name('quests.update');
+    Route::put('quests/{quest}/approve', [QuestController::class, 'approve'])->middleware('admin')->name('quests.approve');
+    Route::get('quests/{quest}/edit', [QuestController::class, 'edit'])->middleware('admin')->name('quests.edit');
+    Route::get('quests/{quest}/edit/stages', [QuestController::class, 'editStages'])->middleware('admin')->name('quests.edit.stages');
+    Route::put('quests/{quest}', [QuestController::class, 'update'])->middleware('admin')->name('quests.update');
     Route::delete('quests/{quest}', [QuestController::class, 'destroy'])->name('quests.destroy');
     Route::get('quests/sections', [QuestController::class, 'sections'])->name('quests.sections');
 
-    // Store & Achievements
+    // Store & Achievements — store/update/destroy admin only (gamemaster view only)
     Route::get('store', [StoreItemController::class, 'index'])->name('store.index');
-    Route::post('store', [StoreItemController::class, 'store'])->name('store.store');
-    Route::put('store/{storeItem}', [StoreItemController::class, 'update'])->name('store.update');
-    Route::delete('store/{storeItem}', [StoreItemController::class, 'destroy'])->name('store.destroy');
+    Route::post('store', [StoreItemController::class, 'store'])->middleware('admin')->name('store.store');
+    Route::put('store/{storeItem}', [StoreItemController::class, 'update'])->middleware('admin')->name('store.update');
+    Route::delete('store/{storeItem}', [StoreItemController::class, 'destroy'])->middleware('admin')->name('store.destroy');
     Route::get('achievements', [AchievementController::class, 'index'])->name('achievements.index');
-    Route::post('achievements', [AchievementController::class, 'store'])->name('achievements.store');
-    Route::put('achievements/{achievement}', [AchievementController::class, 'update'])->name('achievements.update');
-    Route::delete('achievements/{achievement}', [AchievementController::class, 'destroy'])->name('achievements.destroy');
+    Route::post('achievements', [AchievementController::class, 'store'])->middleware('admin')->name('achievements.store');
+    Route::put('achievements/{achievement}', [AchievementController::class, 'update'])->middleware('admin')->name('achievements.update');
+    Route::delete('achievements/{achievement}', [AchievementController::class, 'destroy'])->middleware('admin')->name('achievements.destroy');
 });
 
 require __DIR__.'/settings.php';

@@ -43,6 +43,22 @@ export function ActiveFilters({
                 />
             </div>
             <Select
+                value={filters.created_by_me ? 'mine' : 'all'}
+                onValueChange={(value) =>
+                    onFiltersChange({
+                        created_by_me: value === 'mine',
+                    })
+                }
+            >
+                <SelectTrigger className="w-[160px]">
+                    <SelectValue placeholder="Filter" />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="all">All quests</SelectItem>
+                    <SelectItem value="mine">Created by me</SelectItem>
+                </SelectContent>
+            </Select>
+            <Select
                 value={filters.quest_type || 'all'}
                 onValueChange={(value) =>
                     onFiltersChange({

@@ -1,4 +1,4 @@
-import { Head, Link, router, useForm } from '@inertiajs/react';
+import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ArrowLeft, ArrowRight } from 'lucide-react';
 import { sileo } from 'sileo';
@@ -25,6 +25,7 @@ export default function AchievementsPage({
     quests = [],
     filters,
 }: AchievementsPageProps) {
+    const canManageAchievements = (usePage().props as { auth?: { canManageAchievements?: boolean } }).auth?.canManageAchievements ?? false;
     const achievementItems = achievements.data ?? [];
     const [search, setSearch] = useState(filters.search);
     const [createOpen, setCreateOpen] = useState(false);
@@ -205,6 +206,7 @@ export default function AchievementsPage({
                     search={search}
                     onSearchChange={setSearch}
                     onOpenCreate={() => setCreateOpen(true)}
+                    canManage={canManageAchievements}
                 />
 
                 <AchievementsTable
@@ -214,6 +216,7 @@ export default function AchievementsPage({
                     onSort={handleSort}
                     onEdit={openEdit}
                     onDelete={setDeletingAchievement}
+                    canManage={canManageAchievements}
                 />
 
                 {achievements.total > 0 && (
@@ -272,32 +275,34 @@ export default function AchievementsPage({
                     </div>
                 )}
 
-                <CreateAchievementDialog
-                    open={createOpen}
-                    onOpenChange={setCreateOpen}
-                    form={createForm}
-                    onSubmit={handleCreateSubmit}
-                    quests={quests}
-                />
-
-                <EditAchievementDialog
-                    open={!!editingAchievement}
-                    onOpenChange={(open) =>
-                        !open && setEditingAchievement(null)
-                    }
-                    form={editForm}
-                    onSubmit={handleEditSubmit}
-                    quests={quests}
-                />
-
-                <DeleteAchievementDialog
-                    achievement={deletingAchievement}
-                    open={!!deletingAchievement}
-                    onOpenChange={(open) =>
-                        !open && setDeletingAchievement(null)
-                    }
-                    onConfirm={handleDeleteConfirm}
-                />
+                {canManageAchievements && (
+                    <>
+                        <CreateAchievementDialog
+                            open={createOpen}
+                            onOpenChange={setCreateOpen}
+                            form={createForm}
+                            onSubmit={handleCreateSubmit}
+                            quests={quests}
+                        />
+                        <EditAchievementDialog
+                            open={!!editingAchievement}
+                            onOpenChange={(open) =>
+                                !open && setEditingAchievement(null)
+                            }
+                            form={editForm}
+                            onSubmit={handleEditSubmit}
+                            quests={quests}
+                        />
+                        <DeleteAchievementDialog
+                            achievement={deletingAchievement}
+                            open={!!deletingAchievement}
+                            onOpenChange={(open) =>
+                                !open && setDeletingAchievement(null)
+                            }
+                            onConfirm={handleDeleteConfirm}
+                        />
+                    </>
+                )}
             </div>
         </AppLayout>
     );

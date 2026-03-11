@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Observers\QuestObserver;
+use App\Models\User;
 use DateTimeInterface;
 use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -10,6 +11,8 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+
+/** @property-read \App\Models\User|null $creator */
 
 #[ObservedBy(QuestObserver::class)]
 class Quest extends Model
@@ -84,6 +87,11 @@ class Quest extends Model
     public function participants(): HasMany
     {
         return $this->hasMany(QuestParticipant::class);
+    }
+
+    public function creator(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'created_by');
     }
 }
 

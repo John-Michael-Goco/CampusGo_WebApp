@@ -27,6 +27,7 @@ type Props = {
     onSort: (column: 'student_number' | 'last_name' | 'section') => void;
     onEdit: (student: Student) => void;
     onDelete: (student: Student) => void;
+    canManage?: boolean;
 };
 
 export function StudentsTable({
@@ -35,6 +36,7 @@ export function StudentsTable({
     onSort,
     onEdit,
     onDelete,
+    canManage = true,
 }: Props) {
     return (
         <div className="rounded-lg border bg-card overflow-hidden">
@@ -99,16 +101,18 @@ export function StudentsTable({
                             <th className="h-11 px-4 text-left font-medium">
                                 Is enrolled
                             </th>
-                            <th className="h-11 px-4 text-right font-medium">
-                                Actions
-                            </th>
+                            {canManage && (
+                                <th className="h-11 px-4 text-right font-medium">
+                                    Actions
+                                </th>
+                            )}
                         </tr>
                     </thead>
                     <tbody>
                         {students.length === 0 ? (
                             <tr>
                                 <td
-                                    colSpan={9}
+                                    colSpan={canManage ? 9 : 8}
                                     className="h-24 px-4 text-center text-muted-foreground"
                                 >
                                     No students found.
@@ -160,30 +164,32 @@ export function StudentsTable({
                                             </span>
                                         )}
                                     </td>
-                                    <td className="px-4 py-3 text-right">
-                                        <div className="flex justify-end gap-2">
-                                            <Button
-                                                type="button"
-                                                variant="ghost"
-                                                size="icon"
-                                                className="size-8"
-                                                onClick={() => onEdit(student)}
-                                                aria-label="Edit"
-                                            >
-                                                <Pencil className="size-4" />
-                                            </Button>
-                                            <Button
-                                                type="button"
-                                                variant="ghost"
-                                                size="icon"
-                                                className="size-8 text-destructive hover:text-destructive"
-                                                onClick={() => onDelete(student)}
-                                                aria-label="Delete"
-                                            >
-                                                <Trash2 className="size-4" />
-                                            </Button>
-                                        </div>
-                                    </td>
+                                    {canManage && (
+                                        <td className="px-4 py-3 text-right">
+                                            <div className="flex justify-end gap-2">
+                                                <Button
+                                                    type="button"
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="size-8"
+                                                    onClick={() => onEdit(student)}
+                                                    aria-label="Edit"
+                                                >
+                                                    <Pencil className="size-4" />
+                                                </Button>
+                                                <Button
+                                                    type="button"
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="size-8 text-destructive hover:text-destructive"
+                                                    onClick={() => onDelete(student)}
+                                                    aria-label="Delete"
+                                                >
+                                                    <Trash2 className="size-4" />
+                                                </Button>
+                                            </div>
+                                        </td>
+                                    )}
                                 </tr>
                             ))
                         )}

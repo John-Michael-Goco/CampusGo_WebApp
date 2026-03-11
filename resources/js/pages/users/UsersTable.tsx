@@ -31,9 +31,10 @@ type Props = {
     onSort: (column: 'name' | 'role' | 'points_balance' | 'level') => void;
     onEdit: (user: UserListItem) => void;
     onDelete: (user: UserListItem) => void;
+    canManage?: boolean;
 };
 
-export function UsersTable({ users, filters, onSort, onEdit, onDelete }: Props) {
+export function UsersTable({ users, filters, onSort, onEdit, onDelete, canManage = true }: Props) {
     return (
         <div className="rounded-lg border bg-card overflow-hidden">
             <div className="overflow-x-auto">
@@ -99,16 +100,18 @@ export function UsersTable({ users, filters, onSort, onEdit, onDelete }: Props) 
                                     />
                                 </button>
                             </th>
-                            <th className="h-11 px-4 text-right font-medium">
-                                Actions
-                            </th>
+                            {canManage && (
+                                <th className="h-11 px-4 text-right font-medium">
+                                    Actions
+                                </th>
+                            )}
                         </tr>
                     </thead>
                     <tbody>
                         {users.length === 0 ? (
                             <tr>
                                 <td
-                                    colSpan={6}
+                                    colSpan={canManage ? 6 : 5}
                                     className="h-24 px-4 text-center text-muted-foreground"
                                 >
                                     No users found.
@@ -133,42 +136,44 @@ export function UsersTable({ users, filters, onSort, onEdit, onDelete }: Props) 
                                     <td className="px-4 py-3">
                                         {user.level ?? 1}
                                     </td>
-                                    <td className="px-4 py-3 text-right">
-                                        <div className="flex items-center justify-end gap-1">
-                                            <Button
-                                                type="button"
-                                                variant="ghost"
-                                                size="icon"
-                                                className="size-8"
-                                                aria-label="View"
-                                                onClick={() => {}}
-                                            >
-                                                <Eye className="size-4" />
-                                            </Button>
-                                            <Button
-                                                type="button"
-                                                variant="ghost"
-                                                size="icon"
-                                                className="size-8"
-                                                aria-label="Edit"
-                                                onClick={() => onEdit(user)}
-                                            >
-                                                <Pencil className="size-4" />
-                                            </Button>
-                                            {user.email !== 'admin@email.com' && (
+                                    {canManage && (
+                                        <td className="px-4 py-3 text-right">
+                                            <div className="flex items-center justify-end gap-1">
                                                 <Button
                                                     type="button"
                                                     variant="ghost"
                                                     size="icon"
-                                                    className="size-8 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10 dark:hover:text-red-400"
-                                                    aria-label="Delete"
-                                                    onClick={() => onDelete(user)}
+                                                    className="size-8"
+                                                    aria-label="View"
+                                                    onClick={() => {}}
                                                 >
-                                                    <Trash2 className="size-4" />
+                                                    <Eye className="size-4" />
                                                 </Button>
-                                            )}
-                                        </div>
-                                    </td>
+                                                <Button
+                                                    type="button"
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="size-8"
+                                                    aria-label="Edit"
+                                                    onClick={() => onEdit(user)}
+                                                >
+                                                    <Pencil className="size-4" />
+                                                </Button>
+                                                {user.email !== 'admin@email.com' && (
+                                                    <Button
+                                                        type="button"
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="size-8 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10 dark:hover:text-red-400"
+                                                        aria-label="Delete"
+                                                        onClick={() => onDelete(user)}
+                                                    >
+                                                        <Trash2 className="size-4" />
+                                                    </Button>
+                                                )}
+                                            </div>
+                                        </td>
+                                    )}
                                 </tr>
                             ))
                         )}

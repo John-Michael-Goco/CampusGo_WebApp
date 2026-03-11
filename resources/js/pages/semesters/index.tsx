@@ -1,4 +1,4 @@
-import { Head, Link, router, useForm } from '@inertiajs/react';
+import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ArrowLeft, ArrowRight } from 'lucide-react';
 import { sileo } from 'sileo';
@@ -34,6 +34,7 @@ export default function SemestersPage({
     semesters,
     filters,
 }: SemestersPageProps) {
+    const canManageSemesters = (usePage().props as { auth?: { canManageSemesters?: boolean } }).auth?.canManageSemesters ?? false;
     const items = semesters.data ?? [];
     const [search, setSearch] = useState(filters.search);
     const [createOpen, setCreateOpen] = useState(false);
@@ -212,6 +213,7 @@ export default function SemestersPage({
                     search={search}
                     onSearchChange={setSearch}
                     onOpenCreate={() => setCreateOpen(true)}
+                    canManage={canManageSemesters}
                 />
 
                 <SemestersTable
@@ -220,6 +222,7 @@ export default function SemestersPage({
                     onSort={handleSort}
                     onEdit={openEdit}
                     onDelete={setDeletingSemester}
+                    canManage={canManageSemesters}
                 />
 
                 {semesters.total > 0 && (
@@ -276,26 +279,28 @@ export default function SemestersPage({
                     </div>
                 )}
 
-                <CreateSemesterDialog
-                    open={createOpen}
-                    onOpenChange={setCreateOpen}
-                    form={createForm}
-                    onSubmit={handleCreateSubmit}
-                />
-
-                <EditSemesterDialog
-                    open={!!editingSemester}
-                    onOpenChange={(open) => !open && setEditingSemester(null)}
-                    form={editForm}
-                    onSubmit={handleEditSubmit}
-                />
-
-                <DeleteSemesterDialog
-                    semester={deletingSemester}
-                    open={!!deletingSemester}
-                    onOpenChange={(open) => !open && setDeletingSemester(null)}
-                    onConfirm={handleDeleteConfirm}
-                />
+                {canManageSemesters && (
+                    <>
+                        <CreateSemesterDialog
+                            open={createOpen}
+                            onOpenChange={setCreateOpen}
+                            form={createForm}
+                            onSubmit={handleCreateSubmit}
+                        />
+                        <EditSemesterDialog
+                            open={!!editingSemester}
+                            onOpenChange={(open) => !open && setEditingSemester(null)}
+                            form={editForm}
+                            onSubmit={handleEditSubmit}
+                        />
+                        <DeleteSemesterDialog
+                            semester={deletingSemester}
+                            open={!!deletingSemester}
+                            onOpenChange={(open) => !open && setDeletingSemester(null)}
+                            onConfirm={handleDeleteConfirm}
+                        />
+                    </>
+                )}
             </div>
         </AppLayout>
     );

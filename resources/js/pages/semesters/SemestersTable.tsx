@@ -44,6 +44,7 @@ type Props = {
     onSort: (column: 'name' | 'start_date' | 'end_date') => void;
     onEdit: (semester: Semester) => void;
     onDelete: (semester: Semester) => void;
+    canManage?: boolean;
 };
 
 export function SemestersTable({
@@ -52,6 +53,7 @@ export function SemestersTable({
     onSort,
     onEdit,
     onDelete,
+    canManage = true,
 }: Props) {
     return (
         <div className="overflow-hidden rounded-lg border bg-card">
@@ -104,16 +106,18 @@ export function SemestersTable({
                             <th className="h-11 px-4 text-left font-medium">
                                 Current
                             </th>
-                            <th className="h-11 px-4 text-right font-medium">
-                                Actions
-                            </th>
+                            {canManage && (
+                                <th className="h-11 px-4 text-right font-medium">
+                                    Actions
+                                </th>
+                            )}
                         </tr>
                     </thead>
                     <tbody>
                         {semesters.length === 0 ? (
                             <tr>
                                 <td
-                                    colSpan={5}
+                                    colSpan={canManage ? 5 : 4}
                                     className="h-24 px-4 text-center text-muted-foreground"
                                 >
                                     No semesters found.
@@ -137,43 +141,45 @@ export function SemestersTable({
                                     <td className="px-4 py-3">
                                         {semester.is_current ? 'Yes' : 'No'}
                                     </td>
-                                    <td className="px-4 py-3 text-right">
-                                        <div className="flex justify-end gap-2">
-                                            <Button
-                                                variant="ghost"
-                                                size="icon"
-                                                className="size-8"
-                                                asChild
-                                            >
-                                                <Link
-                                                    href={`/semesters/${semester.id}`}
-                                                    aria-label="View"
+                                    {canManage && (
+                                        <td className="px-4 py-3 text-right">
+                                            <div className="flex justify-end gap-2">
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="size-8"
+                                                    asChild
                                                 >
-                                                    <Eye className="size-4" />
-                                                </Link>
-                                            </Button>
-                                            <Button
-                                                type="button"
-                                                variant="ghost"
-                                                size="icon"
-                                                className="size-8"
-                                                onClick={() => onEdit(semester)}
-                                                aria-label="Edit"
-                                            >
-                                                <Pencil className="size-4" />
-                                            </Button>
-                                            <Button
-                                                type="button"
-                                                variant="ghost"
-                                                size="icon"
-                                                className="size-8 text-destructive hover:text-destructive"
-                                                onClick={() => onDelete(semester)}
-                                                aria-label="Delete"
-                                            >
-                                                <Trash2 className="size-4" />
-                                            </Button>
-                                        </div>
-                                    </td>
+                                                    <Link
+                                                        href={`/semesters/${semester.id}`}
+                                                        aria-label="View"
+                                                    >
+                                                        <Eye className="size-4" />
+                                                    </Link>
+                                                </Button>
+                                                <Button
+                                                    type="button"
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="size-8"
+                                                    onClick={() => onEdit(semester)}
+                                                    aria-label="Edit"
+                                                >
+                                                    <Pencil className="size-4" />
+                                                </Button>
+                                                <Button
+                                                    type="button"
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="size-8 text-destructive hover:text-destructive"
+                                                    onClick={() => onDelete(semester)}
+                                                    aria-label="Delete"
+                                                >
+                                                    <Trash2 className="size-4" />
+                                                </Button>
+                                            </div>
+                                        </td>
+                                    )}
                                 </tr>
                             ))
                         )}

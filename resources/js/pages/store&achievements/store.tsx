@@ -1,4 +1,4 @@
-import { Head, Link, router, useForm } from '@inertiajs/react';
+import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ArrowLeft, ArrowRight } from 'lucide-react';
 import { sileo } from 'sileo';
@@ -32,6 +32,7 @@ export default function StorePage({
     storeItems,
     filters,
 }: StorePageProps) {
+    const canManageStore = (usePage().props as { auth?: { canManageStore?: boolean } }).auth?.canManageStore ?? false;
     const items = storeItems.data ?? [];
     const [search, setSearch] = useState(filters.search);
     const [createOpen, setCreateOpen] = useState(false);
@@ -222,6 +223,7 @@ export default function StorePage({
                     search={search}
                     onSearchChange={setSearch}
                     onOpenCreate={() => setCreateOpen(true)}
+                    canManage={canManageStore}
                 />
 
                 <StoreItemsTable
@@ -230,6 +232,7 @@ export default function StorePage({
                     onSort={handleSort}
                     onEdit={openEdit}
                     onDelete={setDeletingItem}
+                    canManage={canManageStore}
                 />
 
                 {storeItems.total > 0 && (
@@ -287,26 +290,28 @@ export default function StorePage({
                     </div>
                 )}
 
-                <CreateStoreItemDialog
-                    open={createOpen}
-                    onOpenChange={setCreateOpen}
-                    form={createForm}
-                    onSubmit={handleCreateSubmit}
-                />
-
-                <EditStoreItemDialog
-                    open={!!editingItem}
-                    onOpenChange={(open) => !open && setEditingItem(null)}
-                    form={editForm}
-                    onSubmit={handleEditSubmit}
-                />
-
-                <DeleteStoreItemDialog
-                    storeItem={deletingItem}
-                    open={!!deletingItem}
-                    onOpenChange={(open) => !open && setDeletingItem(null)}
-                    onConfirm={handleDeleteConfirm}
-                />
+                {canManageStore && (
+                    <>
+                        <CreateStoreItemDialog
+                            open={createOpen}
+                            onOpenChange={setCreateOpen}
+                            form={createForm}
+                            onSubmit={handleCreateSubmit}
+                        />
+                        <EditStoreItemDialog
+                            open={!!editingItem}
+                            onOpenChange={(open) => !open && setEditingItem(null)}
+                            form={editForm}
+                            onSubmit={handleEditSubmit}
+                        />
+                        <DeleteStoreItemDialog
+                            storeItem={deletingItem}
+                            open={!!deletingItem}
+                            onOpenChange={(open) => !open && setDeletingItem(null)}
+                            onConfirm={handleDeleteConfirm}
+                        />
+                    </>
+                )}
             </div>
         </AppLayout>
     );

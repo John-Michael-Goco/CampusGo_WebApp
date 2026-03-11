@@ -1,4 +1,4 @@
-import { Head, Link, router, useForm } from '@inertiajs/react';
+import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ArrowLeft, ArrowRight } from 'lucide-react';
 import { sileo } from 'sileo';
@@ -23,6 +23,7 @@ export default function MasterlistProfessors({
     professors,
     filters,
 }: MasterlistProfessorsProps) {
+    const canManageMasterlist = (usePage().props as { auth?: { canManageMasterlist?: boolean } }).auth?.canManageMasterlist ?? false;
     const professorItems = professors.data ?? [];
     const [search, setSearch] = useState(filters.search);
     const [createOpen, setCreateOpen] = useState(false);
@@ -194,6 +195,7 @@ export default function MasterlistProfessors({
                     filters={filters}
                     onFiltersChange={updateFilters}
                     onOpenCreate={() => setCreateOpen(true)}
+                    canManage={canManageMasterlist}
                 />
 
                 <ProfessorsTable
@@ -202,6 +204,7 @@ export default function MasterlistProfessors({
                     onSort={handleSort}
                     onEdit={openEdit}
                     onDelete={setDeletingProfessor}
+                    canManage={canManageMasterlist}
                 />
 
                 {professors.total > 0 && (
@@ -251,26 +254,28 @@ export default function MasterlistProfessors({
                     </div>
                 )}
 
-                <CreateProfessorDialog
-                    open={createOpen}
-                    onOpenChange={setCreateOpen}
-                    form={createForm}
-                    onSubmit={handleCreateSubmit}
-                />
-
-                <EditProfessorDialog
-                    open={!!editingProfessor}
-                    onOpenChange={(open) => !open && setEditingProfessor(null)}
-                    form={editForm}
-                    onSubmit={handleEditSubmit}
-                />
-
-                <DeleteProfessorDialog
-                    professor={deletingProfessor}
-                    open={!!deletingProfessor}
-                    onOpenChange={(open) => !open && setDeletingProfessor(null)}
-                    onConfirm={handleDeleteConfirm}
-                />
+                {canManageMasterlist && (
+                    <>
+                        <CreateProfessorDialog
+                            open={createOpen}
+                            onOpenChange={setCreateOpen}
+                            form={createForm}
+                            onSubmit={handleCreateSubmit}
+                        />
+                        <EditProfessorDialog
+                            open={!!editingProfessor}
+                            onOpenChange={(open) => !open && setEditingProfessor(null)}
+                            form={editForm}
+                            onSubmit={handleEditSubmit}
+                        />
+                        <DeleteProfessorDialog
+                            professor={deletingProfessor}
+                            open={!!deletingProfessor}
+                            onOpenChange={(open) => !open && setDeletingProfessor(null)}
+                            onConfirm={handleDeleteConfirm}
+                        />
+                    </>
+                )}
             </div>
         </AppLayout>
     );

@@ -59,8 +59,13 @@ const QUEST_TEMPLATES = [
 
 export default function QuestFormPage() {
     const { questId, questData, enrollmentSemester } = usePage<PageProps>().props;
+    const auth = (usePage().props as { auth?: { user?: { role?: string } } }).auth;
     const isEdit = typeof questId === 'number';
-    const form = useForm<CreateQuestFormData>(questData ?? { ...INITIAL_FORM_DATA });
+    const initialData = questData ?? { ...INITIAL_FORM_DATA };
+    if (!isEdit && auth?.user?.role === 'professor' && !['custom', 'event'].includes(initialData.quest_type)) {
+        initialData.quest_type = 'custom';
+    }
+    const form = useForm<CreateQuestFormData>(initialData);
     const [guideOpen, setGuideOpen] = useState(false);
     const [clientErrors, setClientErrors] = useState<Record<string, string>>({});
 

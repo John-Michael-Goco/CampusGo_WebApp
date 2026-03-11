@@ -48,6 +48,7 @@ type Props = {
     ) => void;
     onEdit: (achievement: Achievement) => void;
     onDelete: (achievement: Achievement) => void;
+    canManage?: boolean;
 };
 
 export function AchievementsTable({
@@ -57,6 +58,7 @@ export function AchievementsTable({
     onSort,
     onEdit,
     onDelete,
+    canManage = true,
 }: Props) {
     return (
         <div className="rounded-lg border bg-card overflow-hidden">
@@ -109,16 +111,18 @@ export function AchievementsTable({
                                     />
                                 </button>
                             </th>
-                            <th className="h-11 px-4 text-right font-medium">
-                                Actions
-                            </th>
+                            {canManage && (
+                                <th className="h-11 px-4 text-right font-medium">
+                                    Actions
+                                </th>
+                            )}
                         </tr>
                     </thead>
                     <tbody>
                         {achievements.length === 0 ? (
                             <tr>
                                 <td
-                                    colSpan={5}
+                                    colSpan={canManage ? 5 : 4}
                                     className="h-24 px-4 text-center text-muted-foreground"
                                 >
                                     No achievements found.
@@ -144,34 +148,36 @@ export function AchievementsTable({
                                     <td className="px-4 py-3">
                                         {requirementValueDisplay(achievement, quests)}
                                     </td>
-                                    <td className="px-4 py-3 text-right">
-                                        <div className="flex justify-end gap-2">
-                                            <Button
-                                                type="button"
-                                                variant="ghost"
-                                                size="icon"
-                                                className="size-8"
-                                                onClick={() =>
-                                                    onEdit(achievement)
-                                                }
-                                                aria-label="Edit"
-                                            >
-                                                <Pencil className="size-4" />
-                                            </Button>
-                                            <Button
-                                                type="button"
-                                                variant="ghost"
-                                                size="icon"
-                                                className="size-8 text-destructive hover:text-destructive"
-                                                onClick={() =>
-                                                    onDelete(achievement)
-                                                }
-                                                aria-label="Delete"
-                                            >
-                                                <Trash2 className="size-4" />
-                                            </Button>
-                                        </div>
-                                    </td>
+                                    {canManage && (
+                                        <td className="px-4 py-3 text-right">
+                                            <div className="flex justify-end gap-2">
+                                                <Button
+                                                    type="button"
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="size-8"
+                                                    onClick={() =>
+                                                        onEdit(achievement)
+                                                    }
+                                                    aria-label="Edit"
+                                                >
+                                                    <Pencil className="size-4" />
+                                                </Button>
+                                                <Button
+                                                    type="button"
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="size-8 text-destructive hover:text-destructive"
+                                                    onClick={() =>
+                                                        onDelete(achievement)
+                                                    }
+                                                    aria-label="Delete"
+                                                >
+                                                    <Trash2 className="size-4" />
+                                                </Button>
+                                            </div>
+                                        </td>
+                                    )}
                                 </tr>
                             ))
                         )}

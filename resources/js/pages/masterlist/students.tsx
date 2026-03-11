@@ -1,4 +1,4 @@
-import { Head, Link, router, useForm } from '@inertiajs/react';
+import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ArrowLeft, ArrowRight } from 'lucide-react';
 import { sileo } from 'sileo';
@@ -21,6 +21,7 @@ export default function MasterlistStudents({
     sections = [],
     filters,
 }: MasterlistStudentsProps) {
+    const canManageMasterlist = (usePage().props as { auth?: { canManageMasterlist?: boolean } }).auth?.canManageMasterlist ?? false;
     const studentItems = students.data ?? [];
     const [search, setSearch] = useState(filters.search);
     const [createOpen, setCreateOpen] = useState(false);
@@ -209,6 +210,7 @@ export default function MasterlistStudents({
                     sections={sections}
                     onFiltersChange={updateFilters}
                     onOpenCreate={() => setCreateOpen(true)}
+                    canManage={canManageMasterlist}
                 />
 
                 <StudentsTable
@@ -217,6 +219,7 @@ export default function MasterlistStudents({
                     onSort={handleSort}
                     onEdit={openEdit}
                     onDelete={setDeletingStudent}
+                    canManage={canManageMasterlist}
                 />
 
                 {students.total > 0 && (
@@ -266,26 +269,28 @@ export default function MasterlistStudents({
                     </div>
                 )}
 
-                <CreateStudentDialog
-                    open={createOpen}
-                    onOpenChange={setCreateOpen}
-                    form={createForm}
-                    onSubmit={handleCreateSubmit}
-                />
-
-                <EditStudentDialog
-                    open={!!editingStudent}
-                    onOpenChange={(open) => !open && setEditingStudent(null)}
-                    form={editForm}
-                    onSubmit={handleEditSubmit}
-                />
-
-                <DeleteStudentDialog
-                    student={deletingStudent}
-                    open={!!deletingStudent}
-                    onOpenChange={(open) => !open && setDeletingStudent(null)}
-                    onConfirm={handleDeleteConfirm}
-                />
+                {canManageMasterlist && (
+                    <>
+                        <CreateStudentDialog
+                            open={createOpen}
+                            onOpenChange={setCreateOpen}
+                            form={createForm}
+                            onSubmit={handleCreateSubmit}
+                        />
+                        <EditStudentDialog
+                            open={!!editingStudent}
+                            onOpenChange={(open) => !open && setEditingStudent(null)}
+                            form={editForm}
+                            onSubmit={handleEditSubmit}
+                        />
+                        <DeleteStudentDialog
+                            student={deletingStudent}
+                            open={!!deletingStudent}
+                            onOpenChange={(open) => !open && setDeletingStudent(null)}
+                            onConfirm={handleDeleteConfirm}
+                        />
+                    </>
+                )}
             </div>
         </AppLayout>
     );

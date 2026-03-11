@@ -35,9 +35,16 @@ type Props = {
     enrollmentSemester?: EnrollmentSemester;
 };
 
+const PROFESSOR_QUEST_TYPES: QuestType[] = ['custom', 'event'];
+const questTypeOptionsForRole = (role: string) =>
+    role === 'professor'
+        ? QUEST_TYPE_OPTIONS.filter((o) => PROFESSOR_QUEST_TYPES.includes(o.value))
+        : QUEST_TYPE_OPTIONS;
+
 export function QuestFormFields({ data, errors, setData, enrollmentSemester }: Props) {
     const { auth } = usePage().props;
     const isStudent = auth.user.role === 'student';
+    const questTypeOptions = questTypeOptionsForRole(auth.user.role);
     const simple = isSimpleQuestType(data.quest_type);
     const [sections, setSections] = useState<string[]>([]);
     const [loadingSections, setLoadingSections] = useState(false);
@@ -276,7 +283,7 @@ export function QuestFormFields({ data, errors, setData, enrollmentSemester }: P
                             <SelectValue placeholder="Select quest type" />
                         </SelectTrigger>
                         <SelectContent>
-                            {QUEST_TYPE_OPTIONS.map((opt) => (
+                            {questTypeOptions.map((opt) => (
                                 <SelectItem key={opt.value} value={opt.value}>
                                     {opt.label}
                                 </SelectItem>

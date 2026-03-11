@@ -8,15 +8,16 @@ export type ActiveQuest = {
     status: QuestStatus;
     start_date: string | null;
     end_date: string | null;
-    buy_in_points: number;
     reward_points: number;
     max_participants: number | null;
     current_participants: number;
+    creator?: { id: number; name: string } | null;
 };
 
 export type ActiveQuestsFilters = {
     search: string;
     quest_type: '' | QuestType;
+    created_by_me: boolean;
     sort_by: string;
     sort_dir: 'asc' | 'desc';
 };

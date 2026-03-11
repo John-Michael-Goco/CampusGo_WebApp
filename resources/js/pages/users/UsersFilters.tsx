@@ -17,6 +17,7 @@ type Props = {
     filters: UsersFiltersType;
     onFiltersChange: (updates: Partial<UsersFiltersType>) => void;
     onOpenCreate: () => void;
+    canManage?: boolean;
 };
 
 export function UsersFilters({
@@ -25,13 +26,16 @@ export function UsersFilters({
     filters,
     onFiltersChange,
     onOpenCreate,
+    canManage = true,
 }: Props) {
     return (
         <div className="flex flex-wrap items-center gap-3">
-            <Button type="button" onClick={onOpenCreate}>
-                <Plus className="size-4" />
-                Add Admin/Gamemaster
-            </Button>
+            {canManage && (
+                <Button type="button" onClick={onOpenCreate}>
+                    <Plus className="size-4" />
+                    Add Admin/Gamemaster
+                </Button>
+            )}
             <div className="relative flex-1 min-w-[200px]">
                 <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
                 <Input

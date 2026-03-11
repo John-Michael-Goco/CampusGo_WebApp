@@ -1,4 +1,4 @@
-import { Head, Link, router } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import { useEffect, useRef, useState } from 'react';
 import { ArrowLeft, ArrowRight } from 'lucide-react';
 import { sileo } from 'sileo';
@@ -18,6 +18,7 @@ export default function ActiveQuestsPage({
     quests,
     filters,
 }: ActiveQuestsPageProps) {
+    const canManageQuests = (usePage().props as { auth?: { canManageQuests?: boolean } }).auth?.canManageQuests ?? false;
     const questItems = quests.data ?? [];
     const [search, setSearch] = useState(filters.search);
     const [deletingQuest, setDeletingQuest] = useState<ActiveQuest | null>(null);
@@ -38,6 +39,7 @@ export default function ActiveQuestsPage({
                 {
                     search: search || undefined,
                     quest_type: filters.quest_type || undefined,
+                    created_by_me: filters.created_by_me ? '1' : undefined,
                     sort_by: filters.sort_by,
                     sort_dir: filters.sort_dir,
                 },
@@ -54,6 +56,7 @@ export default function ActiveQuestsPage({
             {
                 search: next.search || undefined,
                 quest_type: next.quest_type || undefined,
+                created_by_me: next.created_by_me ? '1' : undefined,
                 sort_by: next.sort_by,
                 sort_dir: next.sort_dir,
             },
@@ -99,14 +102,17 @@ export default function ActiveQuestsPage({
                     onView={() => {}}
                     onEdit={(quest) => router.get(`/quests/${quest.id}/edit`)}
                     onDelete={setDeletingQuest}
+                    canManage={canManageQuests}
                 />
 
-                <DeleteQuestDialog
-                    quest={deletingQuest}
-                    open={!!deletingQuest}
-                    onOpenChange={(open) => !open && setDeletingQuest(null)}
-                    onConfirm={handleDeleteConfirm}
-                />
+                {canManageQuests && (
+                    <DeleteQuestDialog
+                        quest={deletingQuest}
+                        open={!!deletingQuest}
+                        onOpenChange={(open) => !open && setDeletingQuest(null)}
+                        onConfirm={handleDeleteConfirm}
+                    />
+                )}
 
                 {quests.total > 0 && (
                     <div className="flex items-center justify-between gap-4 border-t pt-4">
