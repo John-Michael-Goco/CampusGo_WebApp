@@ -9,18 +9,20 @@ use Symfony\Component\HttpFoundation\Response;
 class LoginResponse implements LoginResponseContract
 {
     /**
-     * Students must use the simulation student login; block them from the main web login.
+     * Web login is only available for admin and gamemaster (professor).
+     * Students must use the simulation student login.
      */
     public function toResponse($request): Response
     {
         $user = Auth::user();
 
-        if ($user && $user->role === 'student') {
+        $allowedRoles = ['admin', 'professor'];
+        if ($user && ! in_array($user->role, $allowedRoles, true)) {
             Auth::logout();
 
             return redirect()
                 ->route('login')
-                ->withErrors(['email' => 'Students must use the student login.']);
+                ->withErrors(['email' => 'Web login is only available for admin and gamemaster. Students must use the student application.']);
         }
 
         return redirect()->intended(config('fortify.home'));
