@@ -5,8 +5,6 @@ import {
     Table,
     TableScroll,
     TableElement,
-    tableHeaderRowClass,
-    tableBodyRowClass,
     tableHeadClass,
     tableCellClass,
     tableEmptyClass,
@@ -48,6 +46,11 @@ function SortIcon({
     );
 }
 
+const semestersHeaderRowClass =
+    'border-b border-cyan-200/60 bg-gradient-to-r from-cyan-50/90 to-cyan-50/50 dark:border-cyan-900/50 dark:from-cyan-950/40 dark:to-cyan-950/20 text-foreground';
+const semestersBodyRowClass =
+    'border-b border-border/60 transition-colors hover:bg-cyan-50/40 dark:hover:bg-cyan-950/20 last:border-b-0';
+
 type Props = {
     semesters: Semester[];
     filters: SemestersFilters;
@@ -66,11 +69,11 @@ export function SemestersTable({
     canManage = true,
 }: Props) {
     return (
-        <Table>
+        <Table className="border-cyan-200/60 dark:border-cyan-900/40 ring-1 ring-cyan-200/20 dark:ring-cyan-800/20">
             <TableScroll>
                 <TableElement>
                     <thead>
-                        <tr className={tableHeaderRowClass}>
+                        <tr className={semestersHeaderRowClass}>
                             <th className={tableHeadClass}>
                                 <button
                                     type="button"
@@ -125,7 +128,7 @@ export function SemestersTable({
                     </thead>
                     <tbody>
                         {semesters.length === 0 ? (
-                            <tr className={tableBodyRowClass}>
+                            <tr className={semestersBodyRowClass}>
                                 <td
                                     colSpan={canManage ? 5 : 4}
                                     className={tableEmptyClass}
@@ -137,7 +140,7 @@ export function SemestersTable({
                             semesters.map((semester) => (
                                 <tr
                                     key={semester.id}
-                                    className={tableBodyRowClass}
+                                    className={semestersBodyRowClass}
                                 >
                                     <td className={`${tableCellClass} font-medium`}>
                                         {semester.name}

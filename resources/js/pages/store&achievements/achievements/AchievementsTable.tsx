@@ -4,8 +4,6 @@ import {
     Table,
     TableScroll,
     TableElement,
-    tableHeaderRowClass,
-    tableBodyRowClass,
     tableHeadClass,
     tableCellClass,
     tableEmptyClass,
@@ -49,6 +47,11 @@ function requirementValueDisplay(achievement: Achievement, quests: QuestOption[]
     return String(achievement.requirement_value);
 }
 
+const achievementsHeaderRowClass =
+    'border-b border-rose-200/60 bg-gradient-to-r from-rose-50/90 to-rose-50/50 dark:border-rose-900/50 dark:from-rose-950/40 dark:to-rose-950/20 text-foreground';
+const achievementsBodyRowClass =
+    'border-b border-border/60 transition-colors hover:bg-rose-50/40 dark:hover:bg-rose-950/20 last:border-b-0';
+
 type Props = {
     achievements: Achievement[];
     filters: AchievementsFilters;
@@ -71,11 +74,11 @@ export function AchievementsTable({
     canManage = true,
 }: Props) {
     return (
-        <Table>
+        <Table className="border-rose-200/60 dark:border-rose-900/40 ring-1 ring-rose-200/20 dark:ring-rose-800/20">
             <TableScroll>
                 <TableElement>
                     <thead>
-                        <tr className={tableHeaderRowClass}>
+                        <tr className={achievementsHeaderRowClass}>
                             <th className={tableHeadClass}>
                                 <button
                                     type="button"
@@ -130,7 +133,7 @@ export function AchievementsTable({
                     </thead>
                     <tbody>
                         {achievements.length === 0 ? (
-                            <tr className={tableBodyRowClass}>
+                            <tr className={achievementsBodyRowClass}>
                                 <td
                                     colSpan={canManage ? 5 : 4}
                                     className={tableEmptyClass}
@@ -142,7 +145,7 @@ export function AchievementsTable({
                             achievements.map((achievement) => (
                                 <tr
                                     key={achievement.id}
-                                    className={tableBodyRowClass}
+                                    className={achievementsBodyRowClass}
                                 >
                                     <td className={`${tableCellClass} font-medium`}>
                                         {achievement.name}

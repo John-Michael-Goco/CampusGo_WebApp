@@ -4,8 +4,6 @@ import {
     Table,
     TableScroll,
     TableElement,
-    tableHeaderRowClass,
-    tableBodyRowClass,
     tableHeadClass,
     tableCellClass,
     tableEmptyClass,
@@ -55,6 +53,11 @@ function formatTime(iso: string | null | undefined): string {
     });
 }
 
+const logsHeaderRowClass =
+    'border-b border-violet-200/60 bg-gradient-to-r from-violet-50/90 to-violet-50/50 dark:border-violet-900/50 dark:from-violet-950/40 dark:to-violet-950/20 text-foreground';
+const logsBodyRowClass =
+    'border-b border-border/60 transition-colors hover:bg-violet-50/40 dark:hover:bg-violet-950/20 last:border-b-0';
+
 export function LogsTable({
     logs,
     pagination,
@@ -63,11 +66,11 @@ export function LogsTable({
 }: Props) {
     return (
         <>
-            <Table>
+            <Table className="border-violet-200/60 dark:border-violet-900/40 ring-1 ring-violet-200/20 dark:ring-violet-800/20">
                 <TableScroll>
                     <TableElement>
                         <thead>
-                            <tr className={tableHeaderRowClass}>
+                            <tr className={logsHeaderRowClass}>
                                 <th className={tableHeadClass}>
                                     <button
                                         type="button"
@@ -91,7 +94,7 @@ export function LogsTable({
                         </thead>
                         <tbody>
                             {logs.length === 0 ? (
-                                <tr className={tableBodyRowClass}>
+                                <tr className={logsBodyRowClass}>
                                     <td
                                         colSpan={4}
                                         className={tableEmptyClass}
@@ -107,7 +110,7 @@ export function LogsTable({
                                     return (
                                         <tr
                                             key={log.id}
-                                            className={tableBodyRowClass}
+                                            className={logsBodyRowClass}
                                         >
                                             <td className={`${tableCellClass} whitespace-nowrap text-muted-foreground`}>
                                                 {formatDate(log.timestamp)}

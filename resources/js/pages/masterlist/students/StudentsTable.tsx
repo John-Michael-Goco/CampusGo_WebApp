@@ -4,8 +4,6 @@ import {
     Table,
     TableScroll,
     TableElement,
-    tableHeaderRowClass,
-    tableBodyRowClass,
     tableHeadClass,
     tableCellClass,
     tableEmptyClass,
@@ -31,6 +29,11 @@ function SortIcon({
     );
 }
 
+const studentsHeaderRowClass =
+    'border-b border-teal-200/60 bg-gradient-to-r from-teal-50/90 to-teal-50/50 dark:border-teal-900/50 dark:from-teal-950/40 dark:to-teal-950/20 text-foreground';
+const studentsBodyRowClass =
+    'border-b border-border/60 transition-colors hover:bg-teal-50/40 dark:hover:bg-teal-950/20 last:border-b-0';
+
 type Props = {
     students: Student[];
     filters: StudentsFilters;
@@ -49,11 +52,11 @@ export function StudentsTable({
     canManage = true,
 }: Props) {
     return (
-        <Table>
+        <Table className="border-teal-200/60 dark:border-teal-900/40 ring-1 ring-teal-200/20 dark:ring-teal-800/20">
             <TableScroll>
                 <TableElement>
                     <thead>
-                        <tr className={tableHeaderRowClass}>
+                        <tr className={studentsHeaderRowClass}>
                             <th className={tableHeadClass}>
                                 <button
                                     type="button"
@@ -120,7 +123,7 @@ export function StudentsTable({
                     </thead>
                     <tbody>
                         {students.length === 0 ? (
-                            <tr className={tableBodyRowClass}>
+                            <tr className={studentsBodyRowClass}>
                                 <td
                                     colSpan={canManage ? 9 : 8}
                                     className={tableEmptyClass}
@@ -132,7 +135,7 @@ export function StudentsTable({
                             students.map((student) => (
                                 <tr
                                     key={student.id}
-                                    className={tableBodyRowClass}
+                                    className={studentsBodyRowClass}
                                 >
                                     <td className="px-4 py-3 font-mono text-muted-foreground">
                                         {student.student_number}

@@ -30,7 +30,7 @@ export default function Password() {
             <h1 className="sr-only">Password Settings</h1>
 
             <SettingsLayout>
-                <div className="space-y-6">
+                <div className="space-y-6 rounded-xl border bg-card p-6 shadow-sm">
                     <Heading
                         variant="small"
                         title="Update password"

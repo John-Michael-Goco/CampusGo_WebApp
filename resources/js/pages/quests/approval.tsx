@@ -8,8 +8,6 @@ import {
     Table,
     TableScroll,
     TableElement,
-    tableHeaderRowClass,
-    tableBodyRowClass,
     tableHeadClass,
     tableCellClass,
     tableEmptyClass,
@@ -26,6 +24,11 @@ const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Quests', href: '/quests/active' },
     { title: 'Approval', href: '/quests/approval' },
 ];
+
+const approvalHeaderRowClass =
+    'border-b border-orange-200/60 bg-gradient-to-r from-orange-50/90 to-orange-50/50 dark:border-orange-900/50 dark:from-orange-950/40 dark:to-orange-950/20 text-foreground';
+const approvalBodyRowClass =
+    'border-b border-border/60 transition-colors hover:bg-orange-50/40 dark:hover:bg-orange-950/20 last:border-b-0';
 
 export default function QuestApprovalPage({ quests, filters = {} }: Props) {
     const [search, setSearch] = useState(filters.search ?? '');
@@ -64,11 +67,11 @@ export default function QuestApprovalPage({ quests, filters = {} }: Props) {
 
                 <QuestSearchInput value={search} onChange={setSearch} />
 
-                <Table>
+                <Table className="border-orange-200/60 dark:border-orange-900/40 ring-1 ring-orange-200/20 dark:ring-orange-800/20">
                     <TableScroll>
                         <TableElement>
                             <thead>
-                                <tr className={tableHeaderRowClass}>
+                                <tr className={approvalHeaderRowClass}>
                                     <th className={tableHeadClass}>Title</th>
                                     <th className={tableHeadClass}>Type</th>
                                     <th className={tableHeadClass}>Created</th>
@@ -77,7 +80,7 @@ export default function QuestApprovalPage({ quests, filters = {} }: Props) {
                             </thead>
                             <tbody>
                                 {items.length === 0 ? (
-                                    <tr className={tableBodyRowClass}>
+                                    <tr className={approvalBodyRowClass}>
                                         <td colSpan={4} className={tableEmptyClass}>
                                             No quests pending approval.
                                         </td>
@@ -86,7 +89,7 @@ export default function QuestApprovalPage({ quests, filters = {} }: Props) {
                                     items.map((quest) => (
                                         <tr
                                             key={quest.id}
-                                            className={tableBodyRowClass}
+                                            className={approvalBodyRowClass}
                                         >
                                             <td className={`${tableCellClass} font-medium`}>{quest.title}</td>
                                             <td className={`${tableCellClass} capitalize`}>{quest.quest_type}</td>

@@ -39,6 +39,8 @@ class ActivityLog extends Model
     public const ACTION_SEMESTER_CREATED = 'semester_created';
     public const ACTION_SEMESTER_UPDATED = 'semester_updated';
     public const ACTION_SEMESTER_DELETED = 'semester_deleted';
+    public const ACTION_PROFILE_UPDATED = 'profile_updated';
+    public const ACTION_PASSWORD_CHANGED = 'password_changed';
     public const ACTION_AUTH_SIGNIN = 'auth_signin';
     public const ACTION_AUTH_SIGNOUT = 'auth_signout';
     public const ACTION_AUTH_SIGNUP = 'auth_signup';

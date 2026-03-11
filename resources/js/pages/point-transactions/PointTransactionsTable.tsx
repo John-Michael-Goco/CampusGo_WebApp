@@ -4,8 +4,6 @@ import {
     Table,
     TableScroll,
     TableElement,
-    tableHeaderRowClass,
-    tableBodyRowClass,
     tableHeadClass,
     tableCellClass,
     tableEmptyClass,
@@ -55,6 +53,11 @@ function formatTime(iso: string): string {
     });
 }
 
+const transactionsHeaderRowClass =
+    'border-b border-emerald-200/60 bg-gradient-to-r from-emerald-50/90 to-emerald-50/50 dark:border-emerald-900/50 dark:from-emerald-950/40 dark:to-emerald-950/20 text-foreground';
+const transactionsBodyRowClass =
+    'border-b border-border/60 transition-colors hover:bg-emerald-50/40 dark:hover:bg-emerald-950/20 last:border-b-0';
+
 export function PointTransactionsTable({
     transactions,
     pagination,
@@ -63,11 +66,11 @@ export function PointTransactionsTable({
 }: Props) {
     return (
         <>
-            <Table>
+            <Table className="border-emerald-200/60 dark:border-emerald-900/40 ring-1 ring-emerald-200/20 dark:ring-emerald-800/20">
                 <TableScroll>
                     <TableElement>
                         <thead>
-                            <tr className={tableHeaderRowClass}>
+                            <tr className={transactionsHeaderRowClass}>
                                 <th className={tableHeadClass}>
                                     <button
                                         type="button"
@@ -94,7 +97,7 @@ export function PointTransactionsTable({
                         </thead>
                         <tbody>
                             {transactions.length === 0 ? (
-                                <tr className={tableBodyRowClass}>
+                                <tr className={transactionsBodyRowClass}>
                                     <td
                                         colSpan={5}
                                         className={tableEmptyClass}
@@ -106,7 +109,7 @@ export function PointTransactionsTable({
                                 transactions.map((tx) => (
                                     <tr
                                         key={tx.id}
-                                        className={tableBodyRowClass}
+                                        className={transactionsBodyRowClass}
                                     >
                                         <td className={`${tableCellClass} whitespace-nowrap text-muted-foreground`}>
                                             {formatDate(tx.created_at)}

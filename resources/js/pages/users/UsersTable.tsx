@@ -5,8 +5,6 @@ import {
     Table,
     TableScroll,
     TableElement,
-    tableHeaderRowClass,
-    tableBodyRowClass,
     tableHeadClass,
     tableCellClass,
     tableEmptyClass,
@@ -45,13 +43,18 @@ type Props = {
     canManage?: boolean;
 };
 
+const usersHeaderRowClass =
+    'border-b border-blue-200/60 bg-gradient-to-r from-blue-50/90 to-blue-50/50 dark:border-blue-900/50 dark:from-blue-950/40 dark:to-blue-950/20 text-foreground';
+const usersBodyRowClass =
+    'border-b border-border/60 transition-colors hover:bg-blue-50/40 dark:hover:bg-blue-950/20 last:border-b-0';
+
 export function UsersTable({ users, filters, onSort, onDelete, canManage = false }: Props) {
     return (
-        <Table>
+        <Table className="border-blue-200/60 dark:border-blue-900/40 ring-1 ring-blue-200/20 dark:ring-blue-800/20">
             <TableScroll>
                 <TableElement>
                     <thead>
-                        <tr className={tableHeaderRowClass}>
+                        <tr className={usersHeaderRowClass}>
                             <th className={tableHeadClass}>
                                 <button
                                     type="button"
@@ -118,7 +121,7 @@ export function UsersTable({ users, filters, onSort, onDelete, canManage = false
                     </thead>
                     <tbody>
                         {users.length === 0 ? (
-                            <tr className={tableBodyRowClass}>
+                            <tr className={usersBodyRowClass}>
                                 <td
                                     colSpan={6}
                                     className={tableEmptyClass}
@@ -130,7 +133,7 @@ export function UsersTable({ users, filters, onSort, onDelete, canManage = false
                             users.map((user) => (
                                 <tr
                                     key={user.id}
-                                    className={tableBodyRowClass}
+                                    className={usersBodyRowClass}
                                 >
                                     <td className={tableCellClass}>{user.name}</td>
                                     <td className={cn(tableCellClass, 'font-mono text-muted-foreground')}>

@@ -7,9 +7,13 @@ use App\Models\PointTransaction;
 use App\Models\Semester;
 use App\Models\User;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Cache;
 
 class LeaderboardService
 {
+    /** Cache TTL in seconds. Leaderboard is recomputed at most this often per period. */
+    private const CACHE_TTL_SECONDS = 60;
+
     public const PERIOD_TODAY = 'today';
     public const PERIOD_WEEK = 'week';
     public const PERIOD_MONTH = 'month';
@@ -25,7 +29,9 @@ class LeaderboardService
     ];
 
     /**
-     * Get leaderboard entries for a period. Reads from table, falls back to computed if empty.
+     * Get leaderboard entries for a period. All periods are computed from point transactions
+     * (or users.total_xp_earned for overall). Results are cached briefly to avoid repeated
+     * heavy queries on every request.
      *
      * @return array{entries: array<int, array{rank: int, user_id: int, user_name: string, value: int}>, period: string, periods: array<string>, value_label: string}
      */
@@ -35,21 +41,18 @@ class LeaderboardService
             $period = self::PERIOD_WEEK;
         }
 
-        // "today" and "overall" change frequently — always compute live
-        if (in_array($period, [self::PERIOD_TODAY, self::PERIOD_OVERALL], true)) {
-            $entries = $this->getEntriesComputed($period);
-        } else {
-            $entries = $this->getEntriesFromTable($period);
-            if ($entries === null) {
-                $entries = $this->getEntriesComputed($period);
-            }
-        }
+        $periodKey = $this->getPeriodKey($period);
+        $cacheKey = 'leaderboard:entries:' . $period . ':' . ($periodKey ?? 'none');
+
+        $entries = Cache::remember($cacheKey, self::CACHE_TTL_SECONDS, function () use ($period) {
+            return $this->getEntriesComputed($period);
+        });
 
         return [
             'entries' => $entries,
             'period' => $period,
             'periods' => self::PERIODS,
-            'value_label' => $period === self::PERIOD_OVERALL ? 'Total XP earned' : 'Quest reward points',
+            'value_label' => $period === self::PERIOD_OVERALL ? 'Total XP earned' : 'Points gained',
         ];
     }
 

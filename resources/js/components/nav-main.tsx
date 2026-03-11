@@ -97,7 +97,7 @@ function NavItemCollapsible({ item }: { item: NavItem }) {
                         <ChevronDown className="ml-auto size-4 shrink-0 transition-transform group-data-[state=open]/collapsible:rotate-180" />
                     </SidebarMenuButton>
                 </CollapsibleTrigger>
-                <CollapsibleContent className="mt-1.5">
+                <CollapsibleContent className="mt-2">
                     <SidebarMenuSub>
                         {item.items?.map((sub) => (
                             <SidebarMenuSubItem key={sub.title}>
@@ -122,10 +122,10 @@ function NavItemCollapsible({ item }: { item: NavItem }) {
 export function NavMain({ items = [] }: { items: NavItem[] }) {
     return (
         <SidebarGroup className="px-2 py-0">
-            <SidebarGroupLabel className="text-sidebar-foreground/80 font-semibold uppercase tracking-wider text-xs mb-1">
+            <SidebarGroupLabel className="text-sidebar-foreground/80 font-semibold uppercase tracking-wider text-sm mb-2">
                 Navigation
             </SidebarGroupLabel>
-            <SidebarMenu className="gap-0.5">
+            <SidebarMenu className="gap-2">
                 {items.map((item) =>
                     item.items?.length ? (
                         <NavItemCollapsible key={item.title} item={item} />

@@ -17,8 +17,6 @@ import {
     Table,
     TableScroll,
     TableElement,
-    tableHeaderRowClass,
-    tableBodyRowClass,
     tableHeadClass,
     tableCellClass,
     tableEmptyClass,
@@ -31,6 +29,11 @@ import {
     approvalStatusLabel,
     approvalStatusVariant,
 } from './shared';
+
+const createdQuestsHeaderRowClass =
+    'border-b border-amber-200/60 bg-gradient-to-r from-amber-50/90 to-amber-50/50 dark:border-amber-900/50 dark:from-amber-950/40 dark:to-amber-950/20 text-foreground';
+const createdQuestsBodyRowClass =
+    'border-b border-border/60 transition-colors hover:bg-amber-50/40 dark:hover:bg-amber-950/20 last:border-b-0';
 
 type Props = {
     quests: PaginatedQuests<CreatedQuest>;
@@ -95,11 +98,11 @@ export default function CreatedQuestsPage({ quests, filters = {} }: Props) {
 
                 <QuestSearchInput value={search} onChange={setSearch} />
 
-                <Table>
+                <Table className="border-amber-200/60 dark:border-amber-900/40 ring-1 ring-amber-200/20 dark:ring-amber-800/20">
                     <TableScroll>
                         <TableElement>
                             <thead>
-                                <tr className={tableHeaderRowClass}>
+                                <tr className={createdQuestsHeaderRowClass}>
                                     <th className={tableHeadClass}>Title</th>
                                     <th className={tableHeadClass}>Type</th>
                                     <th className={tableHeadClass}>Status</th>
@@ -109,7 +112,7 @@ export default function CreatedQuestsPage({ quests, filters = {} }: Props) {
                             </thead>
                             <tbody>
                                 {items.length === 0 ? (
-                                    <tr className={tableBodyRowClass}>
+                                    <tr className={createdQuestsBodyRowClass}>
                                         <td colSpan={5} className={tableEmptyClass}>
                                             You have not created any quests yet.
                                         </td>
@@ -118,7 +121,7 @@ export default function CreatedQuestsPage({ quests, filters = {} }: Props) {
                                     items.map((quest) => (
                                         <tr
                                             key={quest.id}
-                                            className={tableBodyRowClass}
+                                            className={createdQuestsBodyRowClass}
                                         >
                                             <td className={`${tableCellClass} font-medium`}>{quest.title}</td>
                                             <td className={`${tableCellClass} capitalize`}>{quest.quest_type}</td>

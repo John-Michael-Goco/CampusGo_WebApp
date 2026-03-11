@@ -104,17 +104,30 @@ class ProfessorController extends Controller
             'last_name' => $validated['last_name'],
         ]);
 
+        ActivityLog::log(
+            $request->user()->id,
+            ActivityLog::ACTION_PROFESSOR_UPDATED,
+            $professor_masterlist->school_id . ' – ' . $professor_masterlist->first_name . ' ' . $professor_masterlist->last_name,
+        );
+
         return redirect()
             ->route('masterlist.professors', $request->only(['search', 'sort_by', 'sort_dir']))
             ->with('status', 'Professor updated successfully.');
     }
 
-    public function destroy(MasterUser $professor_masterlist): RedirectResponse
+    public function destroy(Request $request, MasterUser $professor_masterlist): RedirectResponse
     {
         if ($professor_masterlist->role !== 'professor') {
             abort(404);
         }
+        $detail = $professor_masterlist->school_id . ' – ' . $professor_masterlist->first_name . ' ' . $professor_masterlist->last_name;
         $professor_masterlist->delete();
+
+        ActivityLog::log(
+            $request->user()->id,
+            ActivityLog::ACTION_PROFESSOR_DELETED,
+            $detail,
+        );
 
         return redirect()->back()->with('status', 'Professor deleted successfully.');
     }

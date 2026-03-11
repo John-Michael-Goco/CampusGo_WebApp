@@ -25,6 +25,7 @@ return new class extends Migration
             ]);
             $table->unsignedBigInteger('reference_id')->nullable();
             $table->timestamp('created_at')->useCurrent();
+            $table->index(['transaction_type', 'created_at']);
         });
     }
 

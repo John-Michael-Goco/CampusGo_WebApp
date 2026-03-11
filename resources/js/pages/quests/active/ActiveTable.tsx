@@ -5,8 +5,6 @@ import {
     Table,
     TableScroll,
     TableElement,
-    tableHeaderRowClass,
-    tableBodyRowClass,
     tableHeadClass,
     tableCellClass,
     tableEmptyClass,
@@ -36,6 +34,11 @@ const STATUS_VARIANT: Record<QuestStatus, 'default' | 'secondary' | 'destructive
     cancelled: 'destructive',
 };
 
+const questsHeaderRowClass =
+    'border-b border-emerald-200/60 bg-gradient-to-r from-emerald-50/90 to-emerald-50/50 dark:border-emerald-900/50 dark:from-emerald-950/40 dark:to-emerald-950/20 text-foreground';
+const questsBodyRowClass =
+    'border-b border-border/60 transition-colors hover:bg-emerald-50/40 dark:hover:bg-emerald-950/20 last:border-b-0';
+
 type Props = {
     quests: ActiveQuest[];
     onView: (quest: ActiveQuest) => void;
@@ -46,11 +49,11 @@ type Props = {
 
 export function ActiveTable({ quests, onView, onEdit, onDelete, canManage = true }: Props) {
     return (
-        <Table>
+        <Table className="border-emerald-200/60 dark:border-emerald-900/40 ring-1 ring-emerald-200/20 dark:ring-emerald-800/20">
             <TableScroll>
                 <TableElement>
                     <thead>
-                        <tr className={tableHeaderRowClass}>
+                        <tr className={questsHeaderRowClass}>
                             <th className={tableHeadClass}>
                                 Title
                             </th>
@@ -82,7 +85,7 @@ export function ActiveTable({ quests, onView, onEdit, onDelete, canManage = true
                     </thead>
                     <tbody>
                         {quests.length === 0 ? (
-                            <tr className={tableBodyRowClass}>
+                            <tr className={questsBodyRowClass}>
                                 <td
                                     colSpan={9}
                                     className={tableEmptyClass}
@@ -94,7 +97,7 @@ export function ActiveTable({ quests, onView, onEdit, onDelete, canManage = true
                             quests.map((quest) => (
                                 <tr
                                     key={quest.id}
-                                    className={tableBodyRowClass}
+                                    className={questsBodyRowClass}
                                 >
                                     <td className={`${tableCellClass} font-medium`}>
                                         {quest.title}

@@ -4,8 +4,6 @@ import {
     Table,
     TableScroll,
     TableElement,
-    tableHeaderRowClass,
-    tableBodyRowClass,
     tableHeadClass,
     tableCellClass,
     tableEmptyClass,
@@ -47,6 +45,11 @@ function SortIcon({
     );
 }
 
+const storeHeaderRowClass =
+    'border-b border-sky-200/60 bg-gradient-to-r from-sky-50/90 to-sky-50/50 dark:border-sky-900/50 dark:from-sky-950/40 dark:to-sky-950/20 text-foreground';
+const storeBodyRowClass =
+    'border-b border-border/60 transition-colors hover:bg-sky-50/40 dark:hover:bg-sky-950/20 last:border-b-0';
+
 type Props = {
     storeItems: StoreItem[];
     filters: StoreItemsFilters;
@@ -65,11 +68,11 @@ export function StoreItemsTable({
     canManage = true,
 }: Props) {
     return (
-        <Table>
+        <Table className="border-sky-200/60 dark:border-sky-900/40 ring-1 ring-sky-200/20 dark:ring-sky-800/20">
             <TableScroll>
                 <TableElement>
                     <thead>
-                        <tr className={tableHeaderRowClass}>
+                        <tr className={storeHeaderRowClass}>
                             <th className={tableHeadClass}>
                                 <button
                                     type="button"
@@ -144,7 +147,7 @@ export function StoreItemsTable({
                     </thead>
                     <tbody>
                         {storeItems.length === 0 ? (
-                            <tr className={tableBodyRowClass}>
+                            <tr className={storeBodyRowClass}>
                                 <td
                                     colSpan={canManage ? 8 : 7}
                                     className={tableEmptyClass}
@@ -156,7 +159,7 @@ export function StoreItemsTable({
                             storeItems.map((item) => (
                                 <tr
                                     key={item.id}
-                                    className={tableBodyRowClass}
+                                    className={storeBodyRowClass}
                                 >
                                     <td className="px-4 py-3 font-medium">
                                         {item.name}

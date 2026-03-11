@@ -7,6 +7,7 @@ import {
     DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import { UserInfo } from '@/components/user-info';
+import AppearanceTabs from '@/components/appearance-tabs';
 import { useMobileNavigation } from '@/hooks/use-mobile-navigation';
 import type { User } from '@/types';
 import { logout } from '@/routes';
@@ -31,6 +32,11 @@ export function UserMenuContent({ user }: Props) {
                     <UserInfo user={user} showEmail={true} />
                 </div>
             </DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <div className="px-2 py-2" onClick={(e) => e.stopPropagation()}>
+                <p className="mb-2 text-xs font-medium text-muted-foreground">Theme</p>
+                <AppearanceTabs orientation="vertical" className="w-full" />
+            </div>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
                 <DropdownMenuItem asChild>

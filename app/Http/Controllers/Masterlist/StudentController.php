@@ -181,16 +181,29 @@ class StudentController extends Controller
             'section' => $validated['section'],
         ]);
 
+        ActivityLog::log(
+            $request->user()->id,
+            ActivityLog::ACTION_STUDENT_UPDATED,
+            $student_masterlist->school_id . ' – ' . $student_masterlist->first_name . ' ' . $student_masterlist->last_name,
+        );
+
         return redirect()->route('masterlist.students', $request->only(['search', 'course', 'year_level', 'section', 'sort_by', 'sort_dir']))
             ->with('status', 'Student updated successfully.');
     }
 
-    public function destroy(MasterUser $student_masterlist): RedirectResponse
+    public function destroy(Request $request, MasterUser $student_masterlist): RedirectResponse
     {
         if ($student_masterlist->role !== 'student') {
             abort(404);
         }
+        $detail = $student_masterlist->school_id . ' – ' . $student_masterlist->first_name . ' ' . $student_masterlist->last_name;
         $student_masterlist->delete();
+
+        ActivityLog::log(
+            $request->user()->id,
+            ActivityLog::ACTION_STUDENT_DELETED,
+            $detail,
+        );
 
         return redirect()->back()
             ->with('status', 'Student deleted successfully.');

@@ -4,7 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Models\ActivityLog;
 use App\Models\MasterUser;
+use App\Models\PointTransaction;
 use App\Models\Quest;
+use App\Models\QuestParticipant;
 use App\Models\QuestQuestionChoice;
 use App\Models\Submission;
 use App\Models\Semester;
@@ -208,8 +210,8 @@ class QuestController extends Controller
         $isAdmin = $user->role === 'admin';
         $questInput = $request->input('quest');
 
-        if (! $isAdmin && ! in_array($questInput['quest_type'] ?? '', ['custom', 'event'], true)) {
-            return back()->withErrors(['quest.quest_type' => 'Gamemasters can only create Custom or Event quests.']);
+        if ($user->role === 'professor' && ! in_array($questInput['quest_type'] ?? '', ['custom', 'event'], true)) {
+            return back()->withErrors(['quest.quest_type' => 'Professors can only create Custom or Event quests.']);
         }
 
         if ($questInput['quest_type'] === 'enrollment' && $questInput['question_type'] !== 'qr_scan') {
@@ -485,6 +487,10 @@ class QuestController extends Controller
 
         $questInput = $request->input('quest');
 
+        if ($request->user()->role === 'professor' && ! in_array($questInput['quest_type'] ?? '', ['custom', 'event'], true)) {
+            return back()->withErrors(['quest.quest_type' => 'Professors can only create Custom or Event quests.']);
+        }
+
         if ($questInput['quest_type'] === 'enrollment' && $questInput['question_type'] !== 'qr_scan') {
             return back()->withErrors(['quest.question_type' => 'Enrollment quests must use QR scan only.']);
         }
@@ -590,6 +596,24 @@ class QuestController extends Controller
         }
 
         $title = $quest->title;
+        $buyInPoints = (int) $quest->buy_in_points;
+
+        if ($buyInPoints > 0) {
+            $participants = QuestParticipant::where('quest_id', $quest->id)->with('user')->get();
+            foreach ($participants as $participant) {
+                $participantUser = $participant->user;
+                if ($participantUser) {
+                    PointTransaction::create([
+                        'user_id' => $participantUser->id,
+                        'amount' => $buyInPoints,
+                        'transaction_type' => PointTransaction::TYPE_BUY_IN_REFUND,
+                        'reference_id' => $quest->id,
+                    ]);
+                    $participantUser->increment('points_balance', $buyInPoints);
+                }
+            }
+        }
+
         $quest->delete();
 
         ActivityLog::log($user->id, ActivityLog::ACTION_QUEST_DELETED, $title);

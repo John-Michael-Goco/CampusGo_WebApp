@@ -14,8 +14,6 @@ import {
     Table,
     TableScroll,
     TableElement,
-    tableHeaderRowClass,
-    tableBodyRowClass,
     tableHeadClass,
     tableCellClass,
     tableEmptyClass,
@@ -40,6 +38,11 @@ const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Quests', href: '/quests/active' },
     { title: 'History', href: '/quests/history' },
 ];
+
+const historyHeaderRowClass =
+    'border-b border-slate-200/60 bg-gradient-to-r from-slate-50/90 to-slate-50/50 dark:border-slate-800/60 dark:from-slate-900/50 dark:to-slate-900/30 text-foreground';
+const historyBodyRowClass =
+    'border-b border-border/60 transition-colors hover:bg-slate-50/40 dark:hover:bg-slate-800/30 last:border-b-0';
 
 export default function QuestHistoryPage({ quests, filters = {} }: Props) {
     const [search, setSearch] = useState(filters.search ?? '');
@@ -121,11 +124,11 @@ export default function QuestHistoryPage({ quests, filters = {} }: Props) {
                     </Select>
                 </div>
 
-                <Table>
+                <Table className="border-slate-200/60 dark:border-slate-700/50 ring-1 ring-slate-200/20 dark:ring-slate-700/30">
                     <TableScroll>
                         <TableElement>
                             <thead>
-                                <tr className={tableHeaderRowClass}>
+                                <tr className={historyHeaderRowClass}>
                                     <th className={tableHeadClass}>Title</th>
                                     <th className={tableHeadClass}>Type</th>
                                     <th className={tableHeadClass}>Created by</th>
@@ -136,7 +139,7 @@ export default function QuestHistoryPage({ quests, filters = {} }: Props) {
                             </thead>
                             <tbody>
                                 {items.length === 0 ? (
-                                    <tr className={tableBodyRowClass}>
+                                    <tr className={historyBodyRowClass}>
                                         <td colSpan={6} className={tableEmptyClass}>
                                             No completed or cancelled quests found.
                                         </td>
@@ -145,7 +148,7 @@ export default function QuestHistoryPage({ quests, filters = {} }: Props) {
                                     items.map((quest) => (
                                         <tr
                                             key={quest.id}
-                                            className={tableBodyRowClass}
+                                            className={historyBodyRowClass}
                                         >
                                             <td className={`${tableCellClass} font-medium`}>{quest.title}</td>
                                             <td className={`${tableCellClass} capitalize`}>{quest.quest_type}</td>

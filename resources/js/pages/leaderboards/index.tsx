@@ -6,8 +6,6 @@ import {
     Table,
     TableScroll,
     TableElement,
-    tableHeaderRowClass,
-    tableBodyRowClass,
     tableHeadClass,
     tableCellClass,
     tableEmptyClass,
@@ -18,6 +16,11 @@ import { PERIOD_LABELS } from './types';
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Leaderboards', href: '/leaderboards' },
 ];
+
+const leaderboardHeaderRowClass =
+    'border-b border-yellow-200/60 bg-gradient-to-r from-yellow-50/90 to-yellow-50/50 dark:border-yellow-900/50 dark:from-yellow-950/40 dark:to-yellow-950/20 text-foreground';
+const leaderboardBodyRowClass =
+    'border-b border-border/60 transition-colors hover:bg-yellow-50/40 dark:hover:bg-yellow-950/20 last:border-b-0';
 
 export default function LeaderboardsIndex({
     entries,
@@ -54,11 +57,11 @@ export default function LeaderboardsIndex({
                     </div>
                 </div>
 
-                <Table>
+                <Table className="border-yellow-200/60 dark:border-yellow-900/40 ring-1 ring-yellow-200/20 dark:ring-yellow-800/20">
                     <TableScroll>
                         <TableElement>
                             <thead>
-                                <tr className={tableHeaderRowClass}>
+                                <tr className={leaderboardHeaderRowClass}>
                                     <th className={tableHeadClass}>
                                         Rank
                                     </th>
@@ -72,7 +75,7 @@ export default function LeaderboardsIndex({
                             </thead>
                             <tbody>
                                 {entries.length === 0 ? (
-                                    <tr className={tableBodyRowClass}>
+                                    <tr className={leaderboardBodyRowClass}>
                                         <td
                                             colSpan={3}
                                             className={tableEmptyClass}
@@ -84,7 +87,7 @@ export default function LeaderboardsIndex({
                                     entries.map((entry) => (
                                         <tr
                                             key={entry.user_id}
-                                            className={tableBodyRowClass}
+                                            className={leaderboardBodyRowClass}
                                         >
                                             <td className={cn(tableCellClass, 'whitespace-nowrap font-medium tabular-nums text-muted-foreground')}>
                                                 #{entry.rank}

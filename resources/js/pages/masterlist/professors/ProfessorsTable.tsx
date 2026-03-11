@@ -4,8 +4,6 @@ import {
     Table,
     TableScroll,
     TableElement,
-    tableHeaderRowClass,
-    tableBodyRowClass,
     tableHeadClass,
     tableCellClass,
     tableEmptyClass,
@@ -31,6 +29,11 @@ function SortIcon({
     );
 }
 
+const professorsHeaderRowClass =
+    'border-b border-indigo-200/60 bg-gradient-to-r from-indigo-50/90 to-indigo-50/50 dark:border-indigo-900/50 dark:from-indigo-950/40 dark:to-indigo-950/20 text-foreground';
+const professorsBodyRowClass =
+    'border-b border-border/60 transition-colors hover:bg-indigo-50/40 dark:hover:bg-indigo-950/20 last:border-b-0';
+
 type Props = {
     professors: Professor[];
     filters: ProfessorsFilters;
@@ -49,11 +52,11 @@ export function ProfessorsTable({
     canManage = true,
 }: Props) {
     return (
-        <Table>
+        <Table className="border-indigo-200/60 dark:border-indigo-900/40 ring-1 ring-indigo-200/20 dark:ring-indigo-800/20">
             <TableScroll>
                 <TableElement>
                     <thead>
-                        <tr className={tableHeaderRowClass}>
+                        <tr className={professorsHeaderRowClass}>
                             <th className={tableHeadClass}>
                                 <button
                                     type="button"
@@ -97,7 +100,7 @@ export function ProfessorsTable({
                     </thead>
                     <tbody>
                         {professors.length === 0 ? (
-                            <tr className={tableBodyRowClass}>
+                            <tr className={professorsBodyRowClass}>
                                 <td
                                     colSpan={canManage ? 5 : 4}
                                     className={tableEmptyClass}
@@ -109,7 +112,7 @@ export function ProfessorsTable({
                             professors.map((professor) => (
                                 <tr
                                     key={professor.id}
-                                    className={tableBodyRowClass}
+                                    className={professorsBodyRowClass}
                                 >
                                     <td className={`${tableCellClass} font-mono text-muted-foreground`}>
                                         {professor.employee_id}
