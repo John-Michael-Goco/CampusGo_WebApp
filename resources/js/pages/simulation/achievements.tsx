@@ -29,21 +29,30 @@ type Stats = {
     quests_won: number;
 };
 
+type QuestOption = { id: number; title: string };
+
 type Props = {
     stats: Stats;
     earnedAchievements: SimulationEarnedEntry[];
     allAchievements: SimulationAchievement[];
     earnedIds: number[];
+    quests?: QuestOption[];
     unlockedAchievement?: SimulationAchievement | null;
 };
 
 const REQUIREMENT_LABELS: Record<string, string> = {
-    quest_count: 'Quest count',
-    level: 'Level',
-    quest_win: 'Quests win',
+    quest_count: 'Complete',
+    level: 'Reach level',
+    quest_win: 'Win',
+    complete_quest: 'Finish quest',
 };
 
-function requirementLabel(achievement: SimulationAchievement): string {
+function requirementLabel(achievement: SimulationAchievement, quests: QuestOption[] = []): string {
+    if (achievement.requirement_type === 'complete_quest') {
+        const q = quests.find((x) => x.id === achievement.requirement_value);
+        const questTitle = q ? q.title : 'Quest (deleted)';
+        return `Finish quest: ${questTitle}`;
+    }
     const type = REQUIREMENT_LABELS[achievement.requirement_type] ?? achievement.requirement_type;
     return `${type}: ${achievement.requirement_value}`;
 }
@@ -53,6 +62,7 @@ export default function SimulationAchievements({
     earnedAchievements,
     allAchievements,
     earnedIds,
+    quests = [],
     unlockedAchievement,
 }: Props) {
     const [showUnlocked, setShowUnlocked] = useState(!!unlockedAchievement);
@@ -182,7 +192,7 @@ export default function SimulationAchievements({
                                                         {a.name}
                                                     </p>
                                                     <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
-                                                        {requirementLabel(a)}
+                                                        {requirementLabel(a, quests)}
                                                     </p>
                                                     {a.description && (
                                                         <p className="text-sm text-zinc-600 dark:text-zinc-400 mt-1">

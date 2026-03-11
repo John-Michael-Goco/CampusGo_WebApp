@@ -34,7 +34,7 @@ function requirementTypeLabel(value: string): string {
 function requirementValueDisplay(achievement: Achievement, quests: QuestOption[]): string {
     if (achievement.requirement_type === 'complete_quest') {
         const q = quests.find((x) => x.id === achievement.requirement_value);
-        return q ? q.title : `Quest #${achievement.requirement_value}`;
+        return q ? q.title : 'Quest (deleted)';
     }
     return String(achievement.requirement_value);
 }

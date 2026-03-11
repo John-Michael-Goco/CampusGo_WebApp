@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Simulation;
 use App\Http\Controllers\Controller;
 use App\Models\Achievement;
 use App\Models\ActivityLog;
+use App\Models\Quest;
 use App\Models\QuestParticipant;
 use App\Models\User;
 use App\Models\UserAchievement;
@@ -48,11 +49,14 @@ class AchievementSimulationController extends Controller
             ] : null,
         ])->values()->all();
 
+        $quests = Quest::orderBy('title')->get(['id', 'title']);
+
         return Inertia::render('simulation/achievements', [
             'stats' => $stats,
             'earnedAchievements' => $earned,
             'allAchievements' => $allAchievements,
             'earnedIds' => $earnedIds,
+            'quests' => $quests,
             'unlockedAchievement' => $request->session()->get('unlocked_achievement'),
         ]);
     }
