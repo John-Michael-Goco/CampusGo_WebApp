@@ -10,7 +10,6 @@ const breadcrumbs: BreadcrumbItem[] = [
 ];
 import { CreateGamemasterDialog } from './CreateGamemasterDialog';
 import { DeleteUserDialog } from './DeleteUserDialog';
-import { EditUserDialog } from './EditUserDialog';
 import { UsersFilters } from './UsersFilters';
 import { UsersTable } from './UsersTable';
 import type { UserListItem } from './types';
@@ -37,7 +36,6 @@ export default function UsersIndex({
     const userItems = users.data ?? [];
     const [search, setSearch] = useState(filters.search);
     const [createOpen, setCreateOpen] = useState(false);
-    const [editingUser, setEditingUser] = useState<UserListItem | null>(null);
     const [deletingUser, setDeletingUser] = useState<UserListItem | null>(null);
     const [isDeleting, setIsDeleting] = useState(false);
     const isInitialMount = useRef(true);
@@ -46,21 +44,6 @@ export default function UsersIndex({
         ...INITIAL_CREATE_FORM,
     });
 
-    const editForm = useForm({
-        role: 'professor' as 'admin' | 'professor',
-    });
-
-    useEffect(() => {
-        if (editingUser) {
-            editForm.setData(
-                'role',
-                (editingUser.role === 'admin' ? 'admin' : 'professor') as
-                    | 'admin'
-                    | 'professor'
-            );
-        }
-    }, [editingUser?.id]);
-
     const handleCreateSubmit = () => {
         createForm.post('/users', {
             preserveScroll: true,
@@ -68,15 +51,6 @@ export default function UsersIndex({
                 setCreateOpen(false);
                 createForm.reset();
             },
-        });
-    };
-
-    const handleEditSubmit = () => {
-        if (!editingUser) return;
-        editForm.put(`/users/${editingUser.id}`, {
-            preserveScroll: true,
-            preserveState: true,
-            onSuccess: () => setEditingUser(null),
         });
     };
 
@@ -151,7 +125,6 @@ export default function UsersIndex({
                     users={userItems}
                     filters={filters}
                     onSort={handleSort}
-                    onEdit={setEditingUser}
                     onDelete={setDeletingUser}
                     canManage={canManageUsers}
                 />
@@ -212,14 +185,6 @@ export default function UsersIndex({
                             form={createForm}
                             roleOptions={ADD_ROLE_OPTIONS}
                             onSubmit={handleCreateSubmit}
-                        />
-                        <EditUserDialog
-                            open={editingUser !== null}
-                            onOpenChange={(open) => !open && setEditingUser(null)}
-                            user={editingUser}
-                            form={editForm}
-                            roleOptions={ADD_ROLE_OPTIONS}
-                            onSubmit={handleEditSubmit}
                         />
                         <DeleteUserDialog
                             user={deletingUser}

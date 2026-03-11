@@ -1,5 +1,5 @@
 import { Head, Link, router, usePage } from '@inertiajs/react';
-import { ArrowLeft, ArrowRight, Eye, Pencil, Search, Trash2 } from 'lucide-react';
+import { Eye, Pencil, Trash2 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import AppLayout from '@/layouts/app-layout';
 import type { BreadcrumbItem } from '@/types';
@@ -13,28 +13,17 @@ import {
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-
-type CreatedQuest = {
-    id: number;
-    title: string;
-    quest_type: string;
-    approval_status: string;
-    created_at: string;
-};
-
-type PaginatedQuests = {
-    data: CreatedQuest[];
-    total: number;
-    current_page: number;
-    per_page: number;
-    last_page: number;
-    prev_page_url: string | null;
-    next_page_url: string | null;
-};
+import type { CreatedQuest, PaginatedQuests } from './shared';
+import {
+    QuestSearchInput,
+    QuestPagination,
+    formatQuestDate,
+    approvalStatusLabel,
+    approvalStatusVariant,
+} from './shared';
 
 type Props = {
-    quests: PaginatedQuests;
+    quests: PaginatedQuests<CreatedQuest>;
     filters?: { search?: string };
 };
 
@@ -43,18 +32,6 @@ function getBreadcrumbs(isAdmin: boolean): BreadcrumbItem[] {
         { title: 'Quests', href: '/quests/active' },
         { title: isAdmin ? 'Created Quests' : 'Approval', href: '/quests/created' },
     ];
-}
-
-function statusLabel(status: string): string {
-    if (status === 'approved') return 'Approved';
-    if (status === 'rejected') return 'Rejected';
-    return 'Pending';
-}
-
-function statusVariant(status: string): 'default' | 'secondary' | 'destructive' | 'outline' {
-    if (status === 'approved') return 'default';
-    if (status === 'rejected') return 'destructive';
-    return 'secondary';
 }
 
 export default function CreatedQuestsPage({ quests, filters = {} }: Props) {
@@ -106,16 +83,7 @@ export default function CreatedQuestsPage({ quests, filters = {} }: Props) {
             <div className="flex h-full flex-1 flex-col gap-4 rounded-xl p-4">
                 <h1 className="text-xl font-semibold">{pageTitle}</h1>
 
-                <div className="relative flex w-full">
-                    <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                    <Input
-                        type="search"
-                        placeholder="Search by title or description..."
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                        className="w-full pl-9"
-                    />
-                </div>
+                <QuestSearchInput value={search} onChange={setSearch} />
 
                 <div className="overflow-hidden rounded-lg border bg-card">
                     <div className="overflow-x-auto">
@@ -145,18 +113,12 @@ export default function CreatedQuestsPage({ quests, filters = {} }: Props) {
                                             <td className="px-4 py-3 font-medium">{quest.title}</td>
                                             <td className="px-4 py-3 capitalize">{quest.quest_type}</td>
                                             <td className="px-4 py-3">
-                                                <Badge variant={statusVariant(quest.approval_status)}>
-                                                    {statusLabel(quest.approval_status)}
+                                                <Badge variant={approvalStatusVariant(quest.approval_status)}>
+                                                    {approvalStatusLabel(quest.approval_status)}
                                                 </Badge>
                                             </td>
                                             <td className="px-4 py-3 text-muted-foreground">
-                                                {quest.created_at
-                                                    ? new Date(quest.created_at).toLocaleDateString(undefined, {
-                                                          year: 'numeric',
-                                                          month: 'short',
-                                                          day: 'numeric',
-                                                      })
-                                                    : '—'}
+                                                {formatQuestDate(quest.created_at)}
                                             </td>
                                             <td className="px-4 py-3 text-right">
                                                 <div className="flex justify-end gap-1">
@@ -242,49 +204,16 @@ export default function CreatedQuestsPage({ quests, filters = {} }: Props) {
                 </Dialog>
 
                 {quests.total > 0 && (
-                    <div className="flex items-center justify-between gap-4 border-t pt-4">
-                        <p className="text-sm text-muted-foreground">
-                            Showing {(quests.current_page - 1) * quests.per_page + 1} to{' '}
-                            {Math.min(quests.current_page * quests.per_page, quests.total)} of {quests.total} entries
-                        </p>
-                        {quests.last_page > 1 && (
-                            <div className="flex items-center gap-2">
-                                {quests.prev_page_url ? (
-                                    <Link
-                                        href={quests.prev_page_url}
-                                        preserveState
-                                        className="inline-flex items-center gap-1 rounded-md border px-3 py-2 text-sm font-medium transition-colors hover:bg-muted"
-                                    >
-                                        <ArrowLeft className="size-4" />
-                                        Previous
-                                    </Link>
-                                ) : (
-                                    <span className="inline-flex cursor-not-allowed items-center gap-1 rounded-md border border-transparent bg-muted/50 px-3 py-2 text-sm font-medium text-muted-foreground">
-                                        <ArrowLeft className="size-4" />
-                                        Previous
-                                    </span>
-                                )}
-                                <span className="text-sm text-muted-foreground">
-                                    Page {quests.current_page} of {quests.last_page}
-                                </span>
-                                {quests.next_page_url ? (
-                                    <Link
-                                        href={quests.next_page_url}
-                                        preserveState
-                                        className="inline-flex items-center gap-1 rounded-md border px-3 py-2 text-sm font-medium transition-colors hover:bg-muted"
-                                    >
-                                        Next
-                                        <ArrowRight className="size-4" />
-                                    </Link>
-                                ) : (
-                                    <span className="inline-flex cursor-not-allowed items-center gap-1 rounded-md border border-transparent bg-muted/50 px-3 py-2 text-sm font-medium text-muted-foreground">
-                                        Next
-                                        <ArrowRight className="size-4" />
-                                    </span>
-                                )}
-                            </div>
-                        )}
-                    </div>
+                    <QuestPagination
+                        pagination={{
+                            total: quests.total,
+                            current_page: quests.current_page,
+                            per_page: quests.per_page,
+                            last_page: quests.last_page,
+                            prev_page_url: quests.prev_page_url ?? null,
+                            next_page_url: quests.next_page_url ?? null,
+                        }}
+                    />
                 )}
             </div>
         </AppLayout>

@@ -1,4 +1,5 @@
-import { ArrowDown, ArrowUp, ArrowUpDown, Eye, Pencil, Trash2 } from 'lucide-react';
+import { Link } from '@inertiajs/react';
+import { ArrowDown, ArrowUp, ArrowUpDown, Eye, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { maskEmail, type UserListItem, type UsersFilters } from './types';
 
@@ -29,12 +30,11 @@ type Props = {
     users: UserListItem[];
     filters: UsersFilters;
     onSort: (column: 'name' | 'role' | 'points_balance' | 'level') => void;
-    onEdit: (user: UserListItem) => void;
     onDelete: (user: UserListItem) => void;
     canManage?: boolean;
 };
 
-export function UsersTable({ users, filters, onSort, onEdit, onDelete, canManage = true }: Props) {
+export function UsersTable({ users, filters, onSort, onDelete, canManage = false }: Props) {
     return (
         <div className="rounded-lg border bg-card overflow-hidden">
             <div className="overflow-x-auto">
@@ -100,18 +100,16 @@ export function UsersTable({ users, filters, onSort, onEdit, onDelete, canManage
                                     />
                                 </button>
                             </th>
-                            {canManage && (
-                                <th className="h-11 px-4 text-right font-medium">
-                                    Actions
-                                </th>
-                            )}
+                            <th className="h-11 px-4 text-right font-medium">
+                                Actions
+                            </th>
                         </tr>
                     </thead>
                     <tbody>
                         {users.length === 0 ? (
                             <tr>
                                 <td
-                                    colSpan={canManage ? 6 : 5}
+                                    colSpan={6}
                                     className="h-24 px-4 text-center text-muted-foreground"
                                 >
                                     No users found.
@@ -136,44 +134,34 @@ export function UsersTable({ users, filters, onSort, onEdit, onDelete, canManage
                                     <td className="px-4 py-3">
                                         {user.level ?? 1}
                                     </td>
-                                    {canManage && (
-                                        <td className="px-4 py-3 text-right">
-                                            <div className="flex items-center justify-end gap-1">
-                                                <Button
-                                                    type="button"
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    className="size-8"
-                                                    aria-label="View"
-                                                    onClick={() => {}}
-                                                >
+                                    <td className="px-4 py-3 text-right">
+                                        <div className="flex items-center justify-end gap-1">
+                                            <Button
+                                                type="button"
+                                                variant="ghost"
+                                                size="icon"
+                                                className="size-8"
+                                                asChild
+                                                aria-label="View"
+                                            >
+                                                <Link href={`/users/${user.id}`}>
                                                     <Eye className="size-4" />
-                                                </Button>
+                                                </Link>
+                                            </Button>
+                                            {canManage && user.email !== 'admin@email.com' && (
                                                 <Button
                                                     type="button"
                                                     variant="ghost"
                                                     size="icon"
-                                                    className="size-8"
-                                                    aria-label="Edit"
-                                                    onClick={() => onEdit(user)}
+                                                    className="size-8 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10 dark:hover:text-red-400"
+                                                    aria-label="Delete"
+                                                    onClick={() => onDelete(user)}
                                                 >
-                                                    <Pencil className="size-4" />
+                                                    <Trash2 className="size-4" />
                                                 </Button>
-                                                {user.email !== 'admin@email.com' && (
-                                                    <Button
-                                                        type="button"
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        className="size-8 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10 dark:hover:text-red-400"
-                                                        aria-label="Delete"
-                                                        onClick={() => onDelete(user)}
-                                                    >
-                                                        <Trash2 className="size-4" />
-                                                    </Button>
-                                                )}
-                                            </div>
-                                        </td>
-                                    )}
+                                            )}
+                                        </div>
+                                    </td>
                                 </tr>
                             ))
                         )}

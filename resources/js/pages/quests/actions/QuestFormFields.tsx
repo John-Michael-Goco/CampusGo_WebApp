@@ -1,10 +1,17 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { usePage } from '@inertiajs/react';
 import { parse, isValid } from 'date-fns';
+import { Info } from 'lucide-react';
 import InputError from '@/components/input-error';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from '@/components/ui/tooltip';
 import {
     Select,
     SelectContent,
@@ -315,21 +322,35 @@ export function QuestFormFields({ data, errors, setData, enrollmentSemester }: P
                     <InputError message={errors.question_type} />
                 </div>
                 <div className="grid gap-2">
-                    <Label htmlFor="num_stages">Stages</Label>
+                    <Label htmlFor="num_stages" className="inline-flex items-center gap-1.5">
+                        Stages
+                        {data.is_elimination && (
+                            <TooltipProvider>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Info className="size-4 shrink-0 text-destructive cursor-help" aria-label="Info" />
+                                    </TooltipTrigger>
+                                    <TooltipContent side="top" className="max-w-xs">
+                                        Elimination quests require at least 2 stages.
+                                    </TooltipContent>
+                                </Tooltip>
+                            </TooltipProvider>
+                        )}
+                    </Label>
                     <Input
                         id="num_stages"
                         type="number"
-                        min={1}
+                        min={data.is_elimination ? 2 : 1}
                         value={data.num_stages}
                         onChange={(e) =>
                             setData(
                                 'num_stages',
                                 e.target.value === ''
                                     ? ''
-                                    : Math.max(1, parseInt(e.target.value, 10) || 1)
+                                    : Math.max(data.is_elimination ? 2 : 1, parseInt(e.target.value, 10) || (data.is_elimination ? 2 : 1))
                             )
                         }
-                        placeholder="1"
+                        placeholder={data.is_elimination ? '2' : '1'}
                     />
                     <InputError message={errors.num_stages} />
                 </div>
@@ -464,8 +485,20 @@ export function QuestFormFields({ data, errors, setData, enrollmentSemester }: P
                     </div>
 
                     <div className="grid gap-2">
-                        <Label htmlFor="max_participants">
+                        <Label htmlFor="max_participants" className="inline-flex items-center gap-1.5">
                             Max participants
+                            {data.is_elimination && (
+                                <TooltipProvider>
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <Info className="size-4 shrink-0 text-destructive cursor-help" aria-label="Info" />
+                                        </TooltipTrigger>
+                                        <TooltipContent side="top" className="max-w-xs">
+                                            Required for elimination quests.
+                                        </TooltipContent>
+                                    </Tooltip>
+                                </TooltipProvider>
+                            )}
                         </Label>
                         <Input
                             id="max_participants"
@@ -481,6 +514,7 @@ export function QuestFormFields({ data, errors, setData, enrollmentSemester }: P
                                 )
                             }
                             placeholder="e.g. 50"
+                            required={data.is_elimination}
                         />
                         <InputError message={errors.max_participants} />
                     </div>
@@ -489,9 +523,12 @@ export function QuestFormFields({ data, errors, setData, enrollmentSemester }: P
                         <Checkbox
                             id="is_elimination"
                             checked={data.is_elimination}
-                            onCheckedChange={(checked) =>
-                                setData('is_elimination', !!checked)
-                            }
+                            onCheckedChange={(checked) => {
+                                setData('is_elimination', !!checked);
+                                if (checked && (typeof data.num_stages !== 'number' || data.num_stages < 2)) {
+                                    setData('num_stages', 2);
+                                }
+                            }}
                         />
                         <Label
                             htmlFor="is_elimination"

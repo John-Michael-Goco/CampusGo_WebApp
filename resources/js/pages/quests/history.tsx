@@ -1,10 +1,8 @@
-import { Head, Link, router } from '@inertiajs/react';
-import { ArrowLeft, ArrowRight, Search } from 'lucide-react';
+import { Head, router } from '@inertiajs/react';
 import { useEffect, useRef, useState } from 'react';
 import AppLayout from '@/layouts/app-layout';
 import type { BreadcrumbItem } from '@/types';
 import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
 import {
     Select,
     SelectContent,
@@ -12,32 +10,19 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-
-type HistoryQuest = {
-    id: number;
-    title: string;
-    quest_type: string;
-    status: string;
-    approval_status: string;
-    created_at: string;
-    updated_at: string;
-    creator?: { id: number; name: string } | null;
-};
-
-type PaginatedQuests = {
-    data: HistoryQuest[];
-    total: number;
-    current_page: number;
-    per_page: number;
-    last_page: number;
-    prev_page_url: string | null;
-    next_page_url: string | null;
-};
+import type { HistoryQuest, PaginatedQuests } from './shared';
+import {
+    QuestSearchInput,
+    QuestPagination,
+    formatQuestDate,
+    outcomeLabel,
+    outcomeVariant,
+} from './shared';
 
 type QuestTypeFilter = 'daily' | 'event' | 'custom' | 'enrollment' | '';
 
 type Props = {
-    quests: PaginatedQuests;
+    quests: PaginatedQuests<HistoryQuest>;
     filters?: { search?: string; quest_type?: QuestTypeFilter; created_by_me?: boolean };
 };
 
@@ -45,19 +30,6 @@ const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Quests', href: '/quests/active' },
     { title: 'History', href: '/quests/history' },
 ];
-
-function outcomeLabel(quest: HistoryQuest): string {
-    if (quest.approval_status === 'rejected') return 'Rejected';
-    if (quest.status === 'completed') return 'Completed';
-    if (quest.status === 'cancelled') return 'Cancelled';
-    return quest.status;
-}
-
-function outcomeVariant(quest: HistoryQuest): 'default' | 'secondary' | 'destructive' | 'outline' {
-    if (quest.approval_status === 'rejected') return 'destructive';
-    if (quest.status === 'completed') return 'default';
-    return 'secondary';
-}
 
 export default function QuestHistoryPage({ quests, filters = {} }: Props) {
     const [search, setSearch] = useState(filters.search ?? '');
@@ -108,14 +80,7 @@ export default function QuestHistoryPage({ quests, filters = {} }: Props) {
 
                 <div className="flex flex-wrap items-center gap-3">
                     <div className="relative flex flex-1 min-w-[200px]">
-                        <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                        <Input
-                            type="search"
-                            placeholder="Search by title or description..."
-                            value={search}
-                            onChange={(e) => setSearch(e.target.value)}
-                            className="w-full pl-9"
-                        />
+                        <QuestSearchInput value={search} onChange={setSearch} />
                     </div>
                     <Select
                         value={createdByMe ? 'mine' : 'all'}
@@ -183,22 +148,10 @@ export default function QuestHistoryPage({ quests, filters = {} }: Props) {
                                                 </Badge>
                                             </td>
                                             <td className="px-4 py-3 text-muted-foreground">
-                                                {quest.created_at
-                                                    ? new Date(quest.created_at).toLocaleDateString(undefined, {
-                                                          year: 'numeric',
-                                                          month: 'short',
-                                                          day: 'numeric',
-                                                      })
-                                                    : '—'}
+                                                {formatQuestDate(quest.created_at)}
                                             </td>
                                             <td className="px-4 py-3 text-muted-foreground">
-                                                {quest.updated_at
-                                                    ? new Date(quest.updated_at).toLocaleDateString(undefined, {
-                                                          year: 'numeric',
-                                                          month: 'short',
-                                                          day: 'numeric',
-                                                      })
-                                                    : '—'}
+                                                {formatQuestDate(quest.updated_at)}
                                             </td>
                                         </tr>
                                     ))
@@ -209,49 +162,16 @@ export default function QuestHistoryPage({ quests, filters = {} }: Props) {
                 </div>
 
                 {quests.total > 0 && (
-                    <div className="flex items-center justify-between gap-4 border-t pt-4">
-                        <p className="text-sm text-muted-foreground">
-                            Showing {(quests.current_page - 1) * quests.per_page + 1} to{' '}
-                            {Math.min(quests.current_page * quests.per_page, quests.total)} of {quests.total} entries
-                        </p>
-                        {quests.last_page > 1 && (
-                            <div className="flex items-center gap-2">
-                                {quests.prev_page_url ? (
-                                    <Link
-                                        href={quests.prev_page_url}
-                                        preserveState
-                                        className="inline-flex items-center gap-1 rounded-md border px-3 py-2 text-sm font-medium transition-colors hover:bg-muted"
-                                    >
-                                        <ArrowLeft className="size-4" />
-                                        Previous
-                                    </Link>
-                                ) : (
-                                    <span className="inline-flex cursor-not-allowed items-center gap-1 rounded-md border border-transparent bg-muted/50 px-3 py-2 text-sm font-medium text-muted-foreground">
-                                        <ArrowLeft className="size-4" />
-                                        Previous
-                                    </span>
-                                )}
-                                <span className="text-sm text-muted-foreground">
-                                    Page {quests.current_page} of {quests.last_page}
-                                </span>
-                                {quests.next_page_url ? (
-                                    <Link
-                                        href={quests.next_page_url}
-                                        preserveState
-                                        className="inline-flex items-center gap-1 rounded-md border px-3 py-2 text-sm font-medium transition-colors hover:bg-muted"
-                                    >
-                                        Next
-                                        <ArrowRight className="size-4" />
-                                    </Link>
-                                ) : (
-                                    <span className="inline-flex cursor-not-allowed items-center gap-1 rounded-md border border-transparent bg-muted/50 px-3 py-2 text-sm font-medium text-muted-foreground">
-                                        Next
-                                        <ArrowRight className="size-4" />
-                                    </span>
-                                )}
-                            </div>
-                        )}
-                    </div>
+                    <QuestPagination
+                        pagination={{
+                            total: quests.total,
+                            current_page: quests.current_page,
+                            per_page: quests.per_page,
+                            last_page: quests.last_page,
+                            prev_page_url: quests.prev_page_url ?? null,
+                            next_page_url: quests.next_page_url ?? null,
+                        }}
+                    />
                 )}
             </div>
         </AppLayout>

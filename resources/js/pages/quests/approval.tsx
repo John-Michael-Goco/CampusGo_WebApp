@@ -1,28 +1,14 @@
 import { Head, router } from '@inertiajs/react';
 import { useEffect, useRef, useState } from 'react';
-import { Check, Search, X } from 'lucide-react';
+import { Check, X } from 'lucide-react';
 import AppLayout from '@/layouts/app-layout';
 import type { BreadcrumbItem } from '@/types';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-
-type PendingQuest = {
-    id: number;
-    title: string;
-    quest_type: string;
-    created_at: string;
-};
-
-type PaginatedQuests = {
-    data: PendingQuest[];
-    total: number;
-    current_page: number;
-    per_page: number;
-    last_page: number;
-};
+import type { PendingQuest, PaginatedQuests } from './shared';
+import { QuestSearchInput, formatQuestDate } from './shared';
 
 type Props = {
-    quests: PaginatedQuests;
+    quests: PaginatedQuests<PendingQuest>;
     filters?: { search?: string };
 };
 
@@ -66,16 +52,7 @@ export default function QuestApprovalPage({ quests, filters = {} }: Props) {
             <div className="flex h-full flex-1 flex-col gap-4 rounded-xl p-4">
                 <h1 className="text-xl font-semibold">Pending Approval</h1>
 
-                <div className="relative flex w-full">
-                    <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                    <Input
-                        type="search"
-                        placeholder="Search by title or description..."
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                        className="w-full pl-9"
-                    />
-                </div>
+                <QuestSearchInput value={search} onChange={setSearch} />
 
                 <div className="overflow-hidden rounded-lg border bg-card">
                     <div className="overflow-x-auto">
@@ -104,13 +81,7 @@ export default function QuestApprovalPage({ quests, filters = {} }: Props) {
                                             <td className="px-4 py-3 font-medium">{quest.title}</td>
                                             <td className="px-4 py-3 capitalize">{quest.quest_type}</td>
                                             <td className="px-4 py-3 text-muted-foreground">
-                                                {quest.created_at
-                                                    ? new Date(quest.created_at).toLocaleDateString(undefined, {
-                                                          year: 'numeric',
-                                                          month: 'short',
-                                                          day: 'numeric',
-                                                      })
-                                                    : '—'}
+                                                {formatQuestDate(quest.created_at)}
                                             </td>
                                             <td className="px-4 py-3 text-right">
                                                 <div className="flex justify-end gap-2">

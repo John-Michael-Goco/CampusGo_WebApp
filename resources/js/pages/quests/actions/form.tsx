@@ -78,7 +78,19 @@ export default function QuestFormPage() {
     const validateStep1 = (): Record<string, string> => {
         const e: Record<string, string> = {};
         if (!form.data.title.trim()) e.title = 'Quest title is required.';
-        if (typeof form.data.num_stages !== 'number' || form.data.num_stages < 1) e.num_stages = 'At least 1 stage is required.';
+        if (form.data.is_elimination) {
+            if (typeof form.data.num_stages !== 'number' || form.data.num_stages < 2) {
+                e.num_stages = 'Elimination quests must have at least 2 stages.';
+            }
+            const maxPart = form.data.max_participants;
+            if (maxPart === '' || maxPart === null || maxPart === undefined || (typeof maxPart === 'number' && maxPart < 1)) {
+                e.max_participants = 'Max participants is required for elimination quests.';
+            }
+        } else {
+            if (typeof form.data.num_stages !== 'number' || form.data.num_stages < 1) {
+                e.num_stages = 'At least 1 stage is required.';
+            }
+        }
         if (typeof form.data.reward_points !== 'number' || form.data.reward_points < 1) e.reward_points = 'Reward points are required (1–150).';
         if (!form.data.start_date) e.start_date = 'Start date is required.';
         if (!form.data.end_date) e.end_date = 'End date is required.';

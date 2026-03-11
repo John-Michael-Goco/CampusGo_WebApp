@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\ActivityLog;
 use App\Models\MasterUser;
+use App\Models\Quest;
+use App\Models\QuestParticipant;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -14,6 +16,103 @@ use Inertia\Response;
 class UserController extends Controller
 {
     private const ROLES = ['student', 'professor', 'admin'];
+
+    private const DEFAULT_ADMIN_EMAIL = 'admin@email.com';
+
+    /**
+     * Display a single user (view page). For admin viewing professor/admin: includes role change and quests created.
+     */
+    public function show(Request $request, User $user): Response
+    {
+        $viewer = $request->user();
+        $user->load('masterUser:id,school_id,first_name,last_name,course,year_level,section,is_active');
+
+        $master = $user->masterUser;
+        $schoolId = $master?->school_id;
+        $firstName = $master?->first_name;
+        $lastName = $master?->last_name;
+        if ($firstName === null && $lastName === null && $user->name) {
+            $parts = explode(' ', trim($user->name), 2);
+            $firstName = $parts[0] ?? '';
+            $lastName = $parts[1] ?? '';
+        }
+
+        $isAdmin = $viewer->role === 'admin';
+        $isProfessorOrAdmin = in_array($user->role, ['admin', 'professor'], true);
+        $isMainAdmin = strtolower($user->email) === self::DEFAULT_ADMIN_EMAIL;
+        $canChangeRole = $isAdmin
+            && $user->id !== $viewer->id
+            && $isProfessorOrAdmin
+            && ! $isMainAdmin;
+
+        $questsCreated = [];
+        if ($isAdmin && $isProfessorOrAdmin) {
+            $questsCreated = Quest::query()
+                ->where('created_by', $user->id)
+                ->orderByDesc('created_at')
+                ->get(['id', 'title', 'quest_type', 'approval_status', 'status', 'created_at'])
+                ->map(fn (Quest $q) => [
+                    'id' => $q->id,
+                    'title' => $q->title,
+                    'quest_type' => $q->quest_type,
+                    'approval_status' => $q->approval_status,
+                    'status' => $q->status,
+                    'created_at' => $q->created_at?->toIso8601String(),
+                ])
+                ->values()
+                ->all();
+        }
+
+        $questsParticipated = [];
+        if ($user->role === 'student') {
+            $questsParticipated = QuestParticipant::query()
+                ->where('user_id', $user->id)
+                ->whereHas('quest')
+                ->with('quest:id,title,status')
+                ->orderByDesc('joined_at')
+                ->get()
+                ->map(fn (QuestParticipant $p) => [
+                    'id' => $p->id,
+                    'quest_id' => $p->quest_id,
+                    'quest_title' => $p->quest?->title ?? 'Unknown quest',
+                    'quest_status' => $p->quest?->status ?? null,
+                    'participant_status' => $p->status,
+                    'current_stage' => $p->current_stage,
+                    'joined_at' => $p->joined_at?->toIso8601String(),
+                ])
+                ->values()
+                ->all();
+        }
+
+        $userPayload = [
+            'id' => $user->id,
+            'name' => $user->name,
+            'email' => $user->email,
+            'role' => $user->role,
+            'school_id' => $schoolId,
+            'first_name' => $firstName,
+            'last_name' => $lastName,
+            'avatar' => $user->avatar,
+        ];
+
+        if ($user->role === 'student' && $master) {
+            $userPayload['course'] = $master->course;
+            $userPayload['year_level'] = $master->year_level;
+            $userPayload['section'] = $master->section;
+            $userPayload['is_enrolled'] = $master->is_active;
+        }
+
+        $userPayload['points_balance'] = $user->points_balance;
+        $userPayload['level'] = $user->level;
+        $userPayload['total_completed_quests'] = $user->total_completed_quests;
+
+        return Inertia::render('users/show', [
+            'user' => $userPayload,
+            'can_change_role' => $canChangeRole,
+            'quests_created' => $questsCreated,
+            'quests_participated' => $questsParticipated,
+        ]);
+    }
 
     /**
      * Display the users list with search, role filter, and sorting.
@@ -135,14 +234,20 @@ class UserController extends Controller
 
         if ($user->id === $request->user()->id) {
             return redirect()
-                ->route('users.index')
+                ->back()
                 ->withErrors(['role' => 'You cannot change your own role.']);
         }
 
         if (! in_array($user->role, ['admin', 'professor'], true)) {
             return redirect()
-                ->route('users.index')
+                ->back()
                 ->withErrors(['role' => 'Only admin and professor roles can be changed.']);
+        }
+
+        if (strtolower($user->email) === self::DEFAULT_ADMIN_EMAIL) {
+            return redirect()
+                ->back()
+                ->withErrors(['role' => 'The default admin role cannot be changed.']);
         }
 
         $user->update(['role' => $validated['role']]);
@@ -154,14 +259,9 @@ class UserController extends Controller
         );
 
         return redirect()
-            ->route('users.index', $request->only(['search', 'role', 'sort_by', 'sort_dir']))
+            ->back()
             ->with('status', 'User role updated.');
     }
-
-    /**
-     * Default admin seeded on migrate:fresh --seed; cannot be deleted.
-     */
-    private const DEFAULT_ADMIN_EMAIL = 'admin@email.com';
 
     /**
      * Delete a user. Cannot delete self or the default admin. If user was linked to a professor, mark master as not registered.

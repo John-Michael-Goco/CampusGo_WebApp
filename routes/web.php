@@ -142,6 +142,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // Users — store/update/destroy admin only (gamemaster view only)
     Route::get('users', [UserController::class, 'index'])->name('users.index');
+    Route::get('users/{user}', [UserController::class, 'show'])->name('users.show');
     Route::post('users', [UserController::class, 'store'])->middleware('admin')->name('users.store');
     Route::put('users/{user}', [UserController::class, 'update'])->middleware('admin')->name('users.update');
     Route::delete('users/{user}', [UserController::class, 'destroy'])->middleware('admin')->name('users.destroy');

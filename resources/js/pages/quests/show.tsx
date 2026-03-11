@@ -1,5 +1,5 @@
 import { Head, Link, usePage } from '@inertiajs/react';
-import { ArrowLeft, Pencil, Search, User } from 'lucide-react';
+import { ArrowLeft, Check, Pencil, User, X } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import AppLayout from '@/layouts/app-layout';
 import type { BreadcrumbItem } from '@/types';
@@ -11,78 +11,22 @@ import {
     TooltipContent,
     TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { Input } from '@/components/ui/input';
-
-type Question = {
-    question_text: string;
-    question_type: string;
-    choices: { choice_text: string; is_correct: boolean }[];
-};
-
-type Stage = {
-    stage_number: number;
-    location_hint: string;
-    max_survivors: number | null;
-    passing_score: number | null;
-    minimum_participants: number | null;
-    stage_deadline: string | null;
-    questions: Question[];
-};
-
-type Participant = {
-    id: number;
-    current_stage: number;
-    status: string;
-    user: { id: number; name: string; email: string | null; avatar?: string | null } | null;
-};
-
-type Quest = {
-    id: number;
-    title: string;
-    description: string | null;
-    quest_type: string;
-    question_type: string;
-    is_elimination: boolean;
-    reward_points: number;
-    reward_custom_prize: string | null;
-    max_participants: number | null;
-    start_date: string | null;
-    end_date: string | null;
-    status: string;
-    approval_status: string;
-    creator: { id: number; name: string } | null;
-    target_display: string;
-    stages: Stage[];
-    participants: Participant[];
-};
+import type { QuestShow } from './shared';
+import { formatDateTime, getInitials, QuestSearchInput } from './shared';
 
 type Props = {
-    quest: Quest;
+    quest: QuestShow;
 };
 
-function formatDateTime(s: string | null): string {
-    if (!s) return '—';
-    try {
-        const d = new Date(s);
-        return d.toLocaleString(undefined, {
-            year: 'numeric',
-            month: 'short',
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit',
-        });
-    } catch {
-        return '—';
+/** Ordered question IDs (by stage then question order) for matching submissions */
+function orderedQuestionIds(quest: QuestShow): number[] {
+    const ids: number[] = [];
+    for (const stage of quest.stages ?? []) {
+        for (const q of stage.questions ?? []) {
+            if (q.id != null) ids.push(q.id);
+        }
     }
-}
-
-function getInitials(name: string | null | undefined): string {
-    if (!name || !name.trim()) return '?';
-    const parts = name.trim().split(/\s+/);
-    if (parts.length >= 2) {
-        return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase().slice(0, 2);
-    }
-    return name.slice(0, 2).toUpperCase();
+    return ids;
 }
 
 export default function QuestShowPage({ quest }: Props) {
@@ -99,6 +43,10 @@ export default function QuestShowPage({ quest }: Props) {
             return name.includes(q) || email.includes(q);
         });
     }, [quest.participants, participantSearch]);
+
+    const questionIdOrder = useMemo(() => orderedQuestionIds(quest), [quest.stages]);
+    const isMultipleChoice = (quest.question_type ?? '') === 'multiple_choice';
+    const totalQuestions = questionIdOrder.length;
 
     const breadcrumbs: BreadcrumbItem[] = [
         { title: 'Quests', href: '/quests/active' },
@@ -199,14 +147,11 @@ export default function QuestShowPage({ quest }: Props) {
                             <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
                                 Participants
                             </h2>
-                            <div className="relative flex w-full min-w-[200px] max-w-sm flex-1">
-                                <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                                <Input
-                                    type="search"
-                                    placeholder="Search by name or email..."
+                            <div className="w-full min-w-[200px] max-w-sm flex-1">
+                                <QuestSearchInput
                                     value={participantSearch}
-                                    onChange={(e) => setParticipantSearch(e.target.value)}
-                                    className="pl-9"
+                                    onChange={setParticipantSearch}
+                                    placeholder="Search by name or email..."
                                 />
                             </div>
                         </div>
@@ -263,6 +208,72 @@ export default function QuestShowPage({ quest }: Props) {
                                 ))
                             )}
                         </div>
+                        {isMultipleChoice && totalQuestions > 0 && filteredParticipants.some((p) => p.submissions && p.submissions.length > 0) && (
+                            <div className="mt-6">
+                                <h3 className="mb-3 text-sm font-medium">Participant results (multiple choice)</h3>
+                                <div className="overflow-hidden rounded-md border">
+                                    <table className="w-full text-sm">
+                                        <thead>
+                                            <tr className="border-b bg-muted/50">
+                                                <th className="h-10 px-4 text-left font-medium">Participant</th>
+                                                <th className="h-10 px-4 text-left font-medium">Score</th>
+                                                <th className="px-4 py-2 text-left font-medium">Answers</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {filteredParticipants.map((p) => {
+                                                const byId = (p.submissions ?? []).reduce<Record<number, boolean>>((acc, s) => {
+                                                    acc[s.question_id] = s.is_correct;
+                                                    return acc;
+                                                }, {});
+                                                const correct = questionIdOrder.filter((id) => byId[id] === true).length;
+                                                const breakdown = questionIdOrder.map((id) => byId[id]);
+                                                return (
+                                                    <tr key={p.id} className="border-b transition-colors hover:bg-muted/30">
+                                                        <td className="px-4 py-3">
+                                                            <span className="font-medium">{p.user?.name ?? 'Unknown'}</span>
+                                                            {p.user?.email && (
+                                                                <span className="block text-muted-foreground text-xs">{p.user.email}</span>
+                                                            )}
+                                                        </td>
+                                                        <td className="px-4 py-3">
+                                                            {correct} / {totalQuestions}
+                                                        </td>
+                                                        <td className="px-4 py-3">
+                                                            <span className="flex flex-wrap items-center gap-1">
+                                                                {breakdown.map((correct_, idx) =>
+                                                                    correct_ === true ? (
+                                                                        <Tooltip key={idx}>
+                                                                            <TooltipTrigger asChild>
+                                                                                <span className="inline-flex text-green-600 dark:text-green-400" aria-label="Correct">
+                                                                                    <Check className="size-4" />
+                                                                                </span>
+                                                                            </TooltipTrigger>
+                                                                            <TooltipContent>Question {idx + 1}: correct</TooltipContent>
+                                                                        </Tooltip>
+                                                                    ) : correct_ === false ? (
+                                                                        <Tooltip key={idx}>
+                                                                            <TooltipTrigger asChild>
+                                                                                <span className="inline-flex text-destructive" aria-label="Incorrect">
+                                                                                    <X className="size-4" />
+                                                                                </span>
+                                                                            </TooltipTrigger>
+                                                                            <TooltipContent>Question {idx + 1}: incorrect</TooltipContent>
+                                                                        </Tooltip>
+                                                                    ) : (
+                                                                        <span key={idx} className="inline-flex size-4 items-center justify-center text-muted-foreground" aria-label="No answer">—</span>
+                                                                    )
+                                                                )}
+                                                            </span>
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        )}
                     </section>
                 )}
 

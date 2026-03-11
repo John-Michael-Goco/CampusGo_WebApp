@@ -6,6 +6,7 @@ use App\Models\ActivityLog;
 use App\Models\MasterUser;
 use App\Models\Quest;
 use App\Models\QuestQuestionChoice;
+use App\Models\Submission;
 use App\Models\Semester;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -319,6 +320,7 @@ class QuestController extends Controller
                     'is_correct' => $c->is_correct,
                 ])->all();
                 return [
+                    'id' => $question->id,
                     'question_text' => $question->question_text,
                     'question_type' => $question->question_type,
                     'choices' => $choices,
@@ -335,9 +337,14 @@ class QuestController extends Controller
             ];
         })->all();
 
-        $participants = $quest->participants->map(function ($p) {
+        $isMultipleChoice = ($quest->question_type ?? '') === 'multiple_choice';
+        if ($isMultipleChoice) {
+            $quest->load('participants.submissions');
+        }
+
+        $participants = $quest->participants->map(function ($p) use ($isMultipleChoice) {
             $user = $p->user;
-            return [
+            $payload = [
                 'id' => $p->id,
                 'current_stage' => $p->current_stage,
                 'status' => $p->status,
@@ -348,6 +355,13 @@ class QuestController extends Controller
                     'avatar' => $user->avatar,
                 ] : null,
             ];
+            if ($isMultipleChoice && $p->relationLoaded('submissions')) {
+                $payload['submissions'] = $p->submissions->map(fn ($s) => [
+                    'question_id' => $s->question_id,
+                    'is_correct' => $s->is_correct,
+                ])->values()->all();
+            }
+            return $payload;
         })->values()->all();
 
         return Inertia::render('quests/show', [
@@ -680,9 +694,9 @@ class QuestController extends Controller
             'quest.start_date'     => 'required|date',
             'quest.end_date'       => 'required|date|after_or_equal:quest.start_date',
             'quest.buy_in_points'  => 'nullable|integer|min:0|max:100',
-            'quest.max_participants'    => 'nullable|integer|min:1',
+            'quest.max_participants'    => $isElimination ? 'required|integer|min:1' : 'nullable|integer|min:1',
             'quest.reward_custom_prize' => 'nullable|string|max:255',
-            'stages'               => 'required|array|min:1',
+            'stages'               => 'required|array|min:' . ($isElimination ? 2 : 1),
             'stages.*.location_hint' => 'required|string|max:255',
         ];
 
@@ -718,6 +732,9 @@ class QuestController extends Controller
             'quest.start_date.required'  => 'Start date is required.',
             'quest.end_date.required'    => 'End date is required.',
             'quest.end_date.after_or_equal' => 'End date must be on or after the start date.',
+            'quest.max_participants.required' => 'Max participants is required for elimination quests.',
+            'stages.required' => 'At least one stage is required.',
+            'stages.min' => 'Elimination quests must have at least 2 stages.',
             'stages.*.location_hint.required' => 'Location hint is required for stage :position.',
             'stages.*.max_survivors.required' => 'Max survivors is required for elimination stage :position.',
             'stages.*.minimum_participants.required' => 'Minimum participants is required for elimination stage :position.',

@@ -86,6 +86,15 @@ export default function QuestStagesPage({ questId, questData: rawQuestData, exis
 
     const validateStages = (): string[] => {
         const errs: string[] = [];
+        if (questData.is_elimination) {
+            if (stages.length < 2) {
+                errs.push('Elimination quests must have at least 2 stages.');
+            }
+            const maxPart = questData.max_participants;
+            if (maxPart === '' || maxPart === null || maxPart === undefined || (typeof maxPart === 'number' && maxPart < 1)) {
+                errs.push('Max participants is required for elimination quests (set in step 1).');
+            }
+        }
         const questMax = typeof questData.max_participants === 'number' ? questData.max_participants : 0;
         stages.forEach((s, i) => {
             const label = `Stage ${i + 1}`;
