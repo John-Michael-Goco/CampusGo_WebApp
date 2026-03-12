@@ -9,7 +9,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
 
-beforeEach(function () {
+beforeEach(function (): void {
     $this->user = User::factory()->create(['role' => 'student']);
     $this->token = $this->user->createToken('test')->plainTextToken;
 });
@@ -68,7 +68,7 @@ test('api quests list returns approved upcoming quests without target groups whe
 });
 
 test('api quests list returns only enrollment quests when user is not enrolled in current semester', function () {
-    Semester::create([
+    $currentSemester = Semester::create([
         'name' => '1st Sem 2025',
         'start_date' => now()->subDays(30),
         'end_date' => now()->addDays(60),
@@ -78,6 +78,7 @@ test('api quests list returns only enrollment quests when user is not enrolled i
         'title' => 'Enrollment Quest',
         'description' => 'Enroll for semester',
         'quest_type' => 'enrollment',
+        'semester_id' => $currentSemester->id,
         'status' => 'upcoming',
         'approval_status' => 'approved',
         'question_type' => 'qr_scan',
@@ -127,13 +128,80 @@ test('api quests list returns only enrollment quests when user is not enrolled i
         ->assertJsonPath('quests.0.title', 'Enrollment Quest');
 });
 
+test('api quests list when not enrolled shows only current semester enrollment quest not other semesters', function () {
+    $pastSemester = Semester::create([
+        'name' => 'Past Sem 2024',
+        'start_date' => now()->subDays(120),
+        'end_date' => now()->subDays(30),
+    ]);
+    $currentSemester = Semester::create([
+        'name' => '1st Sem 2025',
+        'start_date' => now()->subDays(10),
+        'end_date' => now()->addDays(60),
+    ]);
+
+    $pastEnrollmentQuest = Quest::create([
+        'title' => 'Past Semester Enrollment',
+        'description' => 'Enroll past',
+        'quest_type' => 'enrollment',
+        'semester_id' => $pastSemester->id,
+        'status' => 'upcoming',
+        'approval_status' => 'approved',
+        'question_type' => 'qr_scan',
+        'is_elimination' => false,
+        'reward_points' => 0,
+        'buy_in_points' => 0,
+        'max_participants' => 0,
+        'current_participants' => 0,
+        'created_by' => $this->user->id,
+        'start_date' => now()->addDay(),
+        'end_date' => now()->addDays(2),
+    ]);
+    QuestStage::create([
+        'quest_id' => $pastEnrollmentQuest->id,
+        'stage_number' => 1,
+        'location_hint' => 'Office',
+        'max_survivors' => 0,
+    ]);
+
+    $currentEnrollmentQuest = Quest::create([
+        'title' => 'Current Semester Enrollment',
+        'description' => 'Enroll current',
+        'quest_type' => 'enrollment',
+        'semester_id' => $currentSemester->id,
+        'status' => 'upcoming',
+        'approval_status' => 'approved',
+        'question_type' => 'qr_scan',
+        'is_elimination' => false,
+        'reward_points' => 0,
+        'buy_in_points' => 0,
+        'max_participants' => 0,
+        'current_participants' => 0,
+        'created_by' => $this->user->id,
+        'start_date' => now()->addDay(),
+        'end_date' => now()->addDays(2),
+    ]);
+    QuestStage::create([
+        'quest_id' => $currentEnrollmentQuest->id,
+        'stage_number' => 1,
+        'location_hint' => 'Office',
+        'max_survivors' => 0,
+    ]);
+
+    $response = $this->withHeader('Authorization', 'Bearer ' . $this->token)->getJson('/api/quests');
+    $response->assertOk()
+        ->assertJsonCount(1, 'quests')
+        ->assertJsonPath('quests.0.id', $currentEnrollmentQuest->id)
+        ->assertJsonPath('quests.0.title', 'Current Semester Enrollment');
+});
+
 test('api quests list returns only enrollment quests when user is enrolled in past semester but not current', function () {
     Semester::create([
         'name' => 'Past Sem 2024',
         'start_date' => now()->subDays(120),
         'end_date' => now()->subDays(30),
     ]);
-    Semester::create([
+    $currentSemester = Semester::create([
         'name' => '1st Sem 2025',
         'start_date' => now()->subDays(10),
         'end_date' => now()->addDays(60),
@@ -148,6 +216,7 @@ test('api quests list returns only enrollment quests when user is enrolled in pa
         'title' => 'Enrollment Quest',
         'description' => 'Enroll',
         'quest_type' => 'enrollment',
+        'semester_id' => $currentSemester->id,
         'status' => 'upcoming',
         'approval_status' => 'approved',
         'question_type' => 'qr_scan',

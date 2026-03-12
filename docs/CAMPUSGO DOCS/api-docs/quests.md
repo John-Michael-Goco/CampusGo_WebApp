@@ -7,7 +7,7 @@
 
 Returns quests the authenticated user can join: approved, upcoming or ongoing, not already joined, and passing target-group and enrollment rules.
 
-- **If the user is not enrolled in the current semester** (or there is no current semester): only **enrollment** quests are returned. They must complete an enrollment quest for the current semester before they can see or join other quest types.
+- **If the user is not enrolled in the current semester** (or there is no current semester): only **enrollment** quests for the **current semester** are returned (enrollment quests for other semesters are hidden). If there is no current semester, no quests are returned. The user must complete the current semester’s enrollment quest before they can see or join other quest types.
 - **If the user is enrolled in the current semester:** non-enrollment quests (daily, event, custom) are shown, plus enrollment quests only for semesters they are not yet enrolled in. The *current semester* is the one whose date range includes today.
 
 **Response** `200 OK`
@@ -37,7 +37,7 @@ Returns quests the authenticated user can join: approved, upcoming or ongoing, n
 }
 ```
 - `quests` is an array; may be empty if none are available.
-- `first_stage_id` and `first_stage_location_hint` refer to stage 1 (for QR/location display).
+- `first_stage_id` and `first_stage_location_hint` refer to stage 1 (for QR/location display). When the quest status is `upcoming`, `first_stage_location_hint` is `null` so the app can show that the quest is not yet started without revealing the exact location; once the quest is `ongoing`, the hint is included.
 
 **Errors**
 - `401` — Missing or invalid token.

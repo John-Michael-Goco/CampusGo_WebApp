@@ -61,8 +61,13 @@ class QuestController extends Controller
                 }
             })
             ->whereNotIn('id', $joinedQuestIds)
-            ->when(!$enrolledInCurrentSemester, function ($q) {
+            ->when(!$enrolledInCurrentSemester, function ($q) use ($currentSemester) {
                 $q->where('quest_type', 'enrollment');
+                if ($currentSemester !== null) {
+                    $q->where('semester_id', $currentSemester->id);
+                } else {
+                    $q->whereRaw('1 = 0');
+                }
             })
             ->when($enrolledInCurrentSemester, function ($q) use ($enrolledSemesters) {
                 $q->where(function ($sub) use ($enrolledSemesters) {
@@ -95,7 +100,7 @@ class QuestController extends Controller
                     'start_date' => $q->start_date?->toDateTimeString(),
                     'end_date' => $q->end_date?->toDateTimeString(),
                     'first_stage_id' => $firstStage?->id,
-                    'first_stage_location_hint' => $firstStage?->location_hint,
+                    'first_stage_location_hint' => $q->status === 'upcoming' ? null : $firstStage?->location_hint,
                 ];
             });
 
