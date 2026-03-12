@@ -66,11 +66,13 @@ export function QuestFormFields({ data, errors, setData, enrollmentSemester, isE
 
     const [isStartDateInPast, setIsStartDateInPast] = useState(false);
     useEffect(() => {
+        /* eslint-disable react-hooks/set-state-in-effect -- simple derived flag based on start_date/isEdit */
         if (isEdit || !data.start_date) {
             setIsStartDateInPast(false);
             return;
         }
         setIsStartDateInPast(new Date(data.start_date).getTime() < Date.now());
+        /* eslint-enable react-hooks/set-state-in-effect */
     }, [data.start_date, isEdit]);
 
     const isEndDateLessThanOneHourAfterStart = useMemo(() => {
