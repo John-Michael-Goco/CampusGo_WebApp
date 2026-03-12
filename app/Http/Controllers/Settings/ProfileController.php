@@ -56,6 +56,10 @@ class ProfileController extends Controller
 
         unset($data['profile_image'], $data['remove_profile_image']);
 
+        if (in_array($user->role, ['admin', 'professor'], true)) {
+            unset($data['email']);
+        }
+
         // Track which basic fields were changed
         $user->fill($data);
         foreach (['name', 'email'] as $field) {

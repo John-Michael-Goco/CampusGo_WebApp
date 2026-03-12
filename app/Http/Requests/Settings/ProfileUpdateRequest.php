@@ -17,6 +17,11 @@ class ProfileUpdateRequest extends FormRequest
      */
     public function rules(): array
     {
-        return $this->profileRules($this->user()->id);
+        $rules = $this->profileRules($this->user()->id);
+        $user = $this->user();
+        if ($user && in_array($user->role, ['admin', 'professor'], true)) {
+            $rules['email'] = ['nullable', 'string', 'email', 'max:255'];
+        }
+        return $rules;
     }
 }

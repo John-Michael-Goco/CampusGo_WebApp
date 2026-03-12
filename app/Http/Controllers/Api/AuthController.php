@@ -9,12 +9,15 @@ use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rules\Password;
 use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
 {
     /**
-     * Minimal user payload for mobile API (no password, no internal IDs).
+     * User profile payload for mobile API (step 1.5): profile screen and AR (e.g. level-up).
+     * No password or internal-only fields.
      */
     private function userToArray(User $user): array
     {
@@ -27,8 +30,7 @@ class AuthController extends Controller
             'level' => (int) ($user->level ?? 1),
             'total_xp_earned' => (int) ($user->total_xp_earned ?? 0),
             'total_completed_quests' => (int) ($user->total_completed_quests ?? 0),
-            'profile_image' => $user->profile_image,
-            'avatar' => $user->avatar,
+            'profile_image' => $user->avatar, // full URL for display (null if not set); DB stores path in profile_image
         ];
     }
 
@@ -134,5 +136,67 @@ class AuthController extends Controller
             return response()->json(['message' => 'Unauthenticated'], 401);
         }
         return response()->json($this->userToArray($user));
+    }
+
+    /**
+     * Change the authenticated user's password.
+     */
+    public function updatePassword(Request $request): JsonResponse
+    {
+        $request->validate([
+            'current_password' => ['required', 'string', 'current_password'],
+            'password' => ['required', 'string', Password::default(), 'confirmed'],
+        ]);
+
+        $user = $request->user();
+        $user->update(['password' => $request->password]);
+
+        ActivityLog::log($user->id, ActivityLog::ACTION_PASSWORD_CHANGED);
+
+        return response()->json(['message' => 'Password updated successfully.']);
+    }
+
+    /**
+     * Update the authenticated user's profile picture (upload new image or remove).
+     */
+    public function updateProfile(Request $request): JsonResponse
+    {
+        $request->validate([
+            'profile_image' => ['nullable', 'image', 'mimes:jpeg,png,jpg,gif,webp', 'max:2048'],
+            'remove_profile_image' => ['nullable', 'boolean'],
+        ]);
+
+        $user = $request->user();
+        if (! $user instanceof User) {
+            return response()->json(['message' => 'Unauthenticated'], 401);
+        }
+
+        $changed = false;
+
+        if (! empty($request->boolean('remove_profile_image')) && $user->profile_image) {
+            Storage::disk('public')->delete($user->profile_image);
+            $user->profile_image = null;
+            $user->save();
+            $changed = true;
+        }
+
+        if ($request->hasFile('profile_image')) {
+            if ($user->profile_image) {
+                Storage::disk('public')->delete($user->profile_image);
+            }
+            $path = $request->file('profile_image')->store('profile-images', 'public');
+            $user->profile_image = $path;
+            $user->save();
+            $changed = true;
+        }
+
+        if ($changed) {
+            ActivityLog::log($user->id, ActivityLog::ACTION_PROFILE_UPDATED, 'profile_image via API');
+        }
+
+        return response()->json([
+            'message' => $changed ? 'Profile updated successfully.' : 'No changes made.',
+            'user' => $this->userToArray($user->fresh()),
+        ]);
     }
 }

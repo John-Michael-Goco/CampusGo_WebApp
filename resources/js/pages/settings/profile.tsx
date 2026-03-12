@@ -32,10 +32,11 @@ export default function Profile({
     status?: string;
 }) {
     const pageProps = usePage().props as {
-        auth: { user: { name: string; email: string; avatar?: string | null; email_verified_at?: string | null } };
+        auth: { user: { name: string; email: string; avatar?: string | null; email_verified_at?: string | null; role?: string } };
         errors?: { name?: string; email?: string; profile_image?: string };
     };
     const { auth } = pageProps;
+    const canChangeEmail = auth.user.role !== 'admin' && auth.user.role !== 'professor';
     const getInitials = useInitials();
     const formRef = useRef<HTMLFormElement>(null);
     const [processing, setProcessing] = useState(false);
@@ -58,6 +59,7 @@ export default function Profile({
         if (!form) return;
         const formData = new FormData(form);
         formData.set('_method', 'PATCH');
+        if (!canChangeEmail) formData.delete('email');
         const fileInput = form.querySelector<HTMLInputElement>('input[name="profile_image"]');
         if (fileInput?.files?.[0]) formData.set('profile_image', fileInput.files[0]);
         if (!formData.has('remove_profile_image')) formData.set('remove_profile_image', '0');
@@ -87,7 +89,7 @@ export default function Profile({
                             <Heading
                                 variant="small"
                                 title="Profile information"
-                                description="Update your name, email, and optional profile photo"
+                                description={canChangeEmail ? 'Update your name, email, and optional profile photo' : 'Update your name and optional profile photo'}
                             />
 
                             <form ref={formRef} onSubmit={handleSubmit} className="space-y-6">
@@ -160,11 +162,16 @@ export default function Profile({
                                     className="mt-1 block w-full"
                                     defaultValue={auth.user.email}
                                     name="email"
-                                    required
+                                    required={canChangeEmail}
                                     autoComplete="username"
                                     placeholder="Email address"
+                                    disabled={!canChangeEmail}
+                                    readOnly={!canChangeEmail}
                                 />
-                                <InputError className="mt-2" message={pageProps.errors?.email} />
+                                {canChangeEmail && <InputError className="mt-2" message={pageProps.errors?.email} />}
+                                {!canChangeEmail && (
+                                    <p className="text-xs text-muted-foreground">Email cannot be changed.</p>
+                                )}
                             </div>
 
                             {mustVerifyEmail && auth.user.email_verified_at === null && (
