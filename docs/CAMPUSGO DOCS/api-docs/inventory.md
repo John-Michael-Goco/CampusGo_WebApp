@@ -44,14 +44,18 @@ Returns the authenticated user's inventory: items from store redeems and quest c
 
 ---
 
-## Inventory — Use item
+## Inventory — Use item (step 1.9, 2.6)
 
 **POST** `/api/user/inventory/use`  
+**POST** `/api/user/inventory/{inventory}/use`  
 **Auth:** Yes (Bearer)
 
 Use one unit of an item. Decrements quantity (or removes the entry if quantity was 1). **Logs the use** in the activity log (`item_used`) so it appears in the items-used history.
 
-**Request body** (JSON) — provide one of:
+- **Body form:** Send `store_item_id` or `inventory_id` in the request body to `POST /api/user/inventory/use`.
+- **URL form (step 2.6):** Send no body to `POST /api/user/inventory/{inventory}/use` to use the inventory entry with that id (must belong to the user).
+
+**Request body** (JSON) for `/api/user/inventory/use` — provide one of:
 | Field           | Type | Required | Description |
 |-----------------|------|----------|-------------|
 | store_item_id   | int  | No*      | Store item ID (uses one from the oldest-acquired stack). |

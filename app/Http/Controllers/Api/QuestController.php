@@ -3,13 +3,16 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\ActivityLog;
 use App\Models\Enrollment;
+use App\Models\PointTransaction;
 use App\Models\Quest;
 use App\Models\QuestParticipant;
 use App\Models\QuestStage;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class QuestController extends Controller
 {
@@ -208,6 +211,115 @@ class QuestController extends Controller
         ];
 
         return response()->json($payload);
+    }
+
+    /**
+     * Join a quest (step 2.1). User scans stage-1 QR; creates QuestParticipant, applies target-group and max-participants checks.
+     * POST body: quest_id (required), stage_id (optional but validated as first stage if provided).
+     */
+    public function join(Request $request): JsonResponse
+    {
+        $request->validate([
+            'quest_id' => 'required|integer',
+            'stage_id' => 'nullable|integer',
+        ]);
+
+        $user = $request->user();
+        if (!$user instanceof User) {
+            return response()->json(['message' => 'Unauthenticated.'], 401);
+        }
+
+        $quest = Quest::with(['stages' => fn ($q) => $q->orderBy('stage_number'), 'targetGroups'])->find($request->input('quest_id'));
+        if (!$quest) {
+            return response()->json(['message' => 'Quest not found.'], 404);
+        }
+
+        $alreadyJoined = QuestParticipant::where('quest_id', $quest->id)->where('user_id', $user->id)->exists();
+        if ($alreadyJoined) {
+            return response()->json(['message' => 'You have already joined this quest.'], 409);
+        }
+
+        if (!$this->userIsInTargetParticipants($quest, $user)) {
+            return response()->json(['message' => 'You are not in the target participants for this quest.'], 403);
+        }
+
+        if ($quest->approval_status !== 'approved') {
+            return response()->json(['message' => 'This quest is not approved yet.'], 403);
+        }
+
+        if (!in_array($quest->status, ['upcoming', 'ongoing'], true)) {
+            return response()->json(['message' => 'This quest is not available for joining.'], 403);
+        }
+
+        $firstStage = $quest->stages->first();
+        if (!$firstStage) {
+            return response()->json(['message' => 'Quest has no stages.'], 400);
+        }
+        $stageIdInput = $request->input('stage_id');
+        if ($stageIdInput !== null && $stageIdInput !== '' && (int) $stageIdInput !== $firstStage->id) {
+            return response()->json(['message' => 'Invalid stage. Scan the first stage QR to join.'], 403);
+        }
+
+        if ($quest->buy_in_points > 0 && ($user->points_balance ?? 0) < $quest->buy_in_points) {
+            return response()->json(['message' => 'Not enough points to join (need ' . $quest->buy_in_points . ').'], 403);
+        }
+
+        $participant = DB::transaction(function () use ($quest, $user) {
+            $affected = Quest::where('id', $quest->id)
+                ->where(function ($q) {
+                    $q->where('max_participants', 0)
+                        ->orWhereColumn('current_participants', '<', 'max_participants');
+                })
+                ->increment('current_participants');
+
+            if ($affected === 0) {
+                return null;
+            }
+
+            $participant = QuestParticipant::create([
+                'quest_id' => $quest->id,
+                'user_id' => $user->id,
+                'current_stage' => 1,
+                'status' => 'active',
+            ]);
+
+            if ($quest->buy_in_points > 0) {
+                $user->decrement('points_balance', $quest->buy_in_points);
+                PointTransaction::create([
+                    'user_id' => $user->id,
+                    'amount' => -$quest->buy_in_points,
+                    'transaction_type' => PointTransaction::TYPE_BUY_IN,
+                    'reference_id' => $quest->id,
+                ]);
+            }
+
+            ActivityLog::log($user->id, ActivityLog::ACTION_QUEST_JOINED, $quest->title);
+
+            return $participant;
+        });
+
+        if (!$participant) {
+            return response()->json(['message' => 'This quest is full.'], 403);
+        }
+
+        $firstStage = $quest->stages->first();
+        return response()->json([
+            'participant_id' => $participant->id,
+            'quest_id' => $quest->id,
+            'current_stage' => 1,
+            'status' => 'active',
+            'quest' => [
+                'id' => $quest->id,
+                'title' => $quest->title,
+                'question_type' => $quest->question_type ?? 'multiple_choice',
+                'is_elimination' => (bool) $quest->is_elimination,
+            ],
+            'stage' => $firstStage ? [
+                'id' => $firstStage->id,
+                'stage_number' => 1,
+                'location_hint' => $firstStage->location_hint,
+            ] : null,
+        ], 201);
     }
 
     /**

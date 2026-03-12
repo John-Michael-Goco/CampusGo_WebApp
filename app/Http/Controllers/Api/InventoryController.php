@@ -122,6 +122,15 @@ class InventoryController extends Controller
     }
 
     /**
+     * Use one unit of an inventory entry by id (step 2.6 alternative). Same as use() with inventory_id in body.
+     */
+    public function useById(Request $request, int $inventoryId): JsonResponse
+    {
+        $request->merge(['inventory_id' => $inventoryId]);
+        return $this->use($request);
+    }
+
+    /**
      * History of items used by the authenticated user (from activity log).
      */
     public function history(Request $request): JsonResponse

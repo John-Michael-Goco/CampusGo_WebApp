@@ -120,6 +120,7 @@ Auth (signin, signup, user, signout), leaderboard, health. Quest flows currently
 
 ### Step 2.1 — Join quest (scan first-stage QR)
 
+- **Status:** **Done.** `POST /api/quests/join` — body: `quest_id` (required), `stage_id` (optional, validated as first stage). Returns participant_id, quest_id, current_stage (1), status (active), minimal quest/stage. Errors: 403 (target, approved, status, stage, points, full), 409 (already joined).
 - **Goal:** User scans stage-1 QR; backend creates `QuestParticipant`, increments `current_participants`, applies target-group and max-participants checks.
 - **Input:** `quest_id` (and optionally `stage_id` or stage number to validate it’s stage 1). User from auth.
 - **Output:** `participant_id`, `quest_id`, `current_stage` (1), `status` (e.g. `active`), and minimal quest/stage info so the app can show “Quest taken” AR and then call play.
@@ -129,6 +130,7 @@ Auth (signin, signup, user, signout), leaderboard, health. Quest flows currently
 
 ### Step 2.2 — Get play state (current stage, questions, status)
 
+- **Status:** **Done.** `GET /api/participants/{participant}/play` — returns participant_id, quest_id, current_stage, status, can_quit, quit_guard_reason; stage (with questions for MCQ, no is_correct); stage_locked, next_stage_opens_at; awaiting_ranking/message; completed/eliminated outcome and rewards placeholder.
 - **Goal:** For an existing participant, return everything the app needs to render the current step: stage info, questions (if MCQ), status (active, awaiting_ranking, completed, eliminated), and next-step hints (next location, stage_start if locked).
 - **Input:** `participant_id` (from join or from “my participations”).
 - **Output (JSON):**
@@ -144,6 +146,7 @@ Auth (signin, signup, user, signout), leaderboard, health. Quest flows currently
 
 ### Step 2.3 — Submit answer (MCQ) or submit stage (QR)
 
+- **Status:** **Done.** `POST /api/participants/{participant}/submit` — body: `answers` (array of question_id + choice_id or answer) or `stage_completed: true` for QR. Returns play-state shape plus outcome, message, passed, failed, awaiting_ranking, correct_count/total_count, rewards when completed. Reuses Simulation processSubmit; 400 for invalid/duplicate/already submitted, 403 for not active or stage locked.
 - **Goal:** For MCQ: submit one answer (or batch per stage). For QR: submit stage completion. Backend records submission, updates participant state (advance, fail, or awaiting_ranking), applies passing score / elimination rules.
 - **Input:** `participant_id`, and either:
   - **MCQ:** `question_id`, `choice_id` (or list of answers per question for the stage).
@@ -155,6 +158,7 @@ Auth (signin, signup, user, signout), leaderboard, health. Quest flows currently
 
 ### Step 2.4 — Quit quest
 
+- **Status:** **Done.** `POST /api/participants/{participant}/quit` — sets status to quit, decrements quest current_participants, logs; 403 if not active/awaiting_ranking or below minimum_participants. Returns `{ "ok": true, "message": "..." }`.
 - **Goal:** User leaves the quest; backend decrements `current_participants`, updates participant status, enforces minimum-participants guard.
 - **Input:** `participant_id`. User from auth.
 - **Output:** 200 and optional updated participations list or simple `{ "ok": true }`.
@@ -163,6 +167,7 @@ Auth (signin, signup, user, signout), leaderboard, health. Quest flows currently
 
 ### Step 2.5 — Store redeem
 
+- **Status:** **Done.** Implemented as Step 1.6: `POST /api/store/redeem` — body `store_item_id`, optional `quantity`; atomic points deduction, inventory insert, stock decrement, activity log; returns points_balance and redeemed item; 422 for insufficient points or stock.
 - **Goal:** User redeems a store item for points. Backend deducts points, decrements stock atomically, creates user_inventory entry and point_transaction.
 - **Input:** Authenticated user, `store_item_id` (and optionally quantity if supported).
 - **Output:** Success: updated points_balance, inventory entry (id, item, earned_at). Errors: 400 if insufficient points or out of stock; 409 if stock changed since list was fetched.
@@ -171,6 +176,7 @@ Auth (signin, signup, user, signout), leaderboard, health. Quest flows currently
 
 ### Step 2.6 — Inventory use (optional)
 
+- **Status:** **Done.** Step 1.9: `POST /api/user/inventory/use` (body: inventory_id or store_item_id) and `POST /api/user/inventory/{inventory}/use`; decrements quantity, logs item_used; returns message, item_name, remaining_quantity.
 - **Goal:** If the app supports “using” an inventory item (e.g. consume a voucher), record that use and optionally update quantity or mark as used.
 - **Input:** Authenticated user, `inventory_id` or `user_inventory_id`.
 - **Output:** 200 and updated inventory list or simple success; 400 if already used or invalid.
@@ -185,6 +191,7 @@ Auth (signin, signup, user, signout), leaderboard, health. Quest flows currently
 
 ### Step 3.1 — Poll for elimination result (waiting for results)
 
+- **Status:** **Done.** App polls until result is in. Added GET /api/participants/{participant}/status (lightweight: status, current_stage, awaiting_ranking, outcome). Documented polling interval 5–10 s and contract in api-docs/quests.md.
 - **Goal:** After submit on an elimination stage, status is `awaiting_ranking`. App shows “Waiting for results” AR and periodically refetches until status becomes `advanced` or `eliminated`.
 - **Approach:** Reuse **play state** (Step 2.2). App polls `GET /api/participants/{participant}/play` every N seconds until `awaiting_ranking` is false. Response then includes outcome (advanced → next stage info; eliminated → message). No new endpoint required; document polling interval and response contract.
 - **Optional:** Add a lightweight `GET /api/participants/{participant}/status` that returns only `status`, `current_stage`, `outcome` to reduce payload while polling.
@@ -192,6 +199,7 @@ Auth (signin, signup, user, signout), leaderboard, health. Quest flows currently
 
 ### Step 3.2 — Return rewards in play/submit response (level, achievement, custom prize, points)
 
+- **Status:** **Done.** Submit and play responses now include rich `rewards` when participant is winner/completed: `points_earned`, `custom_prize`, `level_up`, `previous_level`, `new_level`, `achievements` (array of id, name, description, image_url for quest-completion achievements). No change to award logic; payload built from quest + user state in API.
 - **Goal:** When a stage or quest completes, the app must show AR for: level up, new achievement(s), custom reward, and points earned. All of this should be derivable from one play or submit response so the app doesn’t need multiple round-trips.
 - **Approach:** Extend the **play state** and **submit** responses with a `rewards` (or `progression`) object, e.g.:
   - `level_up: boolean` and `new_level: number` (and maybe `previous_level`)
@@ -203,6 +211,7 @@ Auth (signin, signup, user, signout), leaderboard, health. Quest flows currently
 
 ### Step 3.3 — QR payload design and stability
 
+- **Decision:** **Option A** — QR encodes quest + stage via a full URL with path `/quests/{quest_id}/stages/{stage_id}`. Resolve (Step 1.3) accepts that URL in `qr` and returns the same response contract; no short codes or signed tokens for v1. Documented in api-docs/quests.md.
 - **Goal:** QR codes are printed or displayed; they must uniquely identify quest + stage and (optionally) be short and durable.
 - **Options:** (a) Embed `quest_id` and `stage_id` in URL or JSON in QR. (b) Short code (e.g. 6–8 chars) that maps to `quest_id` + `stage_id` in DB. (c) Signed token so backend can validate without storing one-off codes.
 - **Endpoint:** Resolve endpoint (Step 1.3) must accept whatever format you choose and return consistent `quest_id`, `stage_id`, `can_join`/`can_play`.
@@ -210,6 +219,7 @@ Auth (signin, signup, user, signout), leaderboard, health. Quest flows currently
 
 ### Step 3.4 — Idempotency and duplicate submits
 
+- **Status:** **Done.** Duplicate submit (all answers already submitted) returns 200 with current play state and `idempotent_replay: true`; no double-count or extra log. Optional header `Idempotency-Key: <uuid>` caches response 24h and returns cached on same key.
 - **Goal:** Mobile may retry submit on poor network; backend should not double-count answers or double-award points.
 - **Approach:** Ensure one submission per (participant, question) or per (participant, stage) for QR. Use DB unique constraint or “already submitted” check; return same outcome as first submit (e.g. current play state) on retry. Optionally add idempotency key header (e.g. `Idempotency-Key: <uuid>`) and cache response for that key.
 - **Difficulty:** Medium — existing logic may already prevent double submit; document and add key support if needed.

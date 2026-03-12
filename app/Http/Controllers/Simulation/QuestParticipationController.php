@@ -385,8 +385,30 @@ class QuestParticipationController extends Controller
         $stageQuestionIds = $currentStage->questions->pluck('id')->toArray();
         $answers = $request->input('answers');
 
+        $results = $this->processSubmit($participant, $answers);
+
+        ActivityLog::log($user->id, ActivityLog::ACTION_QUEST_STAGE_SUBMITTED, $quest->title . ' (stage ' . $participant->current_stage . ')');
+
+        return back()->with('status', $results['message']);
+    }
+
+    /**
+     * Process submit (transaction + handlers). Used by Simulation submit and API submit.
+     * Participant must be loaded with quest.stages.questions.choices.
+     * Returns ['outcome' => ..., 'message' => ..., 'correct' => ..., 'total' => ...].
+     */
+    public function processSubmit(QuestParticipant $participant, array $answers): array
+    {
+        $quest = $participant->quest;
+        $stages = $quest->stages->sortBy('stage_number')->values();
+        $currentStage = $stages->firstWhere('stage_number', $participant->current_stage);
+        if (!$currentStage) {
+            return ['outcome' => 'error', 'message' => 'Current stage not found.'];
+        }
+        $stageQuestionIds = $currentStage->questions->pluck('id')->toArray();
         $isElimination = (bool) $quest->is_elimination;
         $questionType = $quest->question_type ?? 'multiple_choice';
+        $user = $participant->user ?? User::find($participant->user_id);
 
         $results = DB::transaction(function () use ($participant, $currentStage, $stageQuestionIds, $answers, $quest, $stages, $user, $isElimination, $questionType) {
             $correctCount = 0;
@@ -461,9 +483,7 @@ class QuestParticipationController extends Controller
             return $this->handleNonElimQR($participant, $quest, $user, $isLastStage, $nextStageNumber, $totalCount);
         });
 
-        ActivityLog::log($user->id, ActivityLog::ACTION_QUEST_STAGE_SUBMITTED, $quest->title . ' (stage ' . $participant->current_stage . ')');
-
-        return back()->with('status', $results['message']);
+        return $results;
     }
 
     /**
