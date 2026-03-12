@@ -20,6 +20,7 @@ return new class extends Migration
             $table->unsignedInteger('passing_score')->nullable();
             $table->unsignedInteger('minimum_participants')->default(1);
             $table->dateTime('stage_deadline')->nullable();
+            $table->dateTime('stage_start')->nullable();
             $table->enum('status', ['active', 'locked', 'completed', 'failed'])->default('active');
         });
     }

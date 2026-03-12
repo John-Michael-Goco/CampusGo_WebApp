@@ -211,9 +211,51 @@ class QuestController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $request->validate(
-            $this->questValidationRules($request),
+            $this->questValidationRules($request, null),
             $this->questValidationMessages(),
         );
+
+        $isElimination = (bool) $request->input('quest.is_elimination', false);
+        $stageDeadlineError = $this->validateStageDeadlinesOrder($request->input('stages', []), $isElimination);
+        if ($stageDeadlineError !== null) {
+            return back()->withErrors(['stages' => $stageDeadlineError]);
+        }
+        if (!$isElimination) {
+            $rangeError = $this->validateNonElimStageDeadlinesInRange(
+                $request->input('stages', []),
+                $request->input('quest.start_date'),
+                $request->input('quest.end_date'),
+            );
+            if ($rangeError !== null) {
+                return back()->withErrors(['stages' => $rangeError]);
+            }
+        }
+
+        $stageStartError = $this->validateStageStartBeforeEnd(
+            $request->input('stages', []),
+            $request->input('quest.start_date'),
+            $request->input('quest.end_date'),
+        );
+        if ($stageStartError !== null) {
+            return back()->withErrors(['stages' => $stageStartError]);
+        }
+
+        $passingScoreError = $this->validatePassingScoreAchievable(
+            $request->input('stages', []),
+            (bool) $request->input('quest.is_elimination', false),
+            $request->input('quest.question_type', 'multiple_choice'),
+        );
+        if ($passingScoreError !== null) {
+            return back()->withErrors(['stages' => $passingScoreError]);
+        }
+
+        $correctAnswerError = $this->validateChoicesHaveCorrectAnswer(
+            $request->input('stages', []),
+            $request->input('quest.question_type', 'multiple_choice'),
+        );
+        if ($correctAnswerError !== null) {
+            return back()->withErrors(['stages' => $correctAnswerError]);
+        }
 
         $user = $request->user();
         $isAdmin = $user->role === 'admin';
@@ -267,14 +309,19 @@ class QuestController extends Controller
                 ]);
             }
 
-            foreach ($request->input('stages', []) as $idx => $stageInput) {
+            $stagesInput = $request->input('stages', []);
+            $lastStageIdx = count($stagesInput) - 1;
+            foreach ($stagesInput as $idx => $stageInput) {
+                $isLastStage = $idx === $lastStageIdx;
+                $stageDeadline = $isLastStage ? ($questInput['end_date'] ?? $stageInput['stage_deadline'] ?? null) : ($stageInput['stage_deadline'] ?: null);
                 $stage = $quest->stages()->create([
                     'stage_number' => $idx + 1,
                     'location_hint' => $stageInput['location_hint'],
                     'max_survivors' => $stageInput['max_survivors'] ? (int) $stageInput['max_survivors'] : 0,
                     'passing_score' => $stageInput['passing_score'] ? (int) $stageInput['passing_score'] : null,
                     'minimum_participants' => $stageInput['minimum_participants'] ? (int) $stageInput['minimum_participants'] : 1,
-                    'stage_deadline' => $stageInput['stage_deadline'] ?: null,
+                    'stage_deadline' => $stageDeadline,
+                    'stage_start' => $stageInput['stage_start'] ?? null,
                     'status' => 'locked',
                 ]);
 
@@ -546,6 +593,7 @@ class QuestController extends Controller
                 'passing_score' => $stage->passing_score ?: '',
                 'minimum_participants' => $stage->minimum_participants ?: '',
                 'stage_deadline' => $stage->stage_deadline ? $stage->stage_deadline->format('Y-m-d\TH:i') : '',
+                'stage_start' => $stage->stage_start ? $stage->stage_start->format('Y-m-d\TH:i') : '',
                 'question_type' => $stage->questions->first()?->question_type ?? 'multiple_choice',
                 'questions' => $stage->questions->map(function ($question) {
                     return [
@@ -575,9 +623,51 @@ class QuestController extends Controller
     public function update(Request $request, Quest $quest): RedirectResponse
     {
         $request->validate(
-            $this->questValidationRules($request),
+            $this->questValidationRules($request, $quest),
             $this->questValidationMessages(),
         );
+
+        $isElimination = (bool) $request->input('quest.is_elimination', false);
+        $stageDeadlineError = $this->validateStageDeadlinesOrder($request->input('stages', []), $isElimination);
+        if ($stageDeadlineError !== null) {
+            return back()->withErrors(['stages' => $stageDeadlineError]);
+        }
+        if (!$isElimination) {
+            $rangeError = $this->validateNonElimStageDeadlinesInRange(
+                $request->input('stages', []),
+                $request->input('quest.start_date'),
+                $request->input('quest.end_date'),
+            );
+            if ($rangeError !== null) {
+                return back()->withErrors(['stages' => $rangeError]);
+            }
+        }
+
+        $stageStartError = $this->validateStageStartBeforeEnd(
+            $request->input('stages', []),
+            $request->input('quest.start_date'),
+            $request->input('quest.end_date'),
+        );
+        if ($stageStartError !== null) {
+            return back()->withErrors(['stages' => $stageStartError]);
+        }
+
+        $passingScoreError = $this->validatePassingScoreAchievable(
+            $request->input('stages', []),
+            $isElimination,
+            $request->input('quest.question_type', 'multiple_choice'),
+        );
+        if ($passingScoreError !== null) {
+            return back()->withErrors(['stages' => $passingScoreError]);
+        }
+
+        $correctAnswerError = $this->validateChoicesHaveCorrectAnswer(
+            $request->input('stages', []),
+            $request->input('quest.question_type', 'multiple_choice'),
+        );
+        if ($correctAnswerError !== null) {
+            return back()->withErrors(['stages' => $correctAnswerError]);
+        }
 
         $questInput = $request->input('quest');
 
@@ -634,14 +724,19 @@ class QuestController extends Controller
             });
             $quest->stages()->delete();
 
-            foreach ($request->input('stages', []) as $idx => $stageInput) {
+            $stagesInput = $request->input('stages', []);
+            $lastStageIdx = count($stagesInput) - 1;
+            foreach ($stagesInput as $idx => $stageInput) {
+                $isLastStage = $idx === $lastStageIdx;
+                $stageDeadline = $isLastStage ? ($questInput['end_date'] ?? $stageInput['stage_deadline'] ?? null) : ($stageInput['stage_deadline'] ?: null);
                 $stage = $quest->stages()->create([
                     'stage_number' => $idx + 1,
                     'location_hint' => $stageInput['location_hint'],
                     'max_survivors' => $stageInput['max_survivors'] ? (int) $stageInput['max_survivors'] : 0,
                     'passing_score' => $stageInput['passing_score'] ? (int) $stageInput['passing_score'] : null,
                     'minimum_participants' => $stageInput['minimum_participants'] ? (int) $stageInput['minimum_participants'] : 1,
-                    'stage_deadline' => $stageInput['stage_deadline'] ?: null,
+                    'stage_deadline' => $stageDeadline,
+                    'stage_start' => $stageInput['stage_start'] ?? null,
                     'status' => 'locked',
                 ]);
 
@@ -819,10 +914,20 @@ class QuestController extends Controller
         return response()->json($sections);
     }
 
-    private function questValidationRules(Request $request): array
+    private function questValidationRules(Request $request, ?Quest $quest = null): array
     {
         $isElimination = (bool) $request->input('quest.is_elimination', false);
         $questionType = $request->input('quest.question_type', 'multiple_choice');
+        $isCreate = $quest === null;
+
+        $startDateRules = ['required', 'date'];
+        if ($isCreate) {
+            $startDateRules[] = function (string $attribute, mixed $value, \Closure $fail): void {
+                if (strtotime($value) < time()) {
+                    $fail('Start date must be today or in the future.');
+                }
+            };
+        }
 
         $rules = [
             'quest.title'          => 'required|string|max:255',
@@ -830,8 +935,18 @@ class QuestController extends Controller
             'quest.quest_type'     => 'required|in:daily,event,custom,enrollment',
             'quest.question_type'  => 'required|in:multiple_choice,qr_scan',
             'quest.reward_points'  => 'required|integer|min:1|max:150',
-            'quest.start_date'     => 'required|date',
-            'quest.end_date'       => 'required|date|after_or_equal:quest.start_date',
+            'quest.start_date'     => $startDateRules,
+            'quest.end_date'       => [
+                'required',
+                'date',
+                'after_or_equal:quest.start_date',
+                function (string $attribute, mixed $value, \Closure $fail) use ($request): void {
+                    $start = $request->input('quest.start_date');
+                    if ($start && strtotime($value) - strtotime($start) < 3600) {
+                        $fail('The quest end date must be at least 1 hour after the start date.');
+                    }
+                },
+            ],
             'quest.buy_in_points'  => 'nullable|integer|min:0|max:100',
             'quest.max_participants'    => $isElimination ? 'required|integer|min:1' : 'nullable|integer|min:1',
             'quest.reward_custom_prize' => 'nullable|string|max:255',
@@ -856,7 +971,187 @@ class QuestController extends Controller
             $rules['stages.*.passing_score'] = 'nullable|integer|min:1';
         }
 
+        if (!$isElimination) {
+            $rules['stages.*.stage_deadline'] = 'nullable|date';
+        }
+
         return $rules;
+    }
+
+    /**
+     * Validate that each stage's deadline is on or after the previous stage's deadline (elimination only).
+     * Returns an error message string or null if valid.
+     */
+    private function validateStageDeadlinesOrder(array $stages, bool $isElimination): ?string
+    {
+        if (!$isElimination || count($stages) < 2) {
+            return null;
+        }
+
+        $prevDeadline = null;
+        foreach ($stages as $idx => $stage) {
+            $deadlineStr = $stage['stage_deadline'] ?? null;
+            if ($deadlineStr === null || $deadlineStr === '') {
+                continue;
+            }
+            if ($prevDeadline !== null) {
+                $prevTime = strtotime($prevDeadline);
+                $currTime = strtotime($deadlineStr);
+                if ($prevTime !== false && $currTime !== false && $currTime < $prevTime) {
+                    $pos = $idx + 1;
+                    return "Stage {$pos} deadline must be on or after the previous stage's deadline.";
+                }
+            }
+            $prevDeadline = $deadlineStr;
+        }
+
+        return null;
+    }
+
+    /**
+     * Validate that non-elimination stage end dates (when set) are within quest start and end.
+     * Returns an error message string or null if valid.
+     */
+    private function validateNonElimStageDeadlinesInRange(array $stages, ?string $questStart, ?string $questEnd): ?string
+    {
+        $startTs = $questStart ? strtotime($questStart) : false;
+        $endTs = $questEnd ? strtotime($questEnd) : false;
+        if ($startTs === false || $endTs === false) {
+            return null;
+        }
+        foreach ($stages as $idx => $stage) {
+            $deadlineStr = $stage['stage_deadline'] ?? null;
+            if ($deadlineStr === null || $deadlineStr === '') {
+                continue;
+            }
+            $ts = strtotime($deadlineStr);
+            if ($ts === false) {
+                continue;
+            }
+            if ($ts < $startTs) {
+                $pos = $idx + 1;
+                return "Stage {$pos} end date must be on or after the quest start date.";
+            }
+            if ($ts > $endTs) {
+                $pos = $idx + 1;
+                return "Stage {$pos} end date must be on or before the quest end date.";
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Validate that stage start (stage 2+) is on or after previous stage end, before own stage end, and within quest range.
+     */
+    private function validateStageStartBeforeEnd(array $stages, ?string $questStart, ?string $questEnd): ?string
+    {
+        $startTs = $questStart ? strtotime($questStart) : false;
+        $endTs = $questEnd ? strtotime($questEnd) : false;
+        $lastIdx = count($stages) - 1;
+        foreach ($stages as $idx => $stage) {
+            if ($idx === 0) {
+                continue;
+            }
+            $stageStartStr = $stage['stage_start'] ?? null;
+            if ($stageStartStr === null || $stageStartStr === '') {
+                continue;
+            }
+            $stageStartTs = strtotime($stageStartStr);
+            if ($stageStartTs === false) {
+                continue;
+            }
+            if ($startTs !== false && $stageStartTs < $startTs) {
+                $pos = $idx + 1;
+                return "Stage {$pos} start date must be on or after the quest start date.";
+            }
+            $prevStage = $stages[$idx - 1];
+            $prevStageEndStr = $prevStage['stage_deadline'] ?? $questEnd;
+            if ($prevStageEndStr !== null && $prevStageEndStr !== '') {
+                $prevEndTs = strtotime($prevStageEndStr);
+                if ($prevEndTs !== false && $stageStartTs < $prevEndTs) {
+                    $pos = $idx + 1;
+                    return "Stage {$pos} start date must be on or after the previous stage end date.";
+                }
+            }
+            if ($endTs !== false && $stageStartTs > $endTs) {
+                $pos = $idx + 1;
+                return "Stage {$pos} start date must be on or before the quest end date.";
+            }
+            $deadlineStr = ($idx === $lastIdx) ? $questEnd : ($stage['stage_deadline'] ?? null);
+            if ($deadlineStr !== null && $deadlineStr !== '') {
+                $deadlineTs = strtotime($deadlineStr);
+                if ($deadlineTs !== false && $stageStartTs >= $deadlineTs) {
+                    $pos = $idx + 1;
+                    return "Stage {$pos} start date must be before the stage end date.";
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Validate that passing score (non-elimination + multiple choice) does not exceed the number of questions.
+     */
+    private function validatePassingScoreAchievable(array $stages, bool $isElimination, string $questionType): ?string
+    {
+        if ($isElimination || $questionType !== 'multiple_choice') {
+            return null;
+        }
+        foreach ($stages as $idx => $stage) {
+            $passingScore = isset($stage['passing_score']) && $stage['passing_score'] !== '' && $stage['passing_score'] !== null
+                ? (int) $stage['passing_score']
+                : null;
+            if ($passingScore === null) {
+                continue;
+            }
+            $questions = $stage['questions'] ?? [];
+            $questionCount = is_array($questions) ? count($questions) : 0;
+            if ($questionCount > 0 && $passingScore > $questionCount) {
+                $pos = $idx + 1;
+
+                return "Stage {$pos}: Passing score cannot exceed the number of questions ({$questionCount}).";
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Validate that each multiple-choice question has at least 2 choices and at least one correct answer.
+     */
+    private function validateChoicesHaveCorrectAnswer(array $stages, string $questionType): ?string
+    {
+        if ($questionType !== 'multiple_choice') {
+            return null;
+        }
+        foreach ($stages as $stageIdx => $stage) {
+            $questions = $stage['questions'] ?? [];
+            foreach ($questions as $qIdx => $question) {
+                $choices = $question['choices'] ?? [];
+                $filledChoices = array_filter($choices, function ($c) {
+                    $text = $c['choice_text'] ?? '';
+                    return is_string($text) && trim($text) !== '';
+                });
+                if (count($filledChoices) < 2) {
+                    $stagePos = $stageIdx + 1;
+                    $qPos = $qIdx + 1;
+                    return "Stage {$stagePos}, Question {$qPos}: At least 2 choices are required.";
+                }
+                $hasCorrect = false;
+                foreach ($choices as $c) {
+                    if (!empty($c['is_correct'])) {
+                        $hasCorrect = true;
+                        break;
+                    }
+                }
+                if (!$hasCorrect) {
+                    $stagePos = $stageIdx + 1;
+                    $qPos = $qIdx + 1;
+                    return "Stage {$stagePos}, Question {$qPos}: At least one choice must be marked as correct.";
+                }
+            }
+        }
+        return null;
     }
 
     private function questValidationMessages(): array
@@ -869,6 +1164,7 @@ class QuestController extends Controller
             'quest.reward_points.min'    => 'Reward points must be at least 1.',
             'quest.reward_points.max'    => 'Reward points cannot exceed 150.',
             'quest.start_date.required'  => 'Start date is required.',
+            'quest.start_date.after_or_equal' => 'Start date must be today or in the future.',
             'quest.end_date.required'    => 'End date is required.',
             'quest.end_date.after_or_equal' => 'End date must be on or after the start date.',
             'quest.max_participants.required' => 'Max participants is required for elimination quests.',

@@ -1,5 +1,5 @@
 import { Head, Link, router, usePage } from '@inertiajs/react';
-import { ArrowLeft, CheckCircle2, XCircle, Send, Trophy, Clock } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, XCircle, Send, Trophy, Clock, LogOut } from 'lucide-react';
 import { useState } from 'react';
 
 type Choice = {
@@ -38,6 +38,8 @@ type Participant = {
     current_stage: number;
     status: 'active' | 'eliminated' | 'quit' | 'winner' | 'awaiting_ranking';
     total_stages: number;
+    can_quit?: boolean;
+    quit_guard_reason?: string | null;
 };
 
 type SubmissionEntry = {
@@ -52,22 +54,34 @@ type Props = {
     participant: Participant;
     stage: Stage | null;
     submissions: SubmissionEntry[];
+    stage_locked?: boolean;
+    next_stage_opens_at?: string | null;
+    next_stage_number?: number | null;
 };
 
-export default function QuestPlay({ participant, stage, submissions }: Props) {
-    const { errors, props } = usePage<{ errors: Record<string, string>; props: { flash?: { status?: string } } }>();
-    const flash = (props as any).flash as { status?: string } | undefined;
+export default function QuestPlay({
+    participant,
+    stage,
+    submissions,
+    stage_locked: stageLocked = false,
+    next_stage_opens_at: nextStageOpensAt = null,
+    next_stage_number: nextStageNumber = null,
+}: Props) {
+    const page = usePage();
+    const errors = (page.props as { errors?: Record<string, string> }).errors ?? {};
+    const flash = (page.props as { flash?: { status?: string } }).flash;
     const status = flash?.status;
 
     const [answers, setAnswers] = useState<Record<number, string>>({});
     const [submitting, setSubmitting] = useState(false);
+    const [quitting, setQuitting] = useState(false);
 
     const submittedQuestionIds = new Set(submissions.map((s) => s.question_id));
 
     const unansweredQuestions = stage?.questions.filter((q) => !q.already_answered && !submittedQuestionIds.has(q.id)) ?? [];
     const allAnswered = stage ? unansweredQuestions.length === 0 : true;
 
-    const isFinished = participant.status === 'winner' || participant.status === 'eliminated' || participant.status === 'quit' || participant.status === 'awaiting_ranking';
+    const isFinished = participant.status === 'winner' || participant.status === 'eliminated' || participant.status === 'quit' || participant.status === 'awaiting_ranking' || stageLocked;
 
     const setAnswer = (questionId: number, value: string) => {
         setAnswers((prev) => ({ ...prev, [questionId]: value }));
@@ -107,9 +121,11 @@ export default function QuestPlay({ participant, stage, submissions }: Props) {
                         isFinished
                             ? participant.status === 'winner'
                                 ? 'bg-amber-500 dark:bg-amber-600'
-                                : participant.status === 'awaiting_ranking'
-                                    ? 'bg-yellow-500 dark:bg-yellow-600'
-                                    : 'bg-red-500 dark:bg-red-600'
+                                : stageLocked
+                                    ? 'bg-slate-500 dark:bg-slate-600'
+                                    : participant.status === 'awaiting_ranking'
+                                        ? 'bg-yellow-500 dark:bg-yellow-600'
+                                        : 'bg-red-500 dark:bg-red-600'
                             : 'bg-indigo-600 dark:bg-indigo-700'
                     }`}>
                         <div className="w-24 h-1.5 rounded-full bg-black/20 dark:bg-white/20" />
@@ -118,14 +134,39 @@ export default function QuestPlay({ participant, stage, submissions }: Props) {
                     <div className="flex-1 overflow-y-auto flex flex-col">
                         {/* Header */}
                         <div className="p-4 border-b border-zinc-200 dark:border-zinc-700">
-                            <button
-                                type="button"
-                                onClick={() => router.get('/simulation/quests')}
-                                className="flex items-center gap-1 text-sm text-indigo-600 dark:text-indigo-400 hover:underline mb-2"
-                            >
-                                <ArrowLeft className="size-4" />
-                                Back to quests
-                            </button>
+                            <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+                                <button
+                                    type="button"
+                                    onClick={() => router.get('/simulation/quests')}
+                                    className="flex items-center gap-1 text-sm text-indigo-600 dark:text-indigo-400 hover:underline"
+                                >
+                                    <ArrowLeft className="size-4" />
+                                    Back to quests
+                                </button>
+                                {(participant.status === 'active' || participant.status === 'awaiting_ranking') && (
+                                    <button
+                                        type="button"
+                                        disabled={!participant.can_quit || quitting}
+                                        onClick={() => {
+                                            if (!participant.can_quit) return;
+                                            setQuitting(true);
+                                            router.post(`/simulation/quests/${participant.id}/quit`, {}, {
+                                                onFinish: () => setQuitting(false),
+                                            });
+                                        }}
+                                        title={participant.quit_guard_reason ?? undefined}
+                                        className="flex items-center gap-1 text-sm text-red-600 dark:text-red-400 hover:underline disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:no-underline"
+                                    >
+                                        <LogOut className="size-4" />
+                                        {quitting ? 'Leaving…' : 'Quit quest'}
+                                    </button>
+                                )}
+                            </div>
+                            {participant.quit_guard_reason && (participant.status === 'active' || participant.status === 'awaiting_ranking') && (
+                                <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
+                                    {participant.quit_guard_reason}
+                                </p>
+                            )}
                             <h1 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
                                 {participant.quest_title}
                             </h1>
@@ -149,10 +190,10 @@ export default function QuestPlay({ participant, stage, submissions }: Props) {
                                 <p className="text-sm text-indigo-700 dark:text-indigo-300">{status}</p>
                             </div>
                         )}
-                        {errors && Object.keys(errors).length > 0 && (
+                        {Object.keys(errors).length > 0 && (
                             <div className="mx-4 mt-3 rounded-lg bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 px-3 py-2">
                                 {Object.values(errors).map((err, i) => (
-                                    <p key={i} className="text-sm text-red-700 dark:text-red-300">{err}</p>
+                                    <p key={i} className="text-sm text-red-700 dark:text-red-300">{String(err)}</p>
                                 ))}
                             </div>
                         )}
@@ -195,7 +236,31 @@ export default function QuestPlay({ participant, stage, submissions }: Props) {
                             </div>
                         )}
 
-                        {participant.status === 'awaiting_ranking' && (
+                        {stageLocked && nextStageNumber != null && nextStageOpensAt && (
+                            <div className="m-4 rounded-xl border-2 border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-950/30 p-6 flex flex-col items-center gap-3">
+                                <div className="flex size-16 items-center justify-center rounded-full bg-slate-500 text-white">
+                                    <Clock className="size-10" />
+                                </div>
+                                <h2 className="text-xl font-bold text-slate-700 dark:text-slate-300">
+                                    Stage {nextStageNumber} Not Yet Open
+                                </h2>
+                                <p className="text-sm text-zinc-600 dark:text-zinc-400 text-center">
+                                    You&apos;ve advanced. Stage {nextStageNumber} opens at the time below. Come back then to continue.
+                                </p>
+                                <p className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                                    {new Date(nextStageOpensAt).toLocaleString()}
+                                </p>
+                                <button
+                                    type="button"
+                                    onClick={() => router.reload()}
+                                    className="mt-2 px-4 py-2 rounded-lg text-sm font-medium bg-slate-500 text-white hover:bg-slate-600"
+                                >
+                                    Refresh
+                                </button>
+                            </div>
+                        )}
+
+                        {participant.status === 'awaiting_ranking' && !stageLocked && (
                             <div className="m-4 rounded-xl border-2 border-yellow-300 dark:border-yellow-600 bg-yellow-50 dark:bg-yellow-950/30 p-6 flex flex-col items-center gap-3">
                                 <div className="flex size-16 items-center justify-center rounded-full bg-yellow-500 text-white">
                                     <Clock className="size-10" />
@@ -222,7 +287,7 @@ export default function QuestPlay({ participant, stage, submissions }: Props) {
                         )}
 
                         {/* Active: show stage */}
-                        {participant.status === 'active' && stage && (
+                        {participant.status === 'active' && stage && !stageLocked && (
                             <div className="flex-1 p-4 space-y-4">
                                 <div className="rounded-lg bg-indigo-50 dark:bg-indigo-950/20 border border-indigo-200 dark:border-indigo-800 p-3">
                                     <h2 className="text-sm font-semibold text-indigo-700 dark:text-indigo-300">

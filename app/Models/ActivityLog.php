@@ -50,6 +50,7 @@ class ActivityLog extends Model
     public const ACTION_QUEST_UPDATED = 'quest_updated';
     public const ACTION_QUEST_DELETED = 'quest_deleted';
     public const ACTION_QUEST_JOINED = 'quest_joined';
+    public const ACTION_QUEST_QUIT = 'quest_quit';
     public const ACTION_QUEST_STAGE_SUBMITTED = 'quest_stage_submitted';
 
     protected function casts(): array

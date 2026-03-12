@@ -10,6 +10,7 @@ use App\Models\PointTransaction;
 use App\Models\Quest;
 use App\Models\QuestParticipant;
 use App\Models\Semester;
+use App\Models\User;
 use App\Models\UserAchievement;
 use App\Models\UserInventory;
 use App\Models\Submission;
@@ -52,10 +53,29 @@ class QuestParticipationController extends Controller
             ->where('is_enrolled', true)
             ->pluck('semester');
 
+        $master = $user->masterUser;
+
         $availableQuests = Quest::query()
             ->where('approval_status', 'approved')
             ->whereIn('status', ['upcoming', 'ongoing'])
-            ->doesntHave('targetGroups')
+            ->where(function ($q) use ($master) {
+                $q->doesntHave('targetGroups');
+                if ($master !== null) {
+                    $q->orWhereHas('targetGroups', function ($tgQ) use ($master) {
+                        $tgQ->where(function ($t) use ($master) {
+                            $t->where(function ($tq) use ($master) {
+                                $tq->whereNull('course')->orWhere('course', $master->course ?? '');
+                            })
+                                ->where(function ($tq) use ($master) {
+                                    $tq->whereNull('year_level')->orWhere('year_level', $master->year_level);
+                                })
+                                ->where(function ($tq) use ($master) {
+                                    $tq->whereNull('section')->orWhere('section', $master->section ?? '');
+                                });
+                        });
+                    });
+                }
+            })
             ->whereNotIn('id', $joinedQuestIds)
             ->when($enrolledSemesters->isNotEmpty(), function ($q) use ($enrolledSemesters) {
                 $q->where(function ($sub) use ($enrolledSemesters) {
@@ -110,10 +130,14 @@ class QuestParticipationController extends Controller
         ]);
 
         $user = $request->user();
-        $quest = Quest::with(['stages' => fn ($q) => $q->orderBy('stage_number')])->find($request->input('quest_id'));
+        $quest = Quest::with(['stages' => fn ($q) => $q->orderBy('stage_number'), 'targetGroups'])->find($request->input('quest_id'));
 
         if (!$quest) {
             return back()->withErrors(['quest_id' => 'Quest not found.']);
+        }
+
+        if (!$this->userIsInTargetParticipants($quest, $user)) {
+            return back()->withErrors(['quest_id' => 'You are not in the target participants for this quest.']);
         }
 
         if ($quest->approval_status !== 'approved') {
@@ -137,23 +161,29 @@ class QuestParticipationController extends Controller
             return back()->withErrors(['quest_id' => 'You have already joined this quest.']);
         }
 
-        if ($quest->max_participants > 0 && $quest->current_participants >= $quest->max_participants) {
-            return back()->withErrors(['quest_id' => 'This quest is full.']);
-        }
-
         if ($quest->buy_in_points > 0 && ($user->points_balance ?? 0) < $quest->buy_in_points) {
             return back()->withErrors(['quest_id' => 'Not enough points. You need ' . $quest->buy_in_points . ' pts to join.']);
         }
 
-        DB::transaction(function () use ($quest, $user) {
+        $joined = DB::transaction(function () use ($quest, $user) {
+            // Atomic increment: only add a slot when under the limit (prevents concurrent joins from exceeding max_participants)
+            $affected = Quest::where('id', $quest->id)
+                ->where(function ($q) {
+                    $q->where('max_participants', 0)
+                        ->orWhereColumn('current_participants', '<', 'max_participants');
+                })
+                ->increment('current_participants');
+
+            if ($affected === 0) {
+                return false;
+            }
+
             QuestParticipant::create([
                 'quest_id' => $quest->id,
                 'user_id' => $user->id,
                 'current_stage' => 1,
                 'status' => 'active',
             ]);
-
-            $quest->increment('current_participants');
 
             if ($quest->buy_in_points > 0) {
                 $user->decrement('points_balance', $quest->buy_in_points);
@@ -167,7 +197,13 @@ class QuestParticipationController extends Controller
             }
 
             ActivityLog::log($user->id, ActivityLog::ACTION_QUEST_JOINED, $quest->title);
+
+            return true;
         });
+
+        if (!$joined) {
+            return back()->withErrors(['quest_id' => 'This quest is full.']);
+        }
 
         return back()->with('status', 'Successfully joined "' . $quest->title . '"!');
     }
@@ -196,24 +232,35 @@ class QuestParticipationController extends Controller
         $answeredQuestionIds = $participant->submissions->pluck('question_id')->toArray();
 
         $stageData = null;
+        $stageLocked = false;
+        $nextStageOpensAt = null;
+        $nextStageNumber = null;
+
         if ($currentStage) {
-            $stageData = [
-                'id' => $currentStage->id,
-                'stage_number' => $currentStage->stage_number,
-                'location_hint' => $currentStage->location_hint,
-                'max_survivors' => $currentStage->max_survivors,
-                'stage_deadline' => $currentStage->stage_deadline?->toDateTimeString(),
-                'questions' => $currentStage->questions->map(fn ($q) => [
-                    'id' => $q->id,
-                    'question_text' => $q->question_text,
-                    'question_type' => $q->question_type,
-                    'already_answered' => in_array($q->id, $answeredQuestionIds),
-                    'choices' => $q->choices->sortBy('sort_order')->values()->map(fn ($c) => [
-                        'id' => $c->id,
-                        'choice_text' => $c->choice_text,
+            $stageNotYetOpen = $currentStage->stage_start && now()->lt($currentStage->stage_start);
+            if ($stageNotYetOpen) {
+                $stageLocked = true;
+                $nextStageOpensAt = $currentStage->stage_start->toDateTimeString();
+                $nextStageNumber = $currentStage->stage_number;
+            } else {
+                $stageData = [
+                    'id' => $currentStage->id,
+                    'stage_number' => $currentStage->stage_number,
+                    'location_hint' => $currentStage->location_hint,
+                    'max_survivors' => $currentStage->max_survivors,
+                    'stage_deadline' => $currentStage->stage_deadline?->toDateTimeString(),
+                    'questions' => $currentStage->questions->map(fn ($q) => [
+                        'id' => $q->id,
+                        'question_text' => $q->question_text,
+                        'question_type' => $q->question_type,
+                        'already_answered' => in_array($q->id, $answeredQuestionIds),
+                        'choices' => $q->choices->sortBy('sort_order')->values()->map(fn ($c) => [
+                            'id' => $c->id,
+                            'choice_text' => $c->choice_text,
+                        ])->all(),
                     ])->all(),
-                ])->all(),
-            ];
+                ];
+            }
         }
 
         $submissionsData = $participant->submissions->map(fn ($s) => [
@@ -223,6 +270,14 @@ class QuestParticipationController extends Controller
             'is_correct' => $s->is_correct,
             'submitted_at' => $s->submitted_at?->toDateTimeString(),
         ])->all();
+
+        $minParticipants = $currentStage ? (int) $currentStage->minimum_participants : 0;
+        $currentParticipants = (int) $quest->current_participants;
+        $canQuit = in_array($participant->status, ['active', 'awaiting_ranking'], true)
+            && ($currentParticipants - 1 >= $minParticipants);
+        $quitGuardReason = (!$canQuit && in_array($participant->status, ['active', 'awaiting_ranking'], true))
+            ? 'Quitting would leave the quest below the minimum participants for this stage.'
+            : null;
 
         return Inertia::render('simulation/quest-play', [
             'participant' => [
@@ -238,12 +293,58 @@ class QuestParticipationController extends Controller
                 'current_stage' => $participant->current_stage,
                 'status' => $participant->status,
                 'total_stages' => $stages->count(),
+                'can_quit' => $canQuit,
+                'quit_guard_reason' => $quitGuardReason,
             ],
             'stage' => $stageData ? array_merge($stageData, [
                 'passing_score' => $currentStage->passing_score,
             ]) : null,
             'submissions' => $submissionsData,
+            'stage_locked' => $stageLocked,
+            'next_stage_opens_at' => $nextStageOpensAt,
+            'next_stage_number' => $nextStageNumber,
         ]);
+    }
+
+    /**
+     * Quit the quest. Only allowed when participant is active or awaiting_ranking.
+     * Blocked if quitting would leave the quest below the current stage's minimum_participants.
+     */
+    public function quit(Request $request, int $participantId): RedirectResponse
+    {
+        $user = $request->user();
+
+        $participant = QuestParticipant::where('id', $participantId)
+            ->where('user_id', $user->id)
+            ->with('quest.stages')
+            ->first();
+
+        if (!$participant) {
+            return redirect()->route('simulation.quests')->withErrors(['error' => 'Participation not found.']);
+        }
+
+        if (!in_array($participant->status, ['active', 'awaiting_ranking'], true)) {
+            return back()->withErrors(['error' => 'You can only quit while the quest is in progress.']);
+        }
+
+        $quest = $participant->quest;
+        $stages = $quest->stages->sortBy('stage_number')->values();
+        $currentStage = $stages->firstWhere('stage_number', $participant->current_stage);
+        $minParticipants = $currentStage ? (int) $currentStage->minimum_participants : 0;
+        $currentParticipants = (int) $quest->current_participants;
+
+        if ($currentParticipants - 1 < $minParticipants) {
+            return back()->withErrors(['error' => 'Quitting would leave the quest below the minimum participants for this stage.']);
+        }
+
+        DB::transaction(function () use ($participant, $quest) {
+            $participant->update(['status' => 'quit']);
+            Quest::where('id', $quest->id)->where('current_participants', '>', 0)->decrement('current_participants');
+        });
+
+        ActivityLog::log($user->id, ActivityLog::ACTION_QUEST_QUIT, $quest->title);
+
+        return redirect()->route('simulation.quests')->with('status', 'You have left the quest.');
     }
 
     /**
@@ -428,9 +529,18 @@ class QuestParticipationController extends Controller
                 'last_submitted_at' => $lastSubmission,
             ];
         })
-        ->sortByDesc('score')
-        ->sortBy('last_submitted_at')
-        ->sortByDesc('score')
+        ->sort(function ($a, $b) {
+            if ($a['score'] !== $b['score']) {
+                return $b['score'] <=> $a['score'];
+            }
+            $t1 = $a['last_submitted_at'] instanceof \DateTimeInterface
+                ? $a['last_submitted_at']->getTimestamp()
+                : strtotime((string) $a['last_submitted_at']);
+            $t2 = $b['last_submitted_at'] instanceof \DateTimeInterface
+                ? $b['last_submitted_at']->getTimestamp()
+                : strtotime((string) $b['last_submitted_at']);
+            return $t1 <=> $t2;
+        })
         ->values();
 
         foreach ($ranked as $idx => $entry) {
@@ -483,35 +593,119 @@ class QuestParticipationController extends Controller
 
     /**
      * Mode B: Elimination + QR Scan
-     * First max_survivors to complete all scans advance.
+     * Wait for all participants on the stage to submit (or deadline). Then rank by submission time only;
+     * top max_survivors advance (earliest submitter wins).
      */
     private function handleElimQR(QuestParticipant $participant, $currentStage, Quest $quest, $stages, $user, bool $isLastStage, int $nextStageNumber): array
     {
+        $participant->update(['status' => 'awaiting_ranking']);
+
+        $activeCount = QuestParticipant::where('quest_id', $quest->id)
+            ->where('current_stage', $currentStage->stage_number)
+            ->whereIn('status', ['active', 'awaiting_ranking'])
+            ->count();
+
+        $awaitingCount = QuestParticipant::where('quest_id', $quest->id)
+            ->where('current_stage', $currentStage->stage_number)
+            ->where('status', 'awaiting_ranking')
+            ->count();
+
+        $deadlinePassed = $currentStage->stage_deadline && now()->gte($currentStage->stage_deadline);
+
+        if ($awaitingCount >= $activeCount || $deadlinePassed) {
+            $this->runEliminationRankingQR($currentStage, $quest, $stages);
+            $participant->refresh();
+
+            return $this->buildRankingResultQR($participant, $quest, $user);
+        }
+
+        return [
+            'outcome' => 'awaiting_ranking',
+            'message' => 'Stage submitted! Waiting for other participants to finish or the stage deadline.',
+        ];
+    }
+
+    /**
+     * Run the ranking algorithm for an elimination + QR stage.
+     * Rank by submission time only (earliest = best); top max_survivors advance.
+     */
+    public function runEliminationRankingQR($currentStage, Quest $quest, $stages): void
+    {
+        $stageQuestionIds = $currentStage->questions->pluck('id')->toArray();
         $maxSurvivors = $currentStage->max_survivors ?: PHP_INT_MAX;
+        $nextStageNumber = $currentStage->stage_number + 1;
+        $isLastStage = !$stages->contains('stage_number', $nextStageNumber);
 
-        $completedBefore = $this->countCompletedForStage($quest->id, $currentStage);
+        $awaitingParticipants = QuestParticipant::where('quest_id', $quest->id)
+            ->where('current_stage', $currentStage->stage_number)
+            ->where('status', 'awaiting_ranking')
+            ->get();
 
-        if ($completedBefore < $maxSurvivors) {
-            if ($isLastStage) {
-                $participant->update(['status' => 'winner']);
-                $this->awardWinner($participant, $quest);
-                return [
-                    'outcome' => 'completed',
-                    'message' => "Quest completed! You earned {$quest->reward_points} points!"
-                        . ($quest->quest_type === 'enrollment' ? ' You are now enrolled for this semester.' : ''),
-                ];
-            }
-            $participant->update(['current_stage' => $nextStageNumber]);
+        $ranked = $awaitingParticipants->map(function ($p) use ($stageQuestionIds) {
+            $lastSubmission = Submission::where('participant_id', $p->id)
+                ->whereIn('question_id', $stageQuestionIds)
+                ->max('submitted_at');
+
             return [
-                'outcome' => 'advanced',
-                'message' => "Stage passed! Moving to stage {$nextStageNumber}.",
+                'participant' => $p,
+                'last_submitted_at' => $lastSubmission,
+            ];
+        })
+        ->sort(function ($a, $b) {
+            $t1 = $a['last_submitted_at'] instanceof \DateTimeInterface
+                ? $a['last_submitted_at']->getTimestamp()
+                : strtotime((string) $a['last_submitted_at']);
+            $t2 = $b['last_submitted_at'] instanceof \DateTimeInterface
+                ? $b['last_submitted_at']->getTimestamp()
+                : strtotime((string) $b['last_submitted_at']);
+            return $t1 <=> $t2;
+        })
+        ->values();
+
+        foreach ($ranked as $idx => $entry) {
+            $p = $entry['participant'];
+            if ($idx < $maxSurvivors) {
+                if ($isLastStage) {
+                    $p->update(['status' => 'winner']);
+                    $this->awardWinner($p, $quest);
+                } else {
+                    $p->update(['status' => 'active', 'current_stage' => $nextStageNumber]);
+                }
+            } else {
+                $p->update(['status' => 'eliminated']);
+            }
+        }
+
+        QuestParticipant::where('quest_id', $quest->id)
+            ->where('current_stage', $currentStage->stage_number)
+            ->where('status', 'active')
+            ->update(['status' => 'eliminated']);
+    }
+
+    /**
+     * Build result message after QR elimination ranking completes.
+     */
+    private function buildRankingResultQR(QuestParticipant $participant, Quest $quest, $user): array
+    {
+        if ($participant->status === 'winner') {
+            return [
+                'outcome' => 'completed',
+                'message' => "Quest completed! You earned {$quest->reward_points} points!"
+                    . ($quest->quest_type === 'enrollment' ? ' You are now enrolled for this semester.' : ''),
             ];
         }
 
-        $participant->update(['status' => 'eliminated']);
+        if ($participant->status === 'eliminated') {
+            return [
+                'outcome' => 'eliminated',
+                'message' => 'Eliminated! You did not rank in the top this stage.',
+            ];
+        }
+
+        $nextStage = $participant->current_stage;
         return [
-            'outcome' => 'eliminated',
-            'message' => 'Eliminated! You did not scan fast enough.',
+            'outcome' => 'advanced',
+            'message' => "Stage passed! Moving to stage {$nextStage}.",
         ];
     }
 
@@ -534,12 +728,20 @@ class QuestParticipationController extends Controller
     /**
      * Mode C: Non-Elimination + Multiple Choice
      * Pass if score >= passing_score, else fail.
+     * Advance only when the stage end date (or quest end date) has passed.
      */
     private function handleNonElimMC(QuestParticipant $participant, $currentStage, Quest $quest, $user, int $correctCount, int $totalCount, bool $isLastStage, int $nextStageNumber): array
     {
         $passingScore = $currentStage->passing_score ?? 0;
 
         if ($correctCount >= $passingScore) {
+            $stageEnd = $currentStage->stage_deadline ?? $quest->end_date;
+            if ($stageEnd && now()->lt($stageEnd)) {
+                return [
+                    'outcome' => 'stage_not_ended',
+                    'message' => 'Your answers are correct, but this stage has not ended yet. You can advance after ' . $stageEnd->format('M j, Y g:i A') . '.',
+                ];
+            }
             if ($isLastStage) {
                 $participant->update(['status' => 'winner']);
                 $this->awardWinner($participant, $quest);
@@ -565,10 +767,18 @@ class QuestParticipationController extends Controller
 
     /**
      * Mode D: Non-Elimination + QR Scan
-     * Always advance. If last stage → winner.
+     * Advance only when the stage end date (or quest end date) has passed. If last stage → winner.
      */
     private function handleNonElimQR(QuestParticipant $participant, Quest $quest, $user, bool $isLastStage, int $nextStageNumber, int $totalCount): array
     {
+        $currentStage = $quest->stages->sortBy('stage_number')->firstWhere('stage_number', $participant->current_stage);
+        $stageEnd = $currentStage?->stage_deadline ?? $quest->end_date;
+        if ($stageEnd && now()->lt($stageEnd)) {
+            return [
+                'outcome' => 'stage_not_ended',
+                'message' => 'Stage submitted, but this stage has not ended yet. You can advance after ' . $stageEnd->format('M j, Y g:i A') . '.',
+            ];
+        }
         if ($isLastStage) {
             $participant->update(['status' => 'winner']);
             $this->awardWinner($participant, $quest);
@@ -656,5 +866,35 @@ class QuestParticipationController extends Controller
                 );
             }
         }
+    }
+
+    /**
+     * Check whether the user is in the quest's target participants.
+     * If the quest has no target groups, any user is eligible.
+     * If the quest has target groups, the user must match at least one (via master record course/year_level/section).
+     * Nullable target group fields mean "any"; user must match all non-null fields of at least one group.
+     */
+    private function userIsInTargetParticipants(Quest $quest, User $user): bool
+    {
+        $quest->loadMissing('targetGroups');
+        if ($quest->targetGroups->isEmpty()) {
+            return true;
+        }
+
+        $master = $user->masterUser;
+        if ($master === null) {
+            return false;
+        }
+
+        foreach ($quest->targetGroups as $tg) {
+            $courseOk = $tg->course === null || $tg->course === ($master->course ?? '');
+            $yearOk = $tg->year_level === null || (string) $tg->year_level === (string) ($master->year_level ?? '');
+            $sectionOk = $tg->section === null || $tg->section === ($master->section ?? '');
+            if ($courseOk && $yearOk && $sectionOk) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

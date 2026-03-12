@@ -18,6 +18,7 @@ class QuestStage extends Model
         'passing_score',
         'minimum_participants',
         'stage_deadline',
+        'stage_start',
         'status',
     ];
 
@@ -28,6 +29,7 @@ class QuestStage extends Model
             'passing_score' => 'int',
             'minimum_participants' => 'int',
             'stage_deadline' => 'datetime',
+            'stage_start' => 'datetime',
         ];
     }
 

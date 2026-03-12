@@ -18,6 +18,7 @@ export type StageFormData = {
     passing_score: number | '';
     minimum_participants: number | '';
     stage_deadline: string;
+    stage_start: string;
     question_type: QuestionType;
     questions: Question[];
 };
@@ -42,6 +43,7 @@ export function createEmptyStage(stageNumber: number): StageFormData {
         passing_score: '',
         minimum_participants: '',
         stage_deadline: '',
+        stage_start: '',
         question_type: 'multiple_choice',
         questions: [createEmptyQuestion('multiple_choice')],
     };

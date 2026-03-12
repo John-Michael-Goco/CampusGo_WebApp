@@ -40,6 +40,8 @@ type Props = {
         value: CreateQuestFormData[K]
     ) => void;
     enrollmentSemester?: EnrollmentSemester;
+    /** When true (edit), start date may be in the past. When false (create), start must be today or future. */
+    isEdit?: boolean;
 };
 
 const PROFESSOR_QUEST_TYPES: QuestType[] = ['custom', 'event'];
@@ -48,7 +50,7 @@ const questTypeOptionsForRole = (role: string) =>
         ? QUEST_TYPE_OPTIONS.filter((o) => PROFESSOR_QUEST_TYPES.includes(o.value))
         : QUEST_TYPE_OPTIONS;
 
-export function QuestFormFields({ data, errors, setData, enrollmentSemester }: Props) {
+export function QuestFormFields({ data, errors, setData, enrollmentSemester, isEdit = false }: Props) {
     const { auth } = usePage().props;
     const isStudent = auth.user.role === 'student';
     const questTypeOptions = questTypeOptionsForRole(auth.user.role);
@@ -61,6 +63,18 @@ export function QuestFormFields({ data, errors, setData, enrollmentSemester }: P
         const d = parse(data.start_date, "yyyy-MM-dd'T'HH:mm", new Date());
         return isValid(d) ? d : undefined;
     }, [data.start_date]);
+
+    const isStartDateInPast = useMemo(() => {
+        if (isEdit || !data.start_date) return false;
+        return new Date(data.start_date).getTime() < Date.now();
+    }, [data.start_date, isEdit]);
+
+    const isEndDateLessThanOneHourAfterStart = useMemo(() => {
+        if (!data.start_date || !data.end_date) return false;
+        const startMs = new Date(data.start_date).getTime();
+        const endMs = new Date(data.end_date).getTime();
+        return endMs - startMs < 60 * 60 * 1000;
+    }, [data.start_date, data.end_date]);
 
     const target = data.target;
 
@@ -425,24 +439,39 @@ export function QuestFormFields({ data, errors, setData, enrollmentSemester }: P
             </div>
 
             {/* Start / End date */}
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:items-start">
                 <div className="grid gap-2">
-                    <Label>Start date</Label>
+                    <Label className="flex items-center gap-1.5">
+                        Start date
+                    </Label>
                     <DateTimePicker
                         value={data.start_date}
                         onChange={(val) => setData('start_date', val)}
                         placeholder="Pick start date & time"
+                        minDate={isEdit ? undefined : new Date()}
                     />
+                    {isStartDateInPast && !errors.start_date && (
+                        <p className="text-sm text-red-500 dark:text-red-400">
+                            Start date must be today or in the future.
+                        </p>
+                    )}
                     <InputError message={errors.start_date} />
                 </div>
                 <div className="grid gap-2">
-                    <Label>End date</Label>
+                    <Label className="flex items-center gap-1.5">
+                        End date
+                    </Label>
                     <DateTimePicker
                         value={data.end_date}
                         onChange={(val) => setData('end_date', val)}
                         placeholder="Pick end date & time"
                         minDate={startDateObj}
                     />
+                    {isEndDateLessThanOneHourAfterStart && !errors.end_date && (
+                        <p className="text-sm text-red-500 dark:text-red-400">
+                            End date must be at least 1 hour after start date.
+                        </p>
+                    )}
                     <InputError message={errors.end_date} />
                 </div>
             </div>

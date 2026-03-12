@@ -13,6 +13,25 @@ use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
 {
+    /**
+     * Minimal user payload for mobile API (no password, no internal IDs).
+     */
+    private function userToArray(User $user): array
+    {
+        return [
+            'id' => $user->id,
+            'name' => $user->name,
+            'email' => $user->email,
+            'role' => $user->role,
+            'points_balance' => (int) ($user->points_balance ?? 0),
+            'level' => (int) ($user->level ?? 1),
+            'total_xp_earned' => (int) ($user->total_xp_earned ?? 0),
+            'total_completed_quests' => (int) ($user->total_completed_quests ?? 0),
+            'profile_image' => $user->profile_image,
+            'avatar' => $user->avatar,
+        ];
+    }
+
     public function signin(Request $request): JsonResponse
     {
         $request->validate([
@@ -35,7 +54,7 @@ class AuthController extends Controller
         return response()->json([
             'token' => $token,
             'token_type' => 'Bearer',
-            'user' => $user,
+            'user' => $this->userToArray($user),
         ]);
     }
 
@@ -93,7 +112,7 @@ class AuthController extends Controller
         return response()->json([
             'token' => $token,
             'token_type' => 'Bearer',
-            'user' => $user,
+            'user' => $this->userToArray($user),
         ]);
     }
 
@@ -110,6 +129,10 @@ class AuthController extends Controller
 
     public function user(Request $request): JsonResponse
     {
-        return response()->json($request->user());
+        $user = $request->user();
+        if (! $user instanceof User) {
+            return response()->json(['message' => 'Unauthenticated'], 401);
+        }
+        return response()->json($this->userToArray($user));
     }
 }

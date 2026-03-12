@@ -101,8 +101,10 @@ export default function QuestStagesPage({ questId, questData: rawQuestData, exis
             }
         }
         const questMax = typeof questData.max_participants === 'number' ? questData.max_participants : 0;
+        const lastStageIdx = stages.length - 1;
         stages.forEach((s, i) => {
             const label = `Stage ${i + 1}`;
+            const effectiveDeadline = i === lastStageIdx ? (questData.end_date || s.stage_deadline) : s.stage_deadline;
             if (!s.location_hint.trim()) errs.push(`${label}: Location hint is required.`);
             if (questData.is_elimination) {
                 if (!s.max_survivors || s.max_survivors < 1) errs.push(`${label}: Max survivors is required.`);
@@ -113,20 +115,37 @@ export default function QuestStagesPage({ questId, questData: rawQuestData, exis
                 if (typeof s.max_survivors === 'number' && typeof s.minimum_participants === 'number' && s.minimum_participants > s.max_survivors) {
                     errs.push(`${label}: Min participants cannot exceed max survivors (${s.max_survivors}).`);
                 }
-                if (!s.stage_deadline) errs.push(`${label}: Stage deadline is required.`);
-                if (s.stage_deadline && questData.start_date) {
-                    const deadlineTime = new Date(s.stage_deadline).getTime();
+                if (i !== lastStageIdx && !s.stage_deadline) errs.push(`${label}: Stage deadline is required.`);
+                if (effectiveDeadline && questData.start_date) {
+                    const deadlineTime = new Date(effectiveDeadline).getTime();
                     const startTime = new Date(questData.start_date).getTime();
                     if (!Number.isNaN(deadlineTime) && !Number.isNaN(startTime) && deadlineTime < startTime) {
                         errs.push(`${label}: Stage deadline must be on or after the quest start date.`);
                     }
                 }
-                if (s.stage_deadline && questData.end_date) {
-                    const deadlineTime = new Date(s.stage_deadline).getTime();
+                if (effectiveDeadline && questData.end_date) {
+                    const deadlineTime = new Date(effectiveDeadline).getTime();
                     const endTime = new Date(questData.end_date).getTime();
                     if (!Number.isNaN(deadlineTime) && !Number.isNaN(endTime) && deadlineTime > endTime) {
                         errs.push(`${label}: Stage deadline must be on or before the quest end date.`);
                     }
+                }
+            }
+            if (questData.is_elimination && i > 0) {
+                const prevDeadline = i - 1 === lastStageIdx ? questData.end_date : stages[i - 1].stage_deadline;
+                if (effectiveDeadline && prevDeadline) {
+                    const prevTime = new Date(prevDeadline).getTime();
+                    const currTime = new Date(effectiveDeadline).getTime();
+                    if (!Number.isNaN(prevTime) && !Number.isNaN(currTime) && currTime < prevTime) {
+                        errs.push(`${label}: Stage deadline must be on or after the previous stage's deadline.`);
+                    }
+                }
+            }
+            if (i >= 1 && s.stage_start && (effectiveDeadline || questData.end_date)) {
+                const startTime = new Date(s.stage_start).getTime();
+                const endTime = new Date(effectiveDeadline || questData.end_date || '').getTime();
+                if (!Number.isNaN(startTime) && !Number.isNaN(endTime) && startTime >= endTime) {
+                    errs.push(`${label}: Stage start date must be before the stage end date.`);
                 }
             }
             if (effectiveQuestionType === 'multiple_choice') {
@@ -142,6 +161,9 @@ export default function QuestStagesPage({ questId, questData: rawQuestData, exis
                             errs.push(`${label}, Q${qi + 1}: Select a correct answer.`);
                         }
                     });
+                    if (!questData.is_elimination && s.questions.length > 0 && typeof s.passing_score === 'number' && s.passing_score > s.questions.length) {
+                        errs.push(`${label}: Passing score cannot exceed the number of questions (${s.questions.length}).`);
+                    }
                 }
             }
         });
@@ -163,11 +185,17 @@ export default function QuestStagesPage({ questId, questData: rawQuestData, exis
                 choices: getFilledChoices(q.choices),
             })),
         }));
+        const lastStageIndex = numStages - 1;
         const finalStages = questData.is_elimination
-            ? stagesWithFilledChoicesOnly
-            : stagesWithFilledChoicesOnly.map((s) => ({
+            ? stagesWithFilledChoicesOnly.map((s, i) => ({
                 ...s,
-                stage_deadline: questData.end_date || '',
+                stage_start: s.stage_start || '',
+                stage_deadline: i === lastStageIndex ? (questData.end_date || s.stage_deadline) : s.stage_deadline,
+            }))
+            : stagesWithFilledChoicesOnly.map((s, i) => ({
+                ...s,
+                stage_deadline: i === lastStageIndex ? (questData.end_date || s.stage_deadline) : (s.stage_deadline || ''),
+                stage_start: s.stage_start || '',
                 max_survivors: '',
                 minimum_participants: '',
             }));
@@ -235,6 +263,12 @@ export default function QuestStagesPage({ questId, questData: rawQuestData, exis
                         questMaxParticipants={questData.max_participants}
                         questStartDate={questData.start_date}
                         questEndDate={questData.end_date}
+                        previousStageEndDate={
+                            currentIdx >= 1
+                                ? (stages[currentIdx - 1].stage_deadline || questData.end_date) ?? ''
+                                : undefined
+                        }
+                        isLastStage={isLastStage}
                         onChange={updateStage}
                     />
 

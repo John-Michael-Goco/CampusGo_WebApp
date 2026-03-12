@@ -118,6 +118,9 @@ Route::get('simulation/quests/{participant}/play', [QuestParticipationController
 Route::post('simulation/quests/{participant}/submit', [QuestParticipationController::class, 'submit'])
     ->middleware('auth')
     ->name('simulation.quests.submit');
+Route::post('simulation/quests/{participant}/quit', [QuestParticipationController::class, 'quit'])
+    ->middleware('auth')
+    ->name('simulation.quests.quit');
 
 
 Route::middleware(['auth', 'verified'])->group(function () {

@@ -214,9 +214,9 @@ export default function QuestParticipation({ participations, availableQuests, po
                         )}
 
                         {/* Global errors (not field-specific) */}
-                        {errors?.quest_id && (
+                        {(errors?.quest_id || errors?.error) && (
                             <div className="mx-4 mt-3 rounded-lg bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 px-3 py-2">
-                                <p className="text-sm text-red-700 dark:text-red-300">{errors.quest_id}</p>
+                                <p className="text-sm text-red-700 dark:text-red-300">{errors.quest_id ?? errors.error}</p>
                             </div>
                         )}
 
@@ -330,14 +330,27 @@ export default function QuestParticipation({ participations, availableQuests, po
                                                     <span>Quest: {p.quest_status}</span>
                                                 </div>
 
-                                                {p.status === 'active' && (
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => router.get(`/simulation/quests/${p.id}/play`)}
-                                                        className="mt-3 w-full py-2 rounded-lg text-sm font-medium bg-indigo-600 text-white hover:bg-indigo-700"
-                                                    >
-                                                        Play / Answer Questions
-                                                    </button>
+                                                {(p.status === 'active' || p.status === 'awaiting_ranking') && (
+                                                    <div className="mt-3 flex flex-wrap gap-2">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => router.get(`/simulation/quests/${p.id}/play`)}
+                                                            className="flex-1 min-w-0 py-2 rounded-lg text-sm font-medium bg-indigo-600 text-white hover:bg-indigo-700"
+                                                        >
+                                                            {p.status === 'active' ? 'Play / Answer Questions' : 'View status'}
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => {
+                                                                if (confirm('Leave this quest? You will not be able to rejoin this run.')) {
+                                                                    router.post(`/simulation/quests/${p.id}/quit`);
+                                                                }
+                                                            }}
+                                                            className="py-2 px-3 rounded-lg text-sm font-medium border border-red-300 dark:border-red-700 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30"
+                                                        >
+                                                            Quit
+                                                        </button>
+                                                    </div>
                                                 )}
 
                                                 {p.status === 'winner' && (

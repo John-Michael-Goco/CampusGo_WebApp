@@ -1,6 +1,7 @@
 import { Head, Link, useForm, usePage, router } from '@inertiajs/react';
+import { addMinutes, format } from 'date-fns';
 import { ArrowLeft, ChevronDown, Lightbulb } from 'lucide-react';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import AppLayout from '@/layouts/app-layout';
@@ -57,15 +58,22 @@ const QUEST_TEMPLATES = [
     },
 ];
 
+function getDefaultStartDate(): string {
+    return format(addMinutes(new Date(), 5), "yyyy-MM-dd'T'HH:mm");
+}
+
 export default function QuestFormPage() {
     const { questId, questData, enrollmentSemester } = usePage<PageProps>().props;
     const auth = (usePage().props as { auth?: { user?: { role?: string } } }).auth;
     const isEdit = typeof questId === 'number';
-    const baseData = questData ?? { ...INITIAL_FORM_DATA };
-    const initialData =
-        !isEdit && auth?.user?.role === 'professor' && !['custom', 'event'].includes(baseData.quest_type)
-            ? { ...baseData, quest_type: 'custom' as const }
-            : baseData;
+    const defaultStartDate = useMemo(() => getDefaultStartDate(), []);
+    const initialData = useMemo(() => {
+        const data = questData ? { ...questData } : { ...INITIAL_FORM_DATA, start_date: defaultStartDate };
+        if (!isEdit && auth?.user?.role === 'professor' && !['custom', 'event'].includes(data.quest_type)) {
+            data.quest_type = 'custom';
+        }
+        return data;
+    }, [questData, isEdit, auth?.user?.role, defaultStartDate]);
     const form = useForm<CreateQuestFormData>(initialData);
     const [guideOpen, setGuideOpen] = useState(false);
     const [clientErrors, setClientErrors] = useState<Record<string, string>>({});
@@ -94,8 +102,14 @@ export default function QuestFormPage() {
         }
         if (typeof form.data.reward_points !== 'number' || form.data.reward_points < 1) e.reward_points = 'Reward points are required (1–150).';
         if (!form.data.start_date) e.start_date = 'Start date is required.';
+        else if (!isEdit && new Date(form.data.start_date).getTime() < Date.now()) e.start_date = 'Start date must be today or in the future.';
         if (!form.data.end_date) e.end_date = 'End date is required.';
-        if (form.data.start_date && form.data.end_date && form.data.start_date > form.data.end_date) e.end_date = 'End date must be on or after start date.';
+        if (form.data.start_date && form.data.end_date) {
+            const startMs = new Date(form.data.start_date).getTime();
+            const endMs = new Date(form.data.end_date).getTime();
+            if (endMs < startMs) e.end_date = 'End date must be on or after start date.';
+            else if (endMs - startMs < 60 * 60 * 1000) e.end_date = 'End date must be at least 1 hour after start date.';
+        }
         if (form.data.quest_type === 'enrollment' && !enrollmentSemester) e.quest_type = 'No available semester for enrollment quests.';
         return e;
     };
@@ -171,6 +185,7 @@ export default function QuestFormPage() {
                         errors={mergedErrors}
                         setData={form.setData}
                         enrollmentSemester={enrollmentSemester}
+                        isEdit={isEdit}
                     />
 
                     <div className="mt-8 flex items-center justify-end gap-3">

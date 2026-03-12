@@ -13,7 +13,8 @@ Complete reference for the CampusGo schema, table purposes, and phased implement
 5. [Decided](#decided)
 6. [Will Everything Work? — Gaps & Fixes](#will-everything-work--gaps--fixes)
 7. [Backend Problems (Concurrency & Data Integrity)](#backend-problems-concurrency--data-integrity)
-8. [Open Decisions](#open-decisions)
+8. [Mobile Game App (AR + Quest Flow)](#mobile-game-app-ar--quest-flow)
+9. [Open Decisions](#open-decisions)
 
 ---
 
@@ -629,6 +630,79 @@ Deleting a quest (or other parent) can break relationships (participants, stages
 - Never **hard delete** in normal flow; set `deleted_at = NOW()` instead.
 - In queries, **filter out** soft-deleted records (`WHERE deleted_at IS NULL`).
 - This keeps history and referential integrity; admins can “restore” by clearing `deleted_at` if you support it.
+
+---
+
+## Mobile Game App (AR + Quest Flow)
+
+This section describes the intended experience for the **mobile game app**: QR scanning, AR feedback, and quest progression. The backend (CampusGo web) already supports quests, stages, submissions, elimination, and rewards; the mobile app will consume existing APIs and surface outcomes via AR anchored to the scanned QR.
+
+### Flow Summary
+
+| Step | Behavior | Feasibility |
+|------|----------|-------------|
+| **Join (stage 1 QR)** | User finds and scans the first-stage QR → AR object appears: “Quest taken” (or “Stage taken” for stage 2+). | Yes |
+| **Question stages** | For MCQ stages: Question 1 pops up → user answers → result shown → Question 2 → … until stage is finished. | Yes |
+| **Elimination — waiting** | After submitting an elimination stage: AR shows “Waiting for results” until ranking runs, then AR completes. | Yes |
+| **Non-elimination — passed, no next start date** | User passed; next stage has no `stage_start` → show next location (e.g. next QR/location hint). | Yes |
+| **QR-scan-only stage — next location** | If stage is just QR scan (no MCQ), show **next location in AR** (not just text). | Yes |
+| **Next stage locked** | If next stage has `stage_start` in the future, show in AR/UI **when the next stage will start**. | Yes |
+| **Non-elimination — not passed** | AR shows “Eliminated” (or equivalent). | Yes |
+| **Non-elimination — passed, next has start date** | Show when the next stage/quest will start (e.g. “Next stage opens at …”). | Yes |
+| **Level up** | After finishing the quest, if user levels up: AR anchored to QR shows “Congratulations, you level up!” (or similar). | Yes |
+| **Achievement unlocked** | If user gains an achievement: AR anchored to QR for that achievement. | Yes |
+| **Custom reward** | If user gains a custom reward: AR for the custom reward. | Yes |
+| **Points from quest** | If user collects points from finishing the quest: AR for points earned. | Yes |
+
+### Detailed Behavior (for implementation)
+
+1. **Scan first-stage QR to join**
+   - Mobile app identifies quest + stage from QR (e.g. QR payload or lookup).
+   - Call join API (e.g. `POST simulation/quests/{quest}/join` or equivalent); if successful, show AR: “Quest taken” (stage 1) or “Stage taken” (stage 2+).
+
+2. **Question type (MCQ)**
+   - After scan (or after “Stage taken” for stage 2+), load questions for current stage from play API.
+   - Show Question 1 → user selects answer → submit → show result (correct/incorrect) → then Question 2, … until all questions for the stage are done.
+   - Then proceed to outcome (next location, elimination waiting, passed/failed, etc.) per rules below.
+
+3. **Elimination**
+   - After user submits the stage, show AR: “Waiting for results.”
+   - When backend has run ranking (all submitted or deadline), next app load or poll returns outcome (advanced / eliminated). AR can then show “Advanced” or “Eliminated” and complete.
+
+4. **Non-elimination outcomes**
+   - **Passed, next stage has no start date:** Show next location (next stage’s location hint / next QR). If the current stage was **QR-scan-only** (no questions), show the next location **as AR** (e.g. AR pop-up with the next location hint or next QR target).
+   - **Next stage locked:** If the next stage has a `stage_start` in the future, show in AR (or UI) **when the next stage will start** (e.g. “Next stage opens at [date/time]”); do not show next location until that time.
+   - **Not passed:** Show “Eliminated” (or “Stage failed”) in AR.
+   - **Passed, next stage has start date:** Show “Next stage starts at [date/time]” (from `stage_start`); do not show next location until that time.
+
+5. **AR for rewards / progression (anchored to QR)**
+   - **Level up:** When quest completion (or stage completion, per design) triggers a level up, show AR at the QR: “Congratulations, you level up!”
+   - **Achievement:** When user gains an achievement, show AR at the QR for that achievement.
+   - **Custom reward:** When user receives a custom reward (e.g. `reward_custom_prize`), show AR for it.
+   - **Points:** When user earns points from finishing the quest, show AR for points collected.
+
+Backend already exposes (or can expose) the needed data: quest/stage info, join, play, submit, outcomes (advanced/eliminated/passed/failed), `stage_start`, next stage location, level, achievements, custom prize, and points. The mobile app needs to call these APIs and drive AR and UI from the responses.
+
+### Feasibility Summary
+
+| Feature | Possible on mobile? | Notes |
+|---------|---------------------|--------|
+| QR scan to join / play | Yes | Standard QR scan; payload or API lookup for quest + stage. |
+| AR anchored to QR | Yes | ARKit (iOS) / ARCore (Android) or Unity/Unreal with AR; anchor content to QR or nearby plane. |
+| “Quest taken” / “Stage taken” AR | Yes | Show 3D or 2D overlay at QR; trigger after successful join/advance API. |
+| MCQ flow (Q1 → result → Q2 → …) | Yes | Native or hybrid UI; get questions from API, submit answers, show result then next. |
+| “Waiting for results” AR (elimination) | Yes | Show AR state; poll or re-fetch play API until status changes to advanced/eliminated. |
+| Next location (no start date) | Yes | API returns next stage’s `location_hint` (and optionally next QR id); show in AR or map. |
+| Next location as AR (QR-scan-only stage) | Yes | For QR-scan-only stages, show next location in AR (e.g. AR pop-up with location hint) instead of plain text. |
+| Next stage locked — show when it starts | Yes | If `stage_start` is in the future, show “Next stage opens at [date/time]” in AR or UI. |
+| “Eliminated” (non-elimination fail) | Yes | API returns outcome; show AR/text. |
+| “Next stage starts at …” (has start date) | Yes | API returns `stage_start`; show in AR or UI. |
+| Level-up AR | Yes | Backend returns level/XP; if level increased, show “Level up!” AR at QR. |
+| Achievement AR | Yes | Backend returns new achievements; show AR per achievement. |
+| Custom reward AR | Yes | Backend returns custom prize; show AR for it. |
+| Points AR | Yes | Backend returns points earned; show AR for points. |
+
+All of the above are possible in a mobile app: the logic is mostly API-driven and AR is used for feedback anchored to the QR. The main work is in the mobile client (QR handling, AR runtime, and wiring API responses to the correct AR/UI state).
 
 ---
 
