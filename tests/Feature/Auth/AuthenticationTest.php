@@ -4,13 +4,16 @@ use App\Models\User;
 use Illuminate\Support\Facades\RateLimiter;
 
 test('login screen can be rendered', function () {
+    /** @var \Tests\TestCase $this */
     $response = $this->get(route('login'));
 
     $response->assertOk();
 });
 
 test('users can authenticate using the login screen', function () {
-    $user = User::factory()->create();
+    /** @var \Tests\TestCase $this */
+    // Web login is only allowed for admin and gamemaster (professor).
+    $user = User::factory()->create(['role' => 'admin']);
 
     $response = $this->post(route('login.store'), [
         'email' => $user->email,
@@ -22,6 +25,7 @@ test('users can authenticate using the login screen', function () {
 });
 
 test('users can not authenticate with invalid password', function () {
+    /** @var \Tests\TestCase $this */
     $user = User::factory()->create();
 
     $this->post(route('login.store'), [
@@ -33,6 +37,7 @@ test('users can not authenticate with invalid password', function () {
 });
 
 test('users can logout', function () {
+    /** @var \Tests\TestCase $this */
     $user = User::factory()->create();
 
     $response = $this->actingAs($user)->post(route('logout'));
@@ -42,6 +47,7 @@ test('users can logout', function () {
 });
 
 test('users are rate limited', function () {
+    /** @var \Tests\TestCase $this */
     $user = User::factory()->create();
 
     RateLimiter::increment(md5('login'.implode('|', [$user->email, '127.0.0.1'])), amount: 5);

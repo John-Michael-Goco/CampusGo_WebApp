@@ -64,9 +64,13 @@ export function QuestFormFields({ data, errors, setData, enrollmentSemester, isE
         return isValid(d) ? d : undefined;
     }, [data.start_date]);
 
-    const isStartDateInPast = useMemo(() => {
-        if (isEdit || !data.start_date) return false;
-        return new Date(data.start_date).getTime() < Date.now();
+    const [isStartDateInPast, setIsStartDateInPast] = useState(false);
+    useEffect(() => {
+        if (isEdit || !data.start_date) {
+            setIsStartDateInPast(false);
+            return;
+        }
+        setIsStartDateInPast(new Date(data.start_date).getTime() < Date.now());
     }, [data.start_date, isEdit]);
 
     const isEndDateLessThanOneHourAfterStart = useMemo(() => {
