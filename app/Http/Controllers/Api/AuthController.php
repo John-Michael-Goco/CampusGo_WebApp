@@ -18,10 +18,11 @@ class AuthController extends Controller
     /**
      * User profile payload for mobile API (step 1.5): profile screen and AR (e.g. level-up).
      * No password or internal-only fields.
+     * When role is student and linked to a master record, includes student data (student_number, course, year_level, section).
      */
     private function userToArray(User $user): array
     {
-        return [
+        $payload = [
             'id' => $user->id,
             'name' => $user->name,
             'email' => $user->email,
@@ -32,6 +33,22 @@ class AuthController extends Controller
             'total_completed_quests' => (int) ($user->total_completed_quests ?? 0),
             'profile_image' => $user->avatar, // full URL for display (null if not set); DB stores path in profile_image
         ];
+
+        if ($user->role === 'student') {
+            $master = $user->masterUser;
+            if ($master !== null) {
+                $payload['student'] = [
+                    'student_number' => $master->school_id,
+                    'first_name' => $master->first_name,
+                    'last_name' => $master->last_name,
+                    'course' => $master->course,
+                    'year_level' => (int) $master->year_level,
+                    'section' => $master->section,
+                ];
+            }
+        }
+
+        return $payload;
     }
 
     public function signin(Request $request): JsonResponse

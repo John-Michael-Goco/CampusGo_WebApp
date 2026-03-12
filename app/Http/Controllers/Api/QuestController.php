@@ -9,6 +9,7 @@ use App\Models\PointTransaction;
 use App\Models\Quest;
 use App\Models\QuestParticipant;
 use App\Models\QuestStage;
+use App\Models\Semester;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -25,6 +26,12 @@ class QuestController extends Controller
         $user = $request->user();
 
         $joinedQuestIds = QuestParticipant::where('user_id', $user->id)->pluck('quest_id');
+
+        $currentSemester = Semester::current();
+        $enrolledInCurrentSemester = $currentSemester !== null && Enrollment::where('user_id', $user->id)
+            ->where('is_enrolled', true)
+            ->where('semester', $currentSemester->name)
+            ->exists();
 
         $enrolledSemesters = Enrollment::where('user_id', $user->id)
             ->where('is_enrolled', true)
@@ -54,7 +61,10 @@ class QuestController extends Controller
                 }
             })
             ->whereNotIn('id', $joinedQuestIds)
-            ->when($enrolledSemesters->isNotEmpty(), function ($q) use ($enrolledSemesters) {
+            ->when(!$enrolledInCurrentSemester, function ($q) {
+                $q->where('quest_type', 'enrollment');
+            })
+            ->when($enrolledInCurrentSemester, function ($q) use ($enrolledSemesters) {
                 $q->where(function ($sub) use ($enrolledSemesters) {
                     $sub->where('quest_type', '!=', 'enrollment')
                         ->orWhereHas('semester', function ($semQ) use ($enrolledSemesters) {
@@ -234,6 +244,15 @@ class QuestController extends Controller
             return response()->json(['message' => 'Quest not found.'], 404);
         }
 
+        $currentSemester = Semester::current();
+        $enrolledInCurrentSemester = $currentSemester !== null && Enrollment::where('user_id', $user->id)
+            ->where('is_enrolled', true)
+            ->where('semester', $currentSemester->name)
+            ->exists();
+        if (!$enrolledInCurrentSemester && $quest->quest_type !== 'enrollment') {
+            return response()->json(['message' => 'You must be enrolled in the current semester before you can join other quests. Complete an enrollment quest first.'], 403);
+        }
+
         $alreadyJoined = QuestParticipant::where('quest_id', $quest->id)->where('user_id', $user->id)->exists();
         if ($alreadyJoined) {
             return response()->json(['message' => 'You have already joined this quest.'], 409);
@@ -369,27 +388,39 @@ class QuestController extends Controller
             if ($participant) {
                 $canPlay = in_array($participant->status, ['active', 'awaiting_ranking'], true) && $participant->current_stage === 1;
             } else {
-                $canJoin = $this->userCanJoinQuest($quest, $user);
-                if (!$canJoin) {
-                    if (!$this->userIsInTargetParticipants($quest, $user)) {
-                        $reason = 'You are not in the target participants for this quest.';
-                    } elseif ($quest->approval_status !== 'approved') {
-                        $reason = 'This quest is not approved yet.';
-                    } elseif (!in_array($quest->status, ['upcoming', 'ongoing'], true)) {
-                        $reason = 'This quest is not available for joining (status: ' . $quest->status . ').';
-                    } elseif ($quest->buy_in_points > 0 && ($user->points_balance ?? 0) < $quest->buy_in_points) {
-                        $reason = 'Not enough points to join (need ' . $quest->buy_in_points . ').';
-                    } else {
-                        $reason = 'Quest is full or you cannot join at this time.';
-                    }
+                $currentSemester = Semester::current();
+                $enrolledInCurrentSemester = $currentSemester !== null && Enrollment::where('user_id', $user->id)
+                    ->where('is_enrolled', true)
+                    ->where('semester', $currentSemester->name)
+                    ->exists();
+                if ($quest->quest_type !== 'enrollment' && !$enrolledInCurrentSemester) {
+                    $canJoin = false;
+                    $reason = 'You must be enrolled in the current semester before you can join other quests. Complete an enrollment quest first.';
                 } else {
-                    $canPlay = true;
+                    $canJoin = $this->userCanJoinQuest($quest, $user);
+                    if (!$canJoin) {
+                        if (!$this->userIsInTargetParticipants($quest, $user)) {
+                            $reason = 'You are not in the target participants for this quest.';
+                        } elseif ($quest->approval_status !== 'approved') {
+                            $reason = 'This quest is not approved yet.';
+                        } elseif (!in_array($quest->status, ['upcoming', 'ongoing'], true)) {
+                            $reason = 'This quest is not available for joining (status: ' . $quest->status . ').';
+                        } elseif ($quest->buy_in_points > 0 && ($user->points_balance ?? 0) < $quest->buy_in_points) {
+                            $reason = 'Not enough points to join (need ' . $quest->buy_in_points . ').';
+                        } elseif ($quest->max_participants > 0 && ($quest->current_participants ?? 0) >= $quest->max_participants) {
+                            $reason = 'This quest is full.';
+                        } else {
+                            $reason = 'You cannot join this quest at this time.';
+                        }
+                    } else {
+                        $canPlay = true;
+                    }
                 }
             }
         } else {
             $participant = QuestParticipant::where('quest_id', $quest->id)->where('user_id', $user->id)->first();
             if (!$participant) {
-                $reason = 'You must join this quest by scanning the first stage QR.';
+                $reason = 'You are not a participant in this quest. Join by scanning the first stage QR.';
             } elseif (!in_array($participant->status, ['active', 'awaiting_ranking'], true)) {
                 $reason = 'You are no longer active in this quest.';
             } elseif ($participant->current_stage !== $stage->stage_number) {
@@ -430,6 +461,16 @@ class QuestController extends Controller
 
     private function userCanJoinQuest(Quest $quest, User $user): bool
     {
+        if ($quest->quest_type !== 'enrollment') {
+            $currentSemester = Semester::current();
+            $enrolledInCurrentSemester = $currentSemester !== null && Enrollment::where('user_id', $user->id)
+                ->where('is_enrolled', true)
+                ->where('semester', $currentSemester->name)
+                ->exists();
+            if (!$enrolledInCurrentSemester) {
+                return false;
+            }
+        }
         if (!$this->userIsInTargetParticipants($quest, $user)) {
             return false;
         }

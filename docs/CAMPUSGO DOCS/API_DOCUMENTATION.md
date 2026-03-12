@@ -67,5 +67,6 @@ Keep the format consistent across the api-docs files below.
 | Step 3.2   | Rich rewards in play/submit: when completed, `rewards` includes points_earned, custom_prize, level_up, previous_level, new_level, achievements[]. |
 | Step 3.4   | Idempotency: duplicate submit returns 200 with idempotent_replay; optional Idempotency-Key header caches response 24h. |
 | Step 3.3   | QR payload: option A adopted — URL path `/quests/{quest_id}/stages/{stage_id}`; documented in quests.md and MOBILE_API_PLAN. |
+| (student)  | User payload: when role is student and linked to master record, `user` includes optional `student` object (student_number, first_name, last_name, course, year_level, section); documented in auth.md. |
 
 When you add or change an endpoint, add a line above and update the relevant api-docs file.
