@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\InventoryController as ApiInventoryController;
 use App\Http\Controllers\Api\LeaderboardController as ApiLeaderboardController;
 use App\Http\Controllers\Api\ParticipantController as ApiParticipantController;
+use App\Http\Controllers\Api\PointsTransferController as ApiPointsTransferController;
 use App\Http\Controllers\Api\QuestController as ApiQuestController;
 use App\Http\Controllers\Api\StoreController as ApiStoreController;
 use App\Http\Controllers\Api\UserHistoryController;
@@ -32,11 +33,16 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/user/activity', [UserHistoryController::class, 'activity']);
     Route::post('/auth/signout', [AuthController::class, 'signout']);
 
+    // Points transfer (only students can search and transfer)
+    Route::get('/students/search', [ApiPointsTransferController::class, 'search']);
+    Route::post('/points/transfer', [ApiPointsTransferController::class, 'transfer']);
+
     // Quests: list (1.2), resolve (1.3), detail (1.4), taken quests with preview, join (2.1)
     Route::get('/quests', [ApiQuestController::class, 'index']);
     Route::post('/quests/join', [ApiQuestController::class, 'join']);
     Route::get('/quests/resolve', [ApiQuestController::class, 'resolve']);
     Route::get('/quests/participating', [ApiQuestController::class, 'participating']);
+    Route::get('/quests/history', [ApiQuestController::class, 'history']);
     Route::get('/quests/{quest}', [ApiQuestController::class, 'show']);
 
     // Play state (step 2.2), status (step 3.1 poll), submit (step 2.3), quit (step 2.4)

@@ -185,6 +185,55 @@ Returns quests the user is already in (taken quests). For each participation tha
 
 ---
 
+## Quests — Quest history (past participations)
+
+**GET** `/api/quests/history`  
+**Auth:** Yes (Bearer)
+
+Returns the user’s **past** quest participations only: status is **not** `active` or `awaiting_ranking` (e.g. `completed`, `eliminated`, `quit`). Ordered newest first (by `joined_at`). Supports optional filters and pagination.
+
+**Query parameters** (all optional)
+
+| Parameter | Type   | Description |
+|-----------|--------|-------------|
+| search    | string | Filter by quest title (partial, case-insensitive). |
+| quest_type| string | One of: `enrollment`, `daily`, `event`, `custom`. |
+| page      | int    | Page number (1-based). |
+| per_page  | int    | Page size (default 20, max 50). |
+
+**Response** `200 OK`
+```json
+{
+  "history": [
+    {
+      "participant_id": 42,
+      "quest_id": 5,
+      "quest_title": "Campus Treasure Hunt",
+      "quest_type": "event",
+      "current_stage": 3,
+      "status": "completed",
+      "total_stages": 3,
+      "updated_at": "2026-03-15 14:35:00",
+      "last_submission_at": "2026-03-15 14:30:00"
+    }
+  ],
+  "pagination": {
+    "current_page": 1,
+    "per_page": 20,
+    "total": 45
+  }
+}
+```
+- Every history item includes **at least one** of:
+  - **`updated_at`**: Last time the participation record was updated (`YYYY-MM-DD HH:MM:SS`). Always present.
+  - **`last_submission_at`**: Time of the participant’s last submit (from submissions), same format. Present when the participant has at least one submission; otherwise the app can use `updated_at` or "—".
+
+**Errors**
+- `401` — Missing or invalid token.
+- `422` — Validation failed (e.g. invalid `quest_type` or `per_page`). Body: `{ "message": "...", "errors": { ... } }`.
+
+---
+
 ## Quests — Get quest + stage detail (step 1.4)
 
 **GET** `/api/quests/{quest}`  

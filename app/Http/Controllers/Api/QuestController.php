@@ -157,6 +157,80 @@ class QuestController extends Controller
     }
 
     /**
+     * Quest history: past participations (completed, eliminated, quit, etc.).
+     * Excludes active and awaiting_ranking. Optional search and quest_type filters, pagination.
+     */
+    public function history(Request $request): JsonResponse
+    {
+        $request->validate([
+            'search' => ['nullable', 'string', 'max:255'],
+            'quest_type' => ['nullable', 'string', 'in:enrollment,daily,event,custom'],
+            'page' => ['nullable', 'integer', 'min:1'],
+            'per_page' => ['nullable', 'integer', 'min:1', 'max:50'],
+        ]);
+
+        $user = $request->user();
+        $perPage = min(50, max(1, (int) $request->input('per_page', 20)));
+
+        $query = QuestParticipant::where('user_id', $user->id)
+            ->whereNotIn('status', ['active', 'awaiting_ranking'])
+            ->whereHas('quest')
+            ->withMax('submissions', 'submitted_at')
+            ->with(['quest' => fn ($q) => $q->withCount('stages')])
+            ->when($request->filled('search'), function ($q) use ($request) {
+                $q->whereHas('quest', function ($qq) use ($request) {
+                    $qq->where('title', 'like', '%' . trim($request->input('search')) . '%');
+                });
+            })
+            ->when($request->filled('quest_type'), function ($q) use ($request) {
+                $q->whereHas('quest', function ($qq) use ($request) {
+                    $qq->where('quest_type', $request->input('quest_type'));
+                });
+            })
+            ->orderByDesc('joined_at');
+
+        $paginator = $query->paginate($perPage);
+
+        $history = $paginator->getCollection()->map(function (QuestParticipant $p) {
+            $quest = $p->quest;
+            $totalStages = $quest ? (int) $quest->stages_count : 0;
+            $lastSubmittedAt = $p->submissions_max_submitted_at ?? null;
+            if ($lastSubmittedAt instanceof \DateTimeInterface) {
+                $lastSubmittedAt = $lastSubmittedAt->format('Y-m-d H:i:s');
+            } elseif (is_string($lastSubmittedAt)) {
+                $lastSubmittedAt = date('Y-m-d H:i:s', strtotime($lastSubmittedAt));
+            }
+            $updatedAt = $p->updated_at;
+            $updatedAtStr = $updatedAt instanceof \DateTimeInterface
+                ? $updatedAt->format('Y-m-d H:i:s')
+                : ($updatedAt ? date('Y-m-d H:i:s', strtotime((string) $updatedAt)) : null);
+            $item = [
+                'participant_id' => $p->id,
+                'quest_id' => $p->quest_id,
+                'quest_title' => $quest?->title ?? 'Unknown',
+                'quest_type' => $quest?->quest_type ?? null,
+                'current_stage' => $p->current_stage,
+                'status' => $p->status,
+                'total_stages' => $totalStages,
+                'updated_at' => $updatedAtStr,
+            ];
+            if ($lastSubmittedAt !== null) {
+                $item['last_submission_at'] = $lastSubmittedAt;
+            }
+            return $item;
+        })->values()->all();
+
+        return response()->json([
+            'history' => $history,
+            'pagination' => [
+                'current_page' => $paginator->currentPage(),
+                'per_page' => $paginator->perPage(),
+                'total' => $paginator->total(),
+            ],
+        ]);
+    }
+
+    /**
      * Get quest and one stage detail (read-only). For app "show": name, description, stage location only.
      * Stage is first stage, or participant's current stage when user is in this quest. No questions by default.
      * Use ?include_questions=1 when loading for AR after QR scan (returns questions + choices, no correct-answer flag).

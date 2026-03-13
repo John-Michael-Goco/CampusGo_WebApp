@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class QuestParticipant extends Model
 {
-    public $timestamps = false;
+    public const CREATED_AT = null;
 
     protected $fillable = [
         'quest_id',
@@ -23,6 +23,7 @@ class QuestParticipant extends Model
         return [
             'current_stage' => 'int',
             'joined_at' => 'datetime',
+            'updated_at' => 'datetime',
         ];
     }
 

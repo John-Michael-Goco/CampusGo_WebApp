@@ -33,8 +33,9 @@ Keep the format consistent across the api-docs files below.
 | [Store](api-docs/store.md) | List store items, redeem item. |
 | [Achievements](api-docs/achievements.md) | List all achievements, list user's earned achievements. |
 | [Inventory](api-docs/inventory.md) | List inventory, use item, history of items used. |
-| [Quests](api-docs/quests.md) | List available quests, resolve from QR, list participating, get quest + stage detail, join quest, get play state, status (poll 3.1), submit (MCQ/QR), quit. |
+| [Quests](api-docs/quests.md) | List available quests, resolve from QR, list participating, **quest history** (past participations), get quest + stage detail, join quest, get play state, status (poll 3.1), submit (MCQ/QR), quit. |
 | [Leaderboard](api-docs/leaderboard.md) | Leaderboard by period (with current user rank). |
+| [Points transfer](api-docs/points-transfer.md) | Search students by school_id, transfer points (students only; min 10, max 100). |
 
 ---
 
@@ -68,5 +69,7 @@ Keep the format consistent across the api-docs files below.
 | Step 3.4   | Idempotency: duplicate submit returns 200 with idempotent_replay; optional Idempotency-Key header caches response 24h. |
 | Step 3.3   | QR payload: option A adopted — URL path `/quests/{quest_id}/stages/{stage_id}`; documented in quests.md and MOBILE_API_PLAN. |
 | (student)  | User payload: when role is student and linked to master record, `user` includes optional `student` object (student_number, first_name, last_name, course, year_level, section); documented in auth.md. |
+| (transfer) | Added GET /api/students/search (search by student_id) and POST /api/points/transfer (to_user_id, amount 10–100); students only; documented in points-transfer.md. |
+| (history)  | Added GET /api/quests/history — past participations (excl. active/awaiting_ranking), optional search, quest_type, pagination (per_page max 50); documented in quests.md. |
 
 When you add or change an endpoint, add a line above and update the relevant api-docs file.
