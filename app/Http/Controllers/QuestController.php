@@ -11,6 +11,7 @@ use App\Models\User;
 use App\Models\QuestQuestionChoice;
 use App\Models\Submission;
 use App\Models\Semester;
+use App\Services\FcmService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -358,6 +359,10 @@ class QuestController extends Controller
             }
 
             ActivityLog::log($user->id, ActivityLog::ACTION_QUEST_CREATED, $quest->title);
+
+            if ($quest->approval_status === 'approved') {
+                app(FcmService::class)->sendNewQuest($quest->load('targetGroups'));
+            }
 
             return redirect()->route('quests.active')->with('success', 'Quest created successfully.');
         });
@@ -858,6 +863,10 @@ class QuestController extends Controller
 
         $action = $validated['approval_status'] === 'approved' ? 'approved' : 'rejected';
         ActivityLog::log($request->user()->id, ActivityLog::ACTION_QUEST_UPDATED, sprintf('%s – %s', $quest->title, $action));
+
+        if ($action === 'approved') {
+            app(FcmService::class)->sendNewQuest($quest->fresh());
+        }
 
         $referer = $request->header('Referer', '');
         if (str_contains($referer, 'from=approval')) {

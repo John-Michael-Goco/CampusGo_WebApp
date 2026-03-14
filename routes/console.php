@@ -9,4 +9,5 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 Schedule::command('leaderboard:populate')->hourly();
-Schedule::command('quests:update-statuses')->everyMinute();
+Schedule::command('quests:update-statuses')->everyMinute(); // also sends FCM "quest_started" when transitioning upcoming → ongoing
+Schedule::command('fcm:check-stage-unlocks')->everyMinute();

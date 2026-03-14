@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\AchievementController as ApiAchievementController;
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\FcmTokenController;
 use App\Http\Controllers\Api\InventoryController as ApiInventoryController;
 use App\Http\Controllers\Api\LeaderboardController as ApiLeaderboardController;
 use App\Http\Controllers\Api\ParticipantController as ApiParticipantController;
@@ -29,6 +30,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/user', [AuthController::class, 'user']);
     Route::put('/user/password', [AuthController::class, 'updatePassword']);
     Route::post('/user/profile', [AuthController::class, 'updateProfile']);
+    Route::put('/user/fcm-token', [FcmTokenController::class, 'update']);
+    Route::delete('/user/fcm-token', [FcmTokenController::class, 'destroy']);
     Route::get('/user/transactions', [UserHistoryController::class, 'transactions']);
     Route::get('/user/activity', [UserHistoryController::class, 'activity']);
     Route::post('/auth/signout', [AuthController::class, 'signout']);

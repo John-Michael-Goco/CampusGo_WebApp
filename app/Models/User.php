@@ -143,4 +143,12 @@ class User extends Authenticatable
     {
         return $this->hasMany(QuestParticipant::class);
     }
+
+    /**
+     * FCM device tokens for push notifications (multiple devices per user).
+     */
+    public function fcmTokens(): HasMany
+    {
+        return $this->hasMany(FcmToken::class);
+    }
 }

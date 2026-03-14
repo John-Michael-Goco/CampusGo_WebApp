@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\ActivityLog;
 use App\Models\StoreItem;
+use App\Services\FcmService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -76,6 +77,10 @@ class StoreItemController extends Controller
             'is_visible' => (bool) ($validated['is_visible'] ?? true),
         ]);
 
+        if ($storeItem->is_visible && $storeItem->isAvailableNow()) {
+            app(FcmService::class)->sendNewStoreItem($storeItem->id, $storeItem->name);
+        }
+
         ActivityLog::log(
             $request->user()->id,
             ActivityLog::ACTION_STORE_ITEM_CREATED,
@@ -106,6 +111,7 @@ class StoreItemController extends Controller
             ? \Carbon\Carbon::parse($validated['end_date'])->toDateTimeString()
             : null;
 
+        $wasVisible = $storeItem->is_visible;
         $storeItem->update([
             'name' => $validated['name'],
             'description' => $validated['description'] ?? null,
@@ -115,6 +121,10 @@ class StoreItemController extends Controller
             'end_date' => $endDate,
             'is_visible' => (bool) ($validated['is_visible'] ?? true),
         ]);
+
+        if ($storeItem->is_visible && $storeItem->isAvailableNow() && ! $wasVisible) {
+            app(FcmService::class)->sendNewStoreItem($storeItem->id, $storeItem->name);
+        }
 
         ActivityLog::log(
             $request->user()->id,

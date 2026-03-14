@@ -6,6 +6,7 @@ use App\Http\Controllers\Simulation\QuestParticipationController;
 use App\Models\Quest;
 use App\Models\QuestParticipant;
 use App\Models\QuestStage;
+use App\Services\FcmService;
 use Carbon\CarbonImmutable;
 use Illuminate\Console\Command;
 
@@ -19,13 +20,19 @@ class UpdateQuestStatusesCommand extends Command
     {
         $now = CarbonImmutable::now();
 
-        $toOngoing = Quest::query()
+        $toOngoingQuests = Quest::query()
             ->where('status', 'upcoming')
             ->where('approval_status', 'approved')
             ->whereNotNull('start_date')
             ->where('start_date', '<=', $now)
             ->where(fn ($q) => $q->whereNull('end_date')->orWhere('end_date', '>', $now))
-            ->update(['status' => 'ongoing']);
+            ->get();
+
+        foreach ($toOngoingQuests as $quest) {
+            $quest->update(['status' => 'ongoing']);
+            app(FcmService::class)->sendQuestStarted($quest);
+        }
+        $toOngoing = $toOngoingQuests->count();
 
         $toCompleted = Quest::query()
             ->whereIn('status', ['upcoming', 'ongoing'])
@@ -83,14 +90,23 @@ class UpdateQuestStatusesCommand extends Command
             if ($submittedCount < $minParticipants) {
                 $stage->update(['status' => 'failed']);
                 $quest->update(['status' => 'cancelled']);
-                $eliminatedCount = QuestParticipant::where('quest_id', $quest->id)
+                $eliminatedParticipants = QuestParticipant::where('quest_id', $quest->id)
                     ->where('current_stage', $stage->stage_number)
                     ->whereIn('status', ['active', 'awaiting_ranking'])
-                    ->count();
-                QuestParticipant::where('quest_id', $quest->id)
-                    ->where('current_stage', $stage->stage_number)
-                    ->whereIn('status', ['active', 'awaiting_ranking'])
-                    ->update(['status' => 'eliminated']);
+                    ->get();
+                $eliminatedCount = $eliminatedParticipants->count();
+                $questTitle = $quest->title ?? 'Quest';
+                $fcm = app(FcmService::class);
+                foreach ($eliminatedParticipants as $p) {
+                    $p->update(['status' => 'eliminated']);
+                    $fcm->sendRankingResolved(
+                        $p->id,
+                        $quest->id,
+                        $questTitle,
+                        'eliminated',
+                        'The stage did not meet the minimum participants and was cancelled.'
+                    );
+                }
                 if ($eliminatedCount > 0) {
                     Quest::where('id', $quest->id)->where('current_participants', '>=', $eliminatedCount)->decrement('current_participants', $eliminatedCount);
                 }

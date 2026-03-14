@@ -14,6 +14,7 @@ use App\Models\User;
 use App\Models\UserAchievement;
 use App\Models\UserInventory;
 use App\Models\Submission;
+use App\Services\FcmService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -588,9 +589,20 @@ class QuestParticipationController extends Controller
         // Only participants with score >= passing_score are eligible to advance; rest are eliminated
         $eligible = $ranked->filter(fn ($entry) => $entry['score'] >= $passingScore)->values();
         $eliminatedByScore = $ranked->filter(fn ($entry) => $entry['score'] < $passingScore);
+        $totalQuestions = count($stageQuestionIds);
+        $questTitle = $quest->title ?? 'Quest';
 
         foreach ($eliminatedByScore as $entry) {
-            $entry['participant']->update(['status' => 'eliminated']);
+            $p = $entry['participant'];
+            $p->update(['status' => 'eliminated']);
+            $fcm = app(FcmService::class);
+            $fcm->sendRankingResolved(
+                $p->id,
+                $quest->id,
+                $questTitle,
+                'eliminated',
+                "Eliminated! You got {$entry['score']}/{$totalQuestions} correct."
+            );
         }
 
         foreach ($eligible as $idx => $entry) {
@@ -599,11 +611,35 @@ class QuestParticipationController extends Controller
                 if ($isLastStage) {
                     $p->update(['status' => 'winner']);
                     $this->awardWinner($p, $quest);
+                    $fcm = app(FcmService::class);
+                    $fcm->sendRankingResolved(
+                        $p->id,
+                        $quest->id,
+                        $questTitle,
+                        'completed',
+                        "Quest completed! You got {$entry['score']}/{$totalQuestions} correct. You earned {$quest->reward_points} points!"
+                    );
                 } else {
                     $p->update(['status' => 'active', 'current_stage' => $nextStageNumber]);
+                    $fcm = app(FcmService::class);
+                    $fcm->sendRankingResolved(
+                        $p->id,
+                        $quest->id,
+                        $questTitle,
+                        'advanced',
+                        "You advanced to Stage {$nextStageNumber}!"
+                    );
                 }
             } else {
                 $p->update(['status' => 'eliminated']);
+                $fcm = app(FcmService::class);
+                $fcm->sendRankingResolved(
+                    $p->id,
+                    $quest->id,
+                    $questTitle,
+                    'eliminated',
+                    "Eliminated! You got {$entry['score']}/{$totalQuestions} correct."
+                );
             }
         }
 
@@ -673,17 +709,36 @@ class QuestParticipationController extends Controller
                 $participant->refresh();
                 $this->awardWinner($participant, $quest);
 
+                $questTitle = $quest->title ?? 'Quest';
+                $fcm = app(FcmService::class);
+                $fcm->sendRankingResolved(
+                    $participant->id,
+                    $quest->id,
+                    $questTitle,
+                    'completed',
+                    "Quest completed! You were the fastest! You earned {$quest->reward_points} points!"
+                );
+
                 // Eliminate all other active/awaiting participants on this stage
-                $eliminatedCount = QuestParticipant::where('quest_id', $quest->id)
+                $others = QuestParticipant::where('quest_id', $quest->id)
                     ->where('id', '!=', $participant->id)
                     ->where('current_stage', $currentStage->stage_number)
                     ->whereIn('status', ['active', 'awaiting_ranking'])
-                    ->count();
-                QuestParticipant::where('quest_id', $quest->id)
-                    ->where('id', '!=', $participant->id)
-                    ->where('current_stage', $currentStage->stage_number)
-                    ->whereIn('status', ['active', 'awaiting_ranking'])
-                    ->update(['status' => 'eliminated']);
+                    ->get();
+                $eliminatedCount = $others->count();
+                foreach ($others as $other) {
+                    $other->update(['status' => 'eliminated']);
+                    $fcm->sendRankingResolved(
+                        $other->id,
+                        $quest->id,
+                        $questTitle,
+                        'eliminated',
+                        'Too late! Another participant already completed this quest.'
+                    );
+                }
+                if ($eliminatedCount > 0) {
+                    Quest::where('id', $quest->id)->where('current_participants', '>=', $eliminatedCount)->decrement('current_participants', $eliminatedCount);
+                }
 
                 return [
                     'outcome' => 'completed',
@@ -697,6 +752,14 @@ class QuestParticipationController extends Controller
             // Someone already won — this participant is eliminated
             $participant->update(['status' => 'eliminated']);
             $participant->refresh();
+            $fcm = app(FcmService::class);
+            $fcm->sendRankingResolved(
+                $participant->id,
+                $quest->id,
+                $quest->title ?? 'Quest',
+                'eliminated',
+                'Too late! Another participant already completed this quest.'
+            );
             return [
                 'outcome' => 'eliminated',
                 'message' => 'Too late! Another participant already completed this quest.',
@@ -772,17 +835,43 @@ class QuestParticipationController extends Controller
         })
         ->values();
 
+        $questTitle = $quest->title ?? 'Quest';
+
         foreach ($ranked as $idx => $entry) {
             $p = $entry['participant'];
             if ($idx < $maxSurvivors) {
                 if ($isLastStage) {
                     $p->update(['status' => 'winner']);
                     $this->awardWinner($p, $quest);
+                    $fcm = app(FcmService::class);
+                    $fcm->sendRankingResolved(
+                        $p->id,
+                        $quest->id,
+                        $questTitle,
+                        'completed',
+                        'Quest completed! You earned ' . ($quest->reward_points ?? 0) . ' points!'
+                    );
                 } else {
                     $p->update(['status' => 'active', 'current_stage' => $nextStageNumber]);
+                    $fcm = app(FcmService::class);
+                    $fcm->sendRankingResolved(
+                        $p->id,
+                        $quest->id,
+                        $questTitle,
+                        'advanced',
+                        "You advanced to Stage {$nextStageNumber}!"
+                    );
                 }
             } else {
                 $p->update(['status' => 'eliminated']);
+                $fcm = app(FcmService::class);
+                $fcm->sendRankingResolved(
+                    $p->id,
+                    $quest->id,
+                    $questTitle,
+                    'eliminated',
+                    'You were eliminated.'
+                );
             }
         }
 
