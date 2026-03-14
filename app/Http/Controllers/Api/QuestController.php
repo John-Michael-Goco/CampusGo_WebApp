@@ -25,7 +25,10 @@ class QuestController extends Controller
     {
         $user = $request->user();
 
-        $joinedQuestIds = QuestParticipant::where('user_id', $user->id)->pluck('quest_id');
+        // Only exclude quests where user is currently in (active/awaiting_ranking). Quit/completed/eliminated can re-join daily.
+        $joinedQuestIds = QuestParticipant::where('user_id', $user->id)
+            ->whereIn('status', ['active', 'awaiting_ranking'])
+            ->pluck('quest_id');
 
         $currentSemester = Semester::current();
         $enrolledInCurrentSemester = $currentSemester !== null && Enrollment::where('user_id', $user->id)
@@ -77,6 +80,11 @@ class QuestController extends Controller
                         });
                 });
             })
+            ->whereDoesntHave('stages', function ($q) {
+                $q->where('stage_number', 1)
+                    ->whereNotNull('stage_deadline')
+                    ->where('stage_deadline', '<', now());
+            })
             ->with(['stages' => fn ($q) => $q->orderBy('stage_number')->limit(1)])
             ->withCount('stages')
             ->orderByDesc('start_date')
@@ -108,15 +116,19 @@ class QuestController extends Controller
     }
 
     /**
-     * List quests the user is participating in (taken quests).
-     * For active/awaiting_ranking: preview is next location (if stage unlocked) or date when stage opens (if locked).
+     * List quests the user is currently participating in (active / awaiting_ranking only).
+     * Completed, eliminated, quit, and winner participations are excluded (those go in history).
      */
     public function participating(Request $request): JsonResponse
     {
         $user = $request->user();
 
         $participations = QuestParticipant::where('user_id', $user->id)
-            ->whereHas('quest')
+            ->whereIn('status', ['active', 'awaiting_ranking'])
+            ->whereHas('quest', function ($q) {
+                $q->whereNull('end_date')
+                    ->orWhere('end_date', '>=', now());
+            })
             ->with(['quest.stages' => fn ($q) => $q->orderBy('stage_number')])
             ->orderByDesc('joined_at')
             ->get()
@@ -127,6 +139,7 @@ class QuestController extends Controller
                     'participant_id' => $p->id,
                     'quest_id' => $p->quest_id,
                     'quest_title' => $quest?->title ?? 'Unknown',
+                    'quest_type' => $quest?->quest_type ?? null,
                     'current_stage' => $p->current_stage,
                     'status' => $p->status,
                     'total_stages' => $stages->count(),
@@ -138,6 +151,7 @@ class QuestController extends Controller
                 if (!$currentStage) {
                     return $payload;
                 }
+                // No stage_start = stage is always unlocked (open automatically)
                 $stageLocked = $currentStage->stage_start && now()->lt($currentStage->stage_start);
                 if ($stageLocked) {
                     $payload['preview'] = [
@@ -287,6 +301,7 @@ class QuestController extends Controller
                 'id' => $quest->id,
                 'title' => $quest->title,
                 'description' => $quest->description,
+                'quest_type' => $quest->quest_type ?? null,
                 'question_type' => $quest->question_type ?? 'multiple_choice',
                 'is_elimination' => (bool) $quest->is_elimination,
                 'reward_points' => (int) $quest->reward_points,
@@ -332,8 +347,12 @@ class QuestController extends Controller
             return response()->json(['message' => 'You must be enrolled in the current semester before you can join other quests. Complete an enrollment quest first.'], 403);
         }
 
-        $alreadyJoined = QuestParticipant::where('quest_id', $quest->id)->where('user_id', $user->id)->exists();
-        if ($alreadyJoined) {
+        $existingParticipant = QuestParticipant::where('quest_id', $quest->id)->where('user_id', $user->id)->first();
+        if ($existingParticipant && in_array($existingParticipant->status, ['active', 'awaiting_ranking'], true)) {
+            return response()->json(['message' => 'You have already joined this quest.'], 409);
+        }
+        // For daily quests, if user previously quit they can re-join (we will reactivate below). Other types cannot re-join.
+        if ($existingParticipant && ($quest->quest_type ?? '') !== 'daily') {
             return response()->json(['message' => 'You have already joined this quest.'], 409);
         }
 
@@ -345,7 +364,12 @@ class QuestController extends Controller
             return response()->json(['message' => 'This quest is not approved yet.'], 403);
         }
 
-        if (!in_array($quest->status, ['upcoming', 'ongoing'], true)) {
+        if ($quest->status !== 'ongoing') {
+            if ($quest->status === 'upcoming' && $quest->start_date) {
+                return response()->json([
+                    'message' => 'This quest is not available for joining (status: upcoming). It opens at ' . $quest->start_date->format('Y-m-d H:i:s') . '.',
+                ], 403);
+            }
             return response()->json(['message' => 'This quest is not available for joining.'], 403);
         }
 
@@ -362,33 +386,41 @@ class QuestController extends Controller
             return response()->json(['message' => 'Not enough points to join (need ' . $quest->buy_in_points . ').'], 403);
         }
 
-        $participant = DB::transaction(function () use ($quest, $user) {
-            $affected = Quest::where('id', $quest->id)
-                ->where(function ($q) {
-                    $q->where('max_participants', 0)
-                        ->orWhereColumn('current_participants', '<', 'max_participants');
-                })
-                ->increment('current_participants');
+        $participant = DB::transaction(function () use ($quest, $user, $existingParticipant) {
+            $reactivatingQuit = $existingParticipant && $existingParticipant->status === 'quit' && ($quest->quest_type ?? '') === 'daily';
 
-            if ($affected === 0) {
-                return null;
-            }
+            if ($reactivatingQuit) {
+                $participant = $existingParticipant;
+                $participant->update(['status' => 'active', 'current_stage' => 1]);
+                Quest::where('id', $quest->id)->where('current_participants', '>=', 0)->increment('current_participants');
+            } else {
+                $affected = Quest::where('id', $quest->id)
+                    ->where(function ($q) {
+                        $q->where('max_participants', 0)
+                            ->orWhereColumn('current_participants', '<', 'max_participants');
+                    })
+                    ->increment('current_participants');
 
-            $participant = QuestParticipant::create([
-                'quest_id' => $quest->id,
-                'user_id' => $user->id,
-                'current_stage' => 1,
-                'status' => 'active',
-            ]);
+                if ($affected === 0) {
+                    return null;
+                }
 
-            if ($quest->buy_in_points > 0) {
-                $user->decrement('points_balance', $quest->buy_in_points);
-                PointTransaction::create([
+                $participant = QuestParticipant::create([
+                    'quest_id' => $quest->id,
                     'user_id' => $user->id,
-                    'amount' => -$quest->buy_in_points,
-                    'transaction_type' => PointTransaction::TYPE_BUY_IN,
-                    'reference_id' => $quest->id,
+                    'current_stage' => 1,
+                    'status' => 'active',
                 ]);
+
+                if ($quest->buy_in_points > 0) {
+                    $user->decrement('points_balance', $quest->buy_in_points);
+                    PointTransaction::create([
+                        'user_id' => $user->id,
+                        'amount' => -$quest->buy_in_points,
+                        'transaction_type' => PointTransaction::TYPE_BUY_IN,
+                        'reference_id' => $quest->id,
+                    ]);
+                }
             }
 
             ActivityLog::log($user->id, ActivityLog::ACTION_QUEST_JOINED, $quest->title);
@@ -464,8 +496,30 @@ class QuestController extends Controller
 
         if ($stage->stage_number === 1) {
             $participant = QuestParticipant::where('quest_id', $quest->id)->where('user_id', $user->id)->first();
-            if ($participant) {
+            $quitDailyCanRejoin = $participant && $participant->status === 'quit' && ($quest->quest_type ?? '') === 'daily';
+            if ($participant && !$quitDailyCanRejoin) {
                 $canPlay = in_array($participant->status, ['active', 'awaiting_ranking'], true) && $participant->current_stage === 1;
+            } elseif ($quitDailyCanRejoin) {
+                $currentSemester = Semester::current();
+                $enrolledInCurrentSemester = $currentSemester !== null && Enrollment::where('user_id', $user->id)
+                    ->where('is_enrolled', true)
+                    ->where('semester', $currentSemester->name)
+                    ->exists();
+                if ($quest->quest_type !== 'enrollment' && !$enrolledInCurrentSemester) {
+                    $canJoin = false;
+                    $reason = 'You must be enrolled in the current semester before you can join other quests. Complete an enrollment quest first.';
+                } else {
+                    $canJoin = $this->userCanJoinQuest($quest, $user);
+                    if ($canJoin) {
+                        $canPlay = true;
+                    } else {
+                        if ($quest->max_participants > 0 && ($quest->current_participants ?? 0) >= $quest->max_participants) {
+                            $reason = 'This quest is full.';
+                        } else {
+                            $reason = 'You cannot join this quest at this time.';
+                        }
+                    }
+                }
             } else {
                 $currentSemester = Semester::current();
                 $enrolledInCurrentSemester = $currentSemester !== null && Enrollment::where('user_id', $user->id)
@@ -505,6 +559,7 @@ class QuestController extends Controller
             } elseif ($participant->current_stage !== $stage->stage_number) {
                 $reason = 'This is not your current stage. Your current stage is ' . $participant->current_stage . '.';
             } else {
+                // No stage_start = stage is always unlocked (open automatically)
                 $stageNotYetOpen = $stage->stage_start && now()->lt($stage->stage_start);
                 if ($stageNotYetOpen) {
                     $reason = 'This stage opens at ' . $stage->stage_start->toDateTimeString() . '.';
@@ -512,6 +567,25 @@ class QuestController extends Controller
                     $canPlay = true;
                 }
             }
+        }
+
+        // If the quest already has a winner, block join and play for everyone else
+        $questHasWinner = QuestParticipant::where('quest_id', $quest->id)
+            ->where('status', 'winner')
+            ->exists();
+        if ($questHasWinner) {
+            $canJoin = false;
+            $canPlay = false;
+            $reason = 'This quest already has a winner.';
+        }
+
+        // For stage 1 when quest is upcoming: block join and give reason + when it opens
+        if ($stage->stage_number === 1 && $quest->status === 'upcoming') {
+            $canJoin = false;
+            $canPlay = false;
+            $opensAt = $quest->start_date ? $quest->start_date->format('Y-m-d H:i:s') : null;
+            $reason = 'This quest is not available for joining (status: upcoming).'
+                . ($opensAt ? ' It opens at ' . $opensAt . '.' : '');
         }
 
         $payload = [
@@ -531,7 +605,10 @@ class QuestController extends Controller
         if ($stage->stage_deadline) {
             $payload['stage_deadline'] = $stage->stage_deadline->toDateTimeString();
         }
-        if ($stage->stage_start) {
+        // stage_start: for stage 1 use quest start_date when upcoming (so app can show "opens at"); else use stage's stage_start
+        if ($stage->stage_number === 1 && $quest->status === 'upcoming' && $quest->start_date) {
+            $payload['stage_start'] = $quest->start_date->format('Y-m-d H:i:s');
+        } elseif ($stage->stage_start) {
             $payload['stage_start'] = $stage->stage_start->toDateTimeString();
         }
 
@@ -559,8 +636,12 @@ class QuestController extends Controller
         if (!in_array($quest->status, ['upcoming', 'ongoing'], true)) {
             return false;
         }
-        if (QuestParticipant::where('quest_id', $quest->id)->where('user_id', $user->id)->exists()) {
+        $existingParticipant = QuestParticipant::where('quest_id', $quest->id)->where('user_id', $user->id)->first();
+        if ($existingParticipant && in_array($existingParticipant->status, ['active', 'awaiting_ranking'], true)) {
             return false;
+        }
+        if ($existingParticipant && ($quest->quest_type ?? '') !== 'daily') {
+            return false; // Quit/completed/eliminated on non-daily: cannot re-join
         }
         if ($quest->max_participants > 0 && ($quest->current_participants ?? 0) >= $quest->max_participants) {
             return false;

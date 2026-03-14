@@ -106,13 +106,16 @@ export function StageForm({
                 Stage {stage.stage_number}
             </legend>
 
-            {/* Location hint */}
+            {/* Location hint (required) */}
             <div className="grid gap-2">
-                <Label>Location hint</Label>
+                <Label>
+                    Location hint <span className="text-destructive">*</span>
+                </Label>
                 <Input
                     value={stage.location_hint}
                     onChange={(e) => update('location_hint', e.target.value)}
                     placeholder="e.g. Near the library entrance"
+                    required
                 />
             </div>
 
@@ -196,7 +199,7 @@ export function StageForm({
                                     <TooltipContent side="top" className="max-w-xs">
                                         {stage.stage_number === 1
                                             ? 'First stage starts when the quest starts (quest start date).'
-                                            : 'Leave empty to open this stage as soon as the previous stage ends. Or set a date to open at a specific time (must be on or after the previous stage end).'}
+                                            : 'Leave empty to have this stage open automatically (always unlocked). Set a date to lock the stage until that time (must be on or after the quest start date). Stage can unlock before the previous stage ends.'}
                                     </TooltipContent>
                                 </Tooltip>
                             </TooltipProvider>
@@ -209,20 +212,33 @@ export function StageForm({
                                 disabled
                             />
                         ) : (
-                            <DateTimePicker
-                                value={stage.stage_start}
-                                onChange={(val) => update('stage_start', val)}
-                                placeholder="Leave empty to open when previous stage ends"
-                                minDate={parseQuestDate((previousStageEndDate || questStartDate) ?? '')}
-                                maxDate={
-                                    (() => {
-                                        const endDate = parseQuestDate((stage.stage_deadline || questEndDate) ?? '');
-                                        const questEnd = parseQuestDate(questEndDate ?? '');
-                                        if (endDate && questEnd) return endDate.getTime() < questEnd.getTime() ? endDate : questEnd;
-                                        return endDate ?? questEnd;
-                                    })()
-                                }
-                            />
+                            <div className="flex flex-wrap items-center gap-2">
+                                <DateTimePicker
+                                    value={stage.stage_start}
+                                    onChange={(val) => update('stage_start', val)}
+                                    placeholder="Leave empty to open automatically (always unlocked)"
+                                    minDate={parseQuestDate(questStartDate ?? '')}
+                                    maxDate={
+                                        (() => {
+                                            const endDate = parseQuestDate((stage.stage_deadline || questEndDate) ?? '');
+                                            const questEnd = parseQuestDate(questEndDate ?? '');
+                                            if (endDate && questEnd) return endDate.getTime() < questEnd.getTime() ? endDate : questEnd;
+                                            return endDate ?? questEnd;
+                                        })()
+                                    }
+                                />
+                                {stage.stage_start ? (
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => update('stage_start', '')}
+                                        aria-label="Clear stage start date"
+                                    >
+                                        Clear
+                                    </Button>
+                                ) : null}
+                            </div>
                         )}
                     </div>
                     <div className="grid gap-2">
@@ -285,7 +301,7 @@ export function StageForm({
                                 <TooltipContent side="top" className="max-w-xs">
                                     {stage.stage_number === 1
                                         ? 'First stage starts when the quest starts (quest start date).'
-                                        : 'Leave empty to open this stage as soon as the previous stage ends. Or set a date to open at a specific time (must be on or after the previous stage end).'}
+                                        : 'Leave empty to have this stage open automatically (always unlocked). Set a date to lock the stage until that time (must be on or after the quest start date). Stage can unlock before the previous stage ends.'}
                                 </TooltipContent>
                             </Tooltip>
                         </TooltipProvider>
@@ -298,20 +314,33 @@ export function StageForm({
                             disabled
                         />
                     ) : (
-                        <DateTimePicker
-                            value={stage.stage_start}
-                            onChange={(val) => update('stage_start', val)}
-                            placeholder="Leave empty to open when previous stage ends"
-                            minDate={parseQuestDate((previousStageEndDate || questStartDate) ?? '')}
-                            maxDate={
-                                (() => {
-                                    const endDate = parseQuestDate((stage.stage_deadline || questEndDate) ?? '');
-                                    const questEnd = parseQuestDate(questEndDate ?? '');
-                                    if (endDate && questEnd) return endDate.getTime() < questEnd.getTime() ? endDate : questEnd;
-                                    return endDate ?? questEnd;
-                                })()
-                            }
-                        />
+                        <div className="flex flex-wrap items-center gap-2">
+                            <DateTimePicker
+                                value={stage.stage_start}
+                                onChange={(val) => update('stage_start', val)}
+                                placeholder="Leave empty to open automatically (always unlocked)"
+                                minDate={parseQuestDate(questStartDate ?? '')}
+                                maxDate={
+                                    (() => {
+                                        const endDate = parseQuestDate((stage.stage_deadline || questEndDate) ?? '');
+                                        const questEnd = parseQuestDate(questEndDate ?? '');
+                                        if (endDate && questEnd) return endDate.getTime() < questEnd.getTime() ? endDate : questEnd;
+                                        return endDate ?? questEnd;
+                                    })()
+                                }
+                            />
+                            {stage.stage_start ? (
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => update('stage_start', '')}
+                                    aria-label="Clear stage start date"
+                                >
+                                    Clear
+                                </Button>
+                            ) : null}
+                        </div>
                     )}
                 </div>
             )}

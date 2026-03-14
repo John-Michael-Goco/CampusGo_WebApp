@@ -83,10 +83,17 @@ class UpdateQuestStatusesCommand extends Command
             if ($submittedCount < $minParticipants) {
                 $stage->update(['status' => 'failed']);
                 $quest->update(['status' => 'cancelled']);
+                $eliminatedCount = QuestParticipant::where('quest_id', $quest->id)
+                    ->where('current_stage', $stage->stage_number)
+                    ->whereIn('status', ['active', 'awaiting_ranking'])
+                    ->count();
                 QuestParticipant::where('quest_id', $quest->id)
                     ->where('current_stage', $stage->stage_number)
                     ->whereIn('status', ['active', 'awaiting_ranking'])
                     ->update(['status' => 'eliminated']);
+                if ($eliminatedCount > 0) {
+                    Quest::where('id', $quest->id)->where('current_participants', '>=', $eliminatedCount)->decrement('current_participants', $eliminatedCount);
+                }
                 $processed++;
                 continue;
             }
@@ -94,10 +101,17 @@ class UpdateQuestStatusesCommand extends Command
             $allStages = $quest->stages->sortBy('stage_number')->values();
 
             // Eliminate participants who are still "active" (never submitted)
+            $activeEliminatedCount = QuestParticipant::where('quest_id', $quest->id)
+                ->where('current_stage', $stage->stage_number)
+                ->where('status', 'active')
+                ->count();
             QuestParticipant::where('quest_id', $quest->id)
                 ->where('current_stage', $stage->stage_number)
                 ->where('status', 'active')
                 ->update(['status' => 'eliminated']);
+            if ($activeEliminatedCount > 0) {
+                Quest::where('id', $quest->id)->where('current_participants', '>=', $activeEliminatedCount)->decrement('current_participants', $activeEliminatedCount);
+            }
 
             $controller = app(QuestParticipationController::class);
             if ($quest->question_type === 'multiple_choice') {

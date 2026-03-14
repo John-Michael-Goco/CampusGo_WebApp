@@ -119,6 +119,8 @@ Copy this document into your Android Studio codebase (e.g. `docs/` or `app/src/m
 - **Response:** `{ "ok": true, "message": "You have left the quest." }`
 - **Errors:** 403 if not in progress or below minimum_participants
 
+**Quest play — crash and resume:** See **QUEST_PLAY_CRASH_AND_RESUME.md** for what happens when the app crashes while the user is answering, how to resume (My Quests → Play), and how to use `Idempotency-Key` on submit for safe retries.
+
 ---
 
 ## 4. Store

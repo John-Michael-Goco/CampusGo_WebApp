@@ -122,9 +122,12 @@ class QuestController extends Controller
 
     /**
      * Show active quests (approved & ongoing/upcoming).
+     * Syncs status from start/end dates so "upcoming" → "ongoing" and "ongoing" → "completed" are current when viewing the list.
      */
     public function active(Request $request): Response
     {
+        $this->syncQuestStatusesFromDates();
+
         $filters = [
             'search' => (string) $request->query('search', ''),
             'quest_type' => (string) $request->query('quest_type', ''),
@@ -812,12 +815,18 @@ class QuestController extends Controller
 
         ActivityLog::log($user->id, ActivityLog::ACTION_QUEST_DELETED, $title);
 
+        // Never redirect to the show page (quest is now soft-deleted → 404). Always redirect to a list.
         $referer = $request->header('Referer', '');
         if (str_contains($referer, 'from=history')) {
             return redirect()->route('quests.history')->with('success', 'Quest deleted.');
         }
-
-        return back()->with('success', 'Quest deleted.');
+        if (str_contains($referer, 'from=created')) {
+            return redirect()->route('quests.created')->with('success', 'Quest deleted.');
+        }
+        if (str_contains($referer, 'from=approval')) {
+            return redirect()->route('quests.approval')->with('success', 'Quest deleted.');
+        }
+        return redirect()->route('quests.active')->with('success', 'Quest deleted.');
     }
 
     /**
@@ -1041,7 +1050,8 @@ class QuestController extends Controller
     }
 
     /**
-     * Validate that stage start (stage 2+) is on or after previous stage end, before own stage end, and within quest range.
+     * Validate that stage start (stage 2+) is on or after quest start, before own stage end, and within quest range.
+     * Stage 2+ may unlock before the previous stage has ended (e.g. early finishers can move on).
      */
     private function validateStageStartBeforeEnd(array $stages, ?string $questStart, ?string $questEnd): ?string
     {
@@ -1063,15 +1073,6 @@ class QuestController extends Controller
             if ($startTs !== false && $stageStartTs < $startTs) {
                 $pos = $idx + 1;
                 return "Stage {$pos} start date must be on or after the quest start date.";
-            }
-            $prevStage = $stages[$idx - 1];
-            $prevStageEndStr = $prevStage['stage_deadline'] ?? $questEnd;
-            if ($prevStageEndStr !== null && $prevStageEndStr !== '') {
-                $prevEndTs = strtotime($prevStageEndStr);
-                if ($prevEndTs !== false && $stageStartTs < $prevEndTs) {
-                    $pos = $idx + 1;
-                    return "Stage {$pos} start date must be on or after the previous stage end date.";
-                }
             }
             if ($endTs !== false && $stageStartTs > $endTs) {
                 $pos = $idx + 1;
@@ -1181,6 +1182,29 @@ class QuestController extends Controller
             'stages.*.questions.*.choices.min' => 'At least 2 choices are required per question.',
             'stages.*.questions.*.choices.*.choice_text.required' => 'Choice text cannot be empty.',
         ];
+    }
+
+    /**
+     * Sync quest status from start/end dates (upcoming → ongoing → completed).
+     * Called when loading Active Quests so the list shows current status even if the scheduler hasn't run.
+     */
+    private function syncQuestStatusesFromDates(): void
+    {
+        $now = now();
+
+        Quest::query()
+            ->where('status', 'upcoming')
+            ->where('approval_status', 'approved')
+            ->whereNotNull('start_date')
+            ->where('start_date', '<=', $now)
+            ->where(fn ($q) => $q->whereNull('end_date')->orWhere('end_date', '>', $now))
+            ->update(['status' => 'ongoing']);
+
+        Quest::query()
+            ->whereIn('status', ['upcoming', 'ongoing'])
+            ->whereNotNull('end_date')
+            ->where('end_date', '<=', $now)
+            ->update(['status' => 'completed']);
     }
 }
 

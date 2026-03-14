@@ -237,6 +237,7 @@ class QuestParticipationController extends Controller
         $nextStageNumber = null;
 
         if ($currentStage) {
+            // No stage_start = stage is always unlocked (open automatically)
             $stageNotYetOpen = $currentStage->stage_start && now()->lt($currentStage->stage_start);
             if ($stageNotYetOpen) {
                 $stageLocked = true;
@@ -456,19 +457,35 @@ class QuestParticipationController extends Controller
                 }
             }
 
-            $allStageQuestionsAnswered = Submission::where('participant_id', $participant->id)
+            // After recording each answer: count total submitted answers for this participant's current stage (cumulative, including previous submits).
+            // Run completion logic only when all stage questions are now answered.
+            $requiredQuestionCount = count(array_unique($stageQuestionIds));
+            if ($requiredQuestionCount === 0) {
+                return ['outcome' => 'partial', 'correct' => $correctCount, 'total' => $totalCount];
+            }
+            $submittedQuestionCount = Submission::where('participant_id', $participant->id)
                 ->whereIn('question_id', $stageQuestionIds)
-                ->count() >= count($stageQuestionIds);
+                ->pluck('question_id')
+                ->unique()
+                ->count();
+            $allStageQuestionsAnswered = $submittedQuestionCount >= $requiredQuestionCount;
 
             if (!$allStageQuestionsAnswered) {
                 return ['outcome' => 'partial', 'correct' => $correctCount, 'total' => $totalCount];
             }
 
+            // Use stage totals from all submissions for pass/fail and ranking (not just this request's batch)
+            $stageSubmissions = Submission::where('participant_id', $participant->id)
+                ->whereIn('question_id', $stageQuestionIds)
+                ->get();
+            $stageCorrectCount = $stageSubmissions->where('is_correct', true)->count();
+            $stageTotalCount = $stageSubmissions->count();
+
             $nextStageNumber = $participant->current_stage + 1;
             $isLastStage = !$stages->contains('stage_number', $nextStageNumber);
 
             if ($isElimination && $questionType === 'multiple_choice') {
-                return $this->handleElimMC($participant, $currentStage, $quest, $stages, $user, $correctCount, $totalCount);
+                return $this->handleElimMC($participant, $currentStage, $quest, $stages, $user, $stageCorrectCount, $stageTotalCount);
             }
 
             if ($isElimination && $questionType === 'qr_scan') {
@@ -476,11 +493,11 @@ class QuestParticipationController extends Controller
             }
 
             if (!$isElimination && $questionType === 'multiple_choice') {
-                return $this->handleNonElimMC($participant, $currentStage, $quest, $user, $correctCount, $totalCount, $isLastStage, $nextStageNumber);
+                return $this->handleNonElimMC($participant, $currentStage, $quest, $user, $stageCorrectCount, $stageTotalCount, $isLastStage, $nextStageNumber);
             }
 
             // Non-elimination + QR scan: always advance
-            return $this->handleNonElimQR($participant, $quest, $user, $isLastStage, $nextStageNumber, $totalCount);
+            return $this->handleNonElimQR($participant, $quest, $user, $isLastStage, $nextStageNumber, $stageTotalCount);
         });
 
         return $results;
@@ -517,16 +534,21 @@ class QuestParticipationController extends Controller
         return [
             'outcome' => 'awaiting_ranking',
             'message' => "Submitted! You got {$correctCount}/{$totalCount} correct. Waiting for other participants...",
+            'correct' => $correctCount,
+            'total' => $totalCount,
         ];
     }
 
     /**
      * Run the ranking algorithm for an elimination + MC stage.
+     * Only participants with score >= passing_score are eligible to advance; among them, top max_survivors advance.
+     * Participants with score < passing_score are always eliminated.
      */
     public function runEliminationRanking($currentStage, Quest $quest, $stages): void
     {
         $stageQuestionIds = $currentStage->questions->pluck('id')->toArray();
         $maxSurvivors = $currentStage->max_survivors ?: PHP_INT_MAX;
+        $passingScore = (int) ($currentStage->passing_score ?? 0);
         $nextStageNumber = $currentStage->stage_number + 1;
         $isLastStage = !$stages->contains('stage_number', $nextStageNumber);
 
@@ -563,7 +585,15 @@ class QuestParticipationController extends Controller
         })
         ->values();
 
-        foreach ($ranked as $idx => $entry) {
+        // Only participants with score >= passing_score are eligible to advance; rest are eliminated
+        $eligible = $ranked->filter(fn ($entry) => $entry['score'] >= $passingScore)->values();
+        $eliminatedByScore = $ranked->filter(fn ($entry) => $entry['score'] < $passingScore);
+
+        foreach ($eliminatedByScore as $entry) {
+            $entry['participant']->update(['status' => 'eliminated']);
+        }
+
+        foreach ($eligible as $idx => $entry) {
             $p = $entry['participant'];
             if ($idx < $maxSurvivors) {
                 if ($isLastStage) {
@@ -578,10 +608,17 @@ class QuestParticipationController extends Controller
         }
 
         // Eliminate anyone still "active" who didn't submit (missed deadline)
+        $activeEliminatedCount = QuestParticipant::where('quest_id', $quest->id)
+            ->where('current_stage', $currentStage->stage_number)
+            ->where('status', 'active')
+            ->count();
         QuestParticipant::where('quest_id', $quest->id)
             ->where('current_stage', $currentStage->stage_number)
             ->where('status', 'active')
             ->update(['status' => 'eliminated']);
+        if ($activeEliminatedCount > 0) {
+            Quest::where('id', $quest->id)->where('current_participants', '>=', $activeEliminatedCount)->decrement('current_participants', $activeEliminatedCount);
+        }
     }
 
     /**
@@ -594,6 +631,8 @@ class QuestParticipationController extends Controller
                 'outcome' => 'completed',
                 'message' => "Quest completed! You got {$correctCount}/{$totalCount} correct. You earned {$quest->reward_points} points!"
                     . ($quest->quest_type === 'enrollment' ? ' You are now enrolled for this semester.' : ''),
+                'correct' => $correctCount,
+                'total' => $totalCount,
             ];
         }
 
@@ -601,6 +640,8 @@ class QuestParticipationController extends Controller
             return [
                 'outcome' => 'eliminated',
                 'message' => "Eliminated! You got {$correctCount}/{$totalCount} correct.",
+                'correct' => $correctCount,
+                'total' => $totalCount,
             ];
         }
 
@@ -608,16 +649,63 @@ class QuestParticipationController extends Controller
         return [
             'outcome' => 'advanced',
             'message' => "Stage passed! {$correctCount}/{$totalCount} correct. Moving to stage {$nextStage}.",
+            'correct' => $correctCount,
+            'total' => $totalCount,
         ];
     }
 
     /**
      * Mode B: Elimination + QR Scan
-     * Wait for all participants on the stage to submit (or deadline). Then rank by submission time only;
-     * top max_survivors advance (earliest submitter wins).
+     *
+     * Last stage: first submitter wins immediately (winner = fastest to scan); every subsequent submitter is eliminated.
+     * Non-last stage: wait for all participants (or deadline), then rank by submission time; top max_survivors advance.
      */
     private function handleElimQR(QuestParticipant $participant, $currentStage, Quest $quest, $stages, $user, bool $isLastStage, int $nextStageNumber): array
     {
+        if ($isLastStage) {
+            // Last stage QR elimination: first to submit wins, everyone else is eliminated.
+            $alreadyHasWinner = QuestParticipant::where('quest_id', $quest->id)
+                ->where('status', 'winner')
+                ->exists();
+
+            if (!$alreadyHasWinner) {
+                $participant->update(['status' => 'winner']);
+                $participant->refresh();
+                $this->awardWinner($participant, $quest);
+
+                // Eliminate all other active/awaiting participants on this stage
+                $eliminatedCount = QuestParticipant::where('quest_id', $quest->id)
+                    ->where('id', '!=', $participant->id)
+                    ->where('current_stage', $currentStage->stage_number)
+                    ->whereIn('status', ['active', 'awaiting_ranking'])
+                    ->count();
+                QuestParticipant::where('quest_id', $quest->id)
+                    ->where('id', '!=', $participant->id)
+                    ->where('current_stage', $currentStage->stage_number)
+                    ->whereIn('status', ['active', 'awaiting_ranking'])
+                    ->update(['status' => 'eliminated']);
+
+                return [
+                    'outcome' => 'completed',
+                    'message' => "Quest completed! You were the fastest! You earned {$quest->reward_points} points!"
+                        . ($quest->quest_type === 'enrollment' ? ' You are now enrolled for this semester.' : ''),
+                    'correct' => 1,
+                    'total' => 1,
+                ];
+            }
+
+            // Someone already won — this participant is eliminated
+            $participant->update(['status' => 'eliminated']);
+            $participant->refresh();
+            return [
+                'outcome' => 'eliminated',
+                'message' => 'Too late! Another participant already completed this quest.',
+                'correct' => 1,
+                'total' => 1,
+            ];
+        }
+
+        // Non-last stage: use awaiting_ranking + batch ranking as before
         $participant->update(['status' => 'awaiting_ranking']);
 
         $activeCount = QuestParticipant::where('quest_id', $quest->id)
@@ -642,6 +730,8 @@ class QuestParticipationController extends Controller
         return [
             'outcome' => 'awaiting_ranking',
             'message' => 'Stage submitted! Waiting for other participants to finish or the stage deadline.',
+            'correct' => 1,
+            'total' => 1,
         ];
     }
 
@@ -696,10 +786,17 @@ class QuestParticipationController extends Controller
             }
         }
 
+        $activeEliminatedCount = QuestParticipant::where('quest_id', $quest->id)
+            ->where('current_stage', $currentStage->stage_number)
+            ->where('status', 'active')
+            ->count();
         QuestParticipant::where('quest_id', $quest->id)
             ->where('current_stage', $currentStage->stage_number)
             ->where('status', 'active')
             ->update(['status' => 'eliminated']);
+        if ($activeEliminatedCount > 0) {
+            Quest::where('id', $quest->id)->where('current_participants', '>=', $activeEliminatedCount)->decrement('current_participants', $activeEliminatedCount);
+        }
     }
 
     /**
@@ -712,6 +809,8 @@ class QuestParticipationController extends Controller
                 'outcome' => 'completed',
                 'message' => "Quest completed! You earned {$quest->reward_points} points!"
                     . ($quest->quest_type === 'enrollment' ? ' You are now enrolled for this semester.' : ''),
+                'correct' => 1,
+                'total' => 1,
             ];
         }
 
@@ -719,6 +818,8 @@ class QuestParticipationController extends Controller
             return [
                 'outcome' => 'eliminated',
                 'message' => 'Eliminated! You did not rank in the top this stage.',
+                'correct' => 0,
+                'total' => 1,
             ];
         }
 
@@ -726,6 +827,8 @@ class QuestParticipationController extends Controller
         return [
             'outcome' => 'advanced',
             'message' => "Stage passed! Moving to stage {$nextStage}.",
+            'correct' => 1,
+            'total' => 1,
         ];
     }
 
@@ -748,71 +851,73 @@ class QuestParticipationController extends Controller
     /**
      * Mode C: Non-Elimination + Multiple Choice
      * Pass if score >= passing_score, else fail.
-     * Advance only when the stage end date (or quest end date) has passed.
+     * Advance immediately when the user passes (no waiting for stage deadline).
      */
     private function handleNonElimMC(QuestParticipant $participant, $currentStage, Quest $quest, $user, int $correctCount, int $totalCount, bool $isLastStage, int $nextStageNumber): array
     {
-        $passingScore = $currentStage->passing_score ?? 0;
+        $passingScore = (int) ($currentStage->passing_score ?? 0);
 
         if ($correctCount >= $passingScore) {
-            $stageEnd = $currentStage->stage_deadline ?? $quest->end_date;
-            if ($stageEnd && now()->lt($stageEnd)) {
-                return [
-                    'outcome' => 'stage_not_ended',
-                    'message' => 'Your answers are correct, but this stage has not ended yet. You can advance after ' . $stageEnd->format('M j, Y g:i A') . '.',
-                ];
-            }
             if ($isLastStage) {
+                // Stage passed + last stage: set outcome "completed", status to "winner", populate rewards, award points to user.
                 $participant->update(['status' => 'winner']);
+                $participant->refresh();
                 $this->awardWinner($participant, $quest);
                 return [
                     'outcome' => 'completed',
                     'message' => "Quest completed! You got {$correctCount}/{$totalCount} correct (needed {$passingScore}). You earned {$quest->reward_points} points!"
                         . ($quest->quest_type === 'enrollment' ? ' You are now enrolled for this semester.' : ''),
+                    'correct' => $correctCount,
+                    'total' => $totalCount,
                 ];
             }
+            // Stage passed + more stages: set outcome "advanced", increment current_stage in DB; play payload will have next_stage_location_hint / next_stage_starts_at.
             $participant->update(['current_stage' => $nextStageNumber]);
+            $participant->refresh();
             return [
                 'outcome' => 'advanced',
                 'message' => "Stage passed! {$correctCount}/{$totalCount} correct (needed {$passingScore}). Moving to stage {$nextStageNumber}.",
+                'correct' => $correctCount,
+                'total' => $totalCount,
             ];
         }
 
         $participant->update(['status' => 'eliminated']);
+        $participant->refresh();
         return [
             'outcome' => 'eliminated',
             'message' => "Failed! You got {$correctCount}/{$totalCount} correct but needed {$passingScore}.",
+            'correct' => $correctCount,
+            'total' => $totalCount,
         ];
     }
 
     /**
      * Mode D: Non-Elimination + QR Scan
-     * Advance only when the stage end date (or quest end date) has passed. If last stage → winner.
+     * Advance immediately when user completes the QR scan. If last stage → winner.
      */
     private function handleNonElimQR(QuestParticipant $participant, Quest $quest, $user, bool $isLastStage, int $nextStageNumber, int $totalCount): array
     {
-        $currentStage = $quest->stages->sortBy('stage_number')->firstWhere('stage_number', $participant->current_stage);
-        $stageEnd = $currentStage?->stage_deadline ?? $quest->end_date;
-        if ($stageEnd && now()->lt($stageEnd)) {
-            return [
-                'outcome' => 'stage_not_ended',
-                'message' => 'Stage submitted, but this stage has not ended yet. You can advance after ' . $stageEnd->format('M j, Y g:i A') . '.',
-            ];
-        }
         if ($isLastStage) {
             $participant->update(['status' => 'winner']);
+            $participant->refresh();
             $this->awardWinner($participant, $quest);
             return [
                 'outcome' => 'completed',
                 'message' => "Quest completed! You earned {$quest->reward_points} points!"
                     . ($quest->quest_type === 'enrollment' ? ' You are now enrolled for this semester.' : ''),
+                'correct' => 1,
+                'total' => 1,
             ];
         }
 
         $participant->update(['current_stage' => $nextStageNumber]);
+        $participant->refresh();
         return [
             'outcome' => 'advanced',
             'message' => "Stage passed! Moving to stage {$nextStageNumber}.",
+            'correct' => 1,
+            'total' => 1,
         ];
     }
 

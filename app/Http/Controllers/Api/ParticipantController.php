@@ -121,9 +121,26 @@ class ParticipantController extends Controller
             return response()->json(['message' => 'Current stage not found.'], 400);
         }
 
+        // No stage_start = stage is always unlocked (open automatically)
         $stageNotYetOpen = $currentStage->stage_start && now()->lt($currentStage->stage_start);
         if ($stageNotYetOpen) {
             return response()->json(['message' => 'This stage is not open yet.'], 403);
+        }
+
+        // Block submit if quest already has a winner (QR elimination last-stage: first to scan wins)
+        $questHasWinner = QuestParticipant::where('quest_id', $quest->id)
+            ->where('status', 'winner')
+            ->exists();
+        if ($questHasWinner && $participant->status !== 'winner') {
+            $participant->update(['status' => 'eliminated']);
+            $participant->refresh();
+            return response()->json([
+                'outcome' => 'eliminated',
+                'message' => 'This quest already has a winner.',
+                'passed' => false,
+                'failed' => true,
+                'rewards' => null,
+            ]);
         }
 
         $stageQuestionIds = $currentStage->questions->pluck('id')->toArray();
@@ -180,6 +197,12 @@ class ParticipantController extends Controller
             }
         }
 
+        // Submit handler: processSubmit records each answer, then:
+        // - Counts how many of the current stage's questions this participant has answered.
+        // - If all questions answered → evaluates score against passing_score.
+        // - If passed and last stage → sets status = "winner", awards points to user, returns outcome "completed" and rewards (points_earned = quest reward_points).
+        // - If passed and more stages → increments current_stage, returns outcome "advanced".
+        // - If failed → sets status = "eliminated", returns outcome "eliminated".
         $simulation = app(SimulationQuestParticipationController::class);
         $result = $simulation->processSubmit($participant, $answers);
 
@@ -225,6 +248,7 @@ class ParticipantController extends Controller
 
     /**
      * Build the JSON payload returned after a successful submit (real or idempotent).
+     * For single-stage quests (total_stages <= 1), when the user passed we always send outcome "completed" and rewards.
      */
     private function buildSubmitResponsePayload(QuestParticipant $participant, array $result): array
     {
@@ -238,7 +262,16 @@ class ParticipantController extends Controller
             $payload['correct_count'] = $result['correct'];
             $payload['total_count'] = $result['total'];
         }
-        if ($participant->status === 'winner' || $participant->status === 'completed') {
+
+        $totalStages = (int) ($payload['total_stages'] ?? 0);
+        $singleStageQuestPassed = $totalStages <= 1 && $payload['passed'];
+
+        if ($singleStageQuestPassed) {
+            $payload['outcome'] = 'completed';
+            $payload['quest_completed'] = true;
+            $payload['eliminated'] = false;
+            $payload['rewards'] = $this->buildRewardsPayload($participant);
+        } elseif ($participant->status === 'winner' || $participant->status === 'completed') {
             $payload['rewards'] = $this->buildRewardsPayload($participant);
         } else {
             $payload['rewards'] = null;
@@ -327,9 +360,12 @@ class ParticipantController extends Controller
         $stages = $quest->stages->sortBy('stage_number')->values();
         $currentStage = $stages->firstWhere('stage_number', $participant->current_stage);
         $minParticipants = $currentStage ? (int) $currentStage->minimum_participants : 0;
+        // Participant count: quests.current_participants (incremented on join, decremented on quit only).
         $currentParticipants = (int) $quest->current_participants;
+        $isDaily = ($quest->quest_type ?? '') === 'daily';
 
-        if ($currentParticipants - 1 < $minParticipants) {
+        // Daily quests: always allow quit (user can take the quest again). Others: block if below minimum.
+        if (!$isDaily && $currentParticipants - 1 < $minParticipants) {
             return response()->json(['message' => 'Quitting would leave the quest below the minimum participants for this stage.'], 403);
         }
 
@@ -345,32 +381,38 @@ class ParticipantController extends Controller
 
     /**
      * Build play-state payload for a participant (used by play() and submit() response).
+     * Always includes total_stages (int) so the app can tell single-stage from multi-stage (e.g. show rewards vs "You advanced").
      */
     private function buildPlayStatePayload(QuestParticipant $participant): array
     {
         $quest = $participant->quest;
-        $stages = $quest->stages;
+        if (!$quest) {
+            $quest = Quest::find($participant->quest_id);
+        }
+        $stages = $quest ? $quest->stages : collect();
+        $totalStages = $quest ? (int) ($stages->isNotEmpty() ? $stages->count() : $quest->stages()->count()) : 0;
         $currentStageNumber = $participant->current_stage;
         $currentStage = $stages->firstWhere('stage_number', $currentStageNumber);
 
         $minParticipants = $currentStage ? (int) $currentStage->minimum_participants : 0;
-        $currentParticipants = (int) $quest->current_participants;
+        $currentParticipants = $quest ? (int) $quest->current_participants : 0;
+        $isDaily = $quest && ($quest->quest_type ?? '') === 'daily';
         $canQuit = in_array($participant->status, ['active', 'awaiting_ranking'], true)
-            && ($currentParticipants - 1 >= $minParticipants);
+            && ($isDaily || $currentParticipants - 1 >= $minParticipants);
         $quitGuardReason = (!$canQuit && in_array($participant->status, ['active', 'awaiting_ranking'], true))
             ? 'Quitting would leave the quest below the minimum participants for this stage.'
             : null;
 
         $payload = [
             'participant_id' => $participant->id,
-            'quest_id' => $quest->id,
+            'quest_id' => $participant->quest_id,
             'current_stage' => $participant->current_stage,
             'status' => $participant->status,
             'can_quit' => $canQuit,
             'quit_guard_reason' => $quitGuardReason,
-            'total_stages' => $stages->count(),
-            'question_type' => $quest->question_type ?? 'multiple_choice',
-            'is_elimination' => (bool) $quest->is_elimination,
+            'total_stages' => $totalStages,
+            'question_type' => $quest ? ($quest->question_type ?? 'multiple_choice') : 'multiple_choice',
+            'is_elimination' => $quest ? (bool) $quest->is_elimination : false,
         ];
 
         if ($participant->status === 'awaiting_ranking') {
@@ -392,6 +434,7 @@ class ParticipantController extends Controller
         $nextStageNumber = null;
 
         if ($currentStage) {
+            // No stage_start = stage is always unlocked (open automatically)
             $stageNotYetOpen = $currentStage->stage_start && now()->lt($currentStage->stage_start);
             if ($stageNotYetOpen) {
                 $stageLocked = true;
