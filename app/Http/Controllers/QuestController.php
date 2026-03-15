@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Achievement;
 use App\Models\ActivityLog;
 use App\Models\MasterUser;
 use App\Models\PointTransaction;
@@ -95,6 +96,7 @@ class QuestController extends Controller
 
         $query = Quest::query()
             ->with(['creator:id,name'])
+            ->withCount('stages')
             ->whereIn('status', ['completed', 'cancelled'])
             ->orderByDesc('updated_at');
 
@@ -144,6 +146,7 @@ class QuestController extends Controller
 
         $query = Quest::query()
             ->with(['creator:id,name'])
+            ->withCount('stages')
             ->where('approval_status', 'approved')
             ->whereIn('status', ['upcoming', 'ongoing']);
 
@@ -364,6 +367,19 @@ class QuestController extends Controller
                 app(FcmService::class)->sendNewQuest($quest->load('targetGroups'));
             }
 
+            if ($request->input('quest.create_achievement')) {
+                $name = trim((string) $request->input('quest.achievement_name', ''));
+                if ($name === '') {
+                    $name = 'Complete: ' . $quest->title;
+                }
+                Achievement::create([
+                    'name' => $name,
+                    'description' => trim((string) $request->input('quest.achievement_description', '')) ?: null,
+                    'requirement_type' => Achievement::REQUIREMENT_TYPE_COMPLETE_QUEST,
+                    'requirement_value' => $quest->id,
+                ]);
+            }
+
             return redirect()->route('quests.active')->with('success', 'Quest created successfully.');
         });
     }
@@ -546,6 +562,10 @@ class QuestController extends Controller
         $quest->load('targetGroups', 'stages.questions.choices');
 
         $target = $quest->targetGroups->first();
+        $linkedAchievement = Achievement::where('requirement_type', Achievement::REQUIREMENT_TYPE_COMPLETE_QUEST)
+            ->where('requirement_value', $quest->id)
+            ->first();
+
         $questData = [
             'target' => $target ? [
                 'target_type' => 'specific',
@@ -571,6 +591,9 @@ class QuestController extends Controller
             'start_date' => $quest->start_date ? $quest->start_date->format('Y-m-d\TH:i') : '',
             'end_date' => $quest->end_date ? $quest->end_date->format('Y-m-d\TH:i') : '',
             'creation_cost_points' => $quest->creation_cost_points ?? '',
+            'create_achievement' => $linkedAchievement !== null,
+            'achievement_name' => $linkedAchievement?->name ?? '',
+            'achievement_description' => $linkedAchievement?->description ?? '',
         ];
 
         if ($request->has('questData')) {
@@ -779,6 +802,27 @@ class QuestController extends Controller
 
             ActivityLog::log($request->user()->id, ActivityLog::ACTION_QUEST_UPDATED, $quest->title);
 
+            if ($request->input('quest.create_achievement')) {
+                $name = trim((string) $request->input('quest.achievement_name', ''));
+                if ($name === '') {
+                    $name = 'Complete: ' . $quest->title;
+                }
+                $description = trim((string) $request->input('quest.achievement_description', '')) ?: null;
+                $existing = Achievement::where('requirement_type', Achievement::REQUIREMENT_TYPE_COMPLETE_QUEST)
+                    ->where('requirement_value', $quest->id)
+                    ->first();
+                if ($existing) {
+                    $existing->update(['name' => $name, 'description' => $description]);
+                } else {
+                    Achievement::create([
+                        'name' => $name,
+                        'description' => $description,
+                        'requirement_type' => Achievement::REQUIREMENT_TYPE_COMPLETE_QUEST,
+                        'requirement_value' => $quest->id,
+                    ]);
+                }
+            }
+
             return redirect()->route('quests.active')->with('success', 'Quest updated successfully.');
         });
     }
@@ -801,7 +845,10 @@ class QuestController extends Controller
         $buyInPoints = (int) $quest->buy_in_points;
 
         if ($buyInPoints > 0) {
-            $participants = QuestParticipant::where('quest_id', $quest->id)->with('user')->get();
+            $participants = QuestParticipant::where('quest_id', $quest->id)
+                ->whereNotIn('status', ['winner', 'completed'])
+                ->with('user')
+                ->get();
             foreach ($participants as $participant) {
                 $participantUser = $participant->user;
                 if ($participantUser) {
@@ -965,7 +1012,19 @@ class QuestController extends Controller
                     }
                 },
             ],
-            'quest.buy_in_points'  => 'nullable|integer|min:0|max:100',
+            'quest.buy_in_points'  => [
+                'nullable',
+                'integer',
+                'min:0',
+                'max:100',
+                function (string $attribute, mixed $value, \Closure $fail) use ($request): void {
+                    $buyIn = (int) $value;
+                    $reward = (int) $request->input('quest.reward_points', 0);
+                    if ($buyIn > 0 && $reward > 0 && $buyIn >= $reward) {
+                        $fail('Buy-in points must be lower than reward points.');
+                    }
+                },
+            ],
             'quest.max_participants'    => $isElimination ? 'required|integer|min:1' : 'nullable|integer|min:1',
             'quest.reward_custom_prize' => 'nullable|string|max:255',
             'stages'               => 'required|array|min:' . ($isElimination ? 2 : 1),

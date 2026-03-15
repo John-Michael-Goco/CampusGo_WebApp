@@ -5,7 +5,9 @@ export type ActiveQuest = {
     id: number;
     title: string;
     quest_type: QuestType;
+    question_type: string;
     status: QuestStatus;
+    stages_count: number;
     start_date: string | null;
     end_date: string | null;
     reward_points: number;

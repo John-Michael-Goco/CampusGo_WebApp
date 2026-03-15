@@ -33,21 +33,42 @@ export default function QuestStagesPage({ questId, questData: rawQuestData, exis
         return stage;
     };
 
-    const [stages, setStages] = useState<StageFormData[]>(() => {
+    const [stagesState, setStagesState] = useState<{ stages: StageFormData[]; stage1MaxSurvivorsLocked: boolean }>(() => {
+        let list: StageFormData[];
         if (isEdit && existingStages && existingStages.length > 0) {
             if (existingStages.length >= numStages) {
-                return existingStages.slice(0, numStages);
+                list = existingStages.slice(0, numStages);
+            } else {
+                list = [
+                    ...existingStages,
+                    ...Array.from(
+                        { length: numStages - existingStages.length },
+                        (_, i) => makeStage(existingStages.length + i + 1),
+                    ),
+                ];
             }
-            return [
-                ...existingStages,
-                ...Array.from(
-                    { length: numStages - existingStages.length },
-                    (_, i) => makeStage(existingStages.length + i + 1),
-                ),
-            ];
+        } else {
+            list = Array.from({ length: numStages }, (_, i) => makeStage(i + 1));
         }
-        return Array.from({ length: numStages }, (_, i) => makeStage(i + 1));
+        let stage1MaxSurvivorsLocked = false;
+        // Auto-populate stage 1 max_survivors for elimination: only the first N to submit proceed
+        const maxPart = questData.max_participants;
+        if (
+            questData.is_elimination &&
+            list.length > 0 &&
+            (list[0].max_survivors === '' || list[0].max_survivors === undefined) &&
+            typeof maxPart === 'number' &&
+            maxPart >= 1
+        ) {
+            list = [{ ...list[0], max_survivors: maxPart }, ...list.slice(1)];
+            stage1MaxSurvivorsLocked = true;
+        }
+        return { stages: list, stage1MaxSurvivorsLocked };
     });
+    const stages = stagesState.stages;
+    const setStages = (updater: (prev: StageFormData[]) => StageFormData[]) => {
+        setStagesState((prev) => ({ ...prev, stages: updater(prev.stages) }));
+    };
     const [currentIdx, setCurrentIdx] = useState(0);
     const [submitting, setSubmitting] = useState(false);
     const [clientErrors, setClientErrors] = useState<string[]>([]);
@@ -269,6 +290,7 @@ export default function QuestStagesPage({ questId, questData: rawQuestData, exis
                                 : undefined
                         }
                         isLastStage={isLastStage}
+                        disableStage1MaxSurvivors={stagesState.stage1MaxSurvivorsLocked && currentIdx === 0}
                         onChange={updateStage}
                     />
 

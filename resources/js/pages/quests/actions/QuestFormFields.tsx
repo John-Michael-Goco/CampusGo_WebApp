@@ -172,6 +172,54 @@ export function QuestFormFields({ data, errors, setData, enrollmentSemester, isE
 
     return (
         <div className="grid gap-6">
+            {/* ── Achievement (optional): badge earned when quest is completed ── */}
+            <div className="space-y-4 rounded-lg border border-border/60 bg-muted/20 p-4">
+                <div className="flex items-center gap-3">
+                    <Checkbox
+                        id="create_achievement"
+                        checked={data.create_achievement}
+                        onCheckedChange={(checked) => {
+                            setData('create_achievement', !!checked);
+                            if (checked && !data.achievement_name && data.title) {
+                                setData('achievement_name', `Complete: ${data.title}`);
+                            } else if (checked && !data.achievement_name) {
+                                setData('achievement_name', 'Complete this quest');
+                            }
+                        }}
+                    />
+                    <Label htmlFor="create_achievement" className="cursor-pointer font-medium">
+                        Create an achievement for this quest
+                    </Label>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                    Users who complete this quest will earn this achievement badge.
+                </p>
+                {data.create_achievement && (
+                    <div className="grid gap-4 sm:grid-cols-1">
+                        <div className="grid gap-2">
+                            <Label htmlFor="achievement_name">Achievement name</Label>
+                            <Input
+                                id="achievement_name"
+                                value={data.achievement_name}
+                                onChange={(e) => setData('achievement_name', e.target.value)}
+                                placeholder={data.title ? `e.g. Complete: ${data.title}` : 'e.g. Complete: [Quest title]'}
+                            />
+                            <InputError message={errors.achievement_name} />
+                        </div>
+                        <div className="grid gap-2">
+                            <Label htmlFor="achievement_description">Achievement description (optional)</Label>
+                            <Input
+                                id="achievement_description"
+                                value={data.achievement_description}
+                                onChange={(e) => setData('achievement_description', e.target.value)}
+                                placeholder="e.g. Finish all stages of this quest"
+                            />
+                            <InputError message={errors.achievement_description} />
+                        </div>
+                    </div>
+                )}
+            </div>
+
             {/* ── Quest target ── */}
             <fieldset className="grid gap-4 rounded-lg border p-4">
                 <legend className="px-2 text-sm font-medium">

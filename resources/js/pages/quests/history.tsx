@@ -167,6 +167,8 @@ export default function QuestHistoryPage({ quests, filters = {} }: Props) {
                                 <tr className={historyHeaderRowClass}>
                                     <th className={tableHeadClass}>Title</th>
                                     <th className={tableHeadClass}>Type</th>
+                                    <th className={tableHeadClass}>Stages</th>
+                                    <th className={tableHeadClass}>Mode</th>
                                     <th className={tableHeadClass}>Created by</th>
                                     <th className={tableHeadClass}>Outcome</th>
                                     <th className={tableHeadClass}>Created</th>
@@ -177,7 +179,7 @@ export default function QuestHistoryPage({ quests, filters = {} }: Props) {
                             <tbody>
                                 {items.length === 0 ? (
                                     <tr className={historyBodyRowClass}>
-                                        <td colSpan={7} className={tableEmptyClass}>
+                                        <td colSpan={9} className={tableEmptyClass}>
                                             No completed or cancelled quests found.
                                         </td>
                                     </tr>
@@ -189,6 +191,14 @@ export default function QuestHistoryPage({ quests, filters = {} }: Props) {
                                         >
                                             <td className={`${tableCellClass} font-medium`}>{quest.title}</td>
                                             <td className={`${tableCellClass} capitalize`}>{quest.quest_type}</td>
+                                            <td className={tableCellClass}>
+                                                {quest.stages_count}
+                                            </td>
+                                            <td className={tableCellClass}>
+                                                <Badge variant={quest.question_type === 'qr_scan' ? 'secondary' : 'outline'} className="capitalize whitespace-nowrap">
+                                                    {quest.question_type === 'qr_scan' ? 'QR Scan' : 'MCQ'}
+                                                </Badge>
+                                            </td>
                                             <td className={`${tableCellClass} text-muted-foreground`}>
                                                 {quest.creator?.name ?? '—'}
                                             </td>

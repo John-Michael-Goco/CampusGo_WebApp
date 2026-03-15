@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Achievement;
 use App\Models\ActivityLog;
 use App\Models\Enrollment;
 use App\Models\PointTransaction;
@@ -296,6 +297,10 @@ class QuestController extends Controller
             })->values()->all();
         }
 
+        $linkedAchievement = Achievement::where('requirement_type', Achievement::REQUIREMENT_TYPE_COMPLETE_QUEST)
+            ->where('requirement_value', $quest->id)
+            ->first();
+
         $payload = [
             'quest' => [
                 'id' => $quest->id,
@@ -310,6 +315,11 @@ class QuestController extends Controller
                 'status' => $quest->status,
                 'start_date' => $quest->start_date?->toDateTimeString(),
                 'end_date' => $quest->end_date?->toDateTimeString(),
+                'achievement' => $linkedAchievement ? [
+                    'id' => $linkedAchievement->id,
+                    'name' => $linkedAchievement->name,
+                    'description' => $linkedAchievement->description,
+                ] : null,
             ],
             'stage' => $stagePayload,
         ];

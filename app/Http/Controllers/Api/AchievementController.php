@@ -54,7 +54,15 @@ class AchievementController extends Controller
             return $row;
         });
 
-        return response()->json(['achievements' => $items->values()->all()]);
+        // Quest-linked achievements (complete_quest): only show if the user has earned them
+        $filtered = $items->filter(function (array $row) {
+            if ($row['requirement_type'] === Achievement::REQUIREMENT_TYPE_COMPLETE_QUEST) {
+                return $row['earned'] === true;
+            }
+            return true;
+        });
+
+        return response()->json(['achievements' => $filtered->values()->all()]);
     }
 
     /**

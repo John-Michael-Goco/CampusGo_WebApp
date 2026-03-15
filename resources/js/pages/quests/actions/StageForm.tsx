@@ -35,6 +35,8 @@ type Props = {
     previousStageEndDate?: string | '';
     /** When true, stage end date is fixed to quest end date. */
     isLastStage?: boolean;
+    /** When true, stage 1 max survivors is read-only (auto-populated from quest max participants). */
+    disableStage1MaxSurvivors?: boolean;
     onChange: (stage: StageFormData) => void;
 };
 
@@ -48,6 +50,7 @@ export function StageForm({
     questEndDate,
     previousStageEndDate,
     isLastStage,
+    disableStage1MaxSurvivors,
     onChange,
 }: Props) {
     const isEnrollment = questType === 'enrollment';
@@ -57,6 +60,16 @@ export function StageForm({
     };
 
     const effectiveQuestionType: QuestionType = isEnrollment ? 'qr_scan' : questionType;
+
+    /** Min date for stage end date: quest start, or (stage 2+) the later of quest start and previous stage end. */
+    const minDateForStageEnd = (() => {
+        const questStart = parseQuestDate(questStartDate ?? '');
+        if (stage.stage_number === 1) return questStart;
+        const prevEnd = parseQuestDate(previousStageEndDate ?? '');
+        if (!prevEnd) return questStart;
+        if (!questStart) return prevEnd;
+        return questStart.getTime() > prevEnd.getTime() ? questStart : prevEnd;
+    })();
 
     const updateQuestion = (idx: number, question: Question) => {
         const next = [...stage.questions];
@@ -119,44 +132,9 @@ export function StageForm({
                 />
             </div>
 
-            {/* Max survivors + Min participants + Deadline (elimination only) */}
+            {/* Elimination only: Min participants, Max survivors, then Start date + End date on one row */}
             {isElimination && (
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                    <div className="grid gap-2">
-                        <Label>
-                            Max survivors
-                            {stage.stage_number === 1 && typeof questMaxParticipants === 'number' && questMaxParticipants > 0 && (
-                                <span className="ml-1.5 text-muted-foreground font-normal">
-                                    (max {questMaxParticipants} from quest)
-                                </span>
-                            )}
-                        </Label>
-                        <Input
-                            type="number"
-                            min={1}
-                            max={stage.stage_number === 1 && typeof questMaxParticipants === 'number' && questMaxParticipants > 0 ? questMaxParticipants : undefined}
-                            value={stage.max_survivors}
-                            onChange={(e) => {
-                                const raw = e.target.value === '' ? '' : parseInt(e.target.value, 10) || 1;
-                                let newMax = raw;
-                                if (stage.stage_number === 1 && typeof questMaxParticipants === 'number' && questMaxParticipants > 0 && typeof raw === 'number' && raw > questMaxParticipants) {
-                                    newMax = questMaxParticipants;
-                                }
-                                const finalMax = typeof newMax === 'number' ? newMax : 0;
-                                const currentMin = typeof stage.minimum_participants === 'number' ? stage.minimum_participants : 0;
-                                if (finalMax > 0 && currentMin > finalMax) {
-                                    onChange({
-                                        ...stage,
-                                        max_survivors: newMax as number | '',
-                                        minimum_participants: finalMax,
-                                    });
-                                } else {
-                                    update('max_survivors', newMax as number | '');
-                                }
-                            }}
-                            placeholder="e.g. 20"
-                        />
-                    </div>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <div className="grid gap-2">
                         <Label className="flex items-center gap-1.5">
                             Min participants
@@ -189,6 +167,145 @@ export function StageForm({
                         />
                     </div>
                     <div className="grid gap-2">
+                        <Label>
+                            Max survivors
+                            {stage.stage_number === 1 && typeof questMaxParticipants === 'number' && questMaxParticipants > 0 && (
+                                <span className="ml-1.5 text-muted-foreground font-normal">
+                                    (max {questMaxParticipants} from quest)
+                                </span>
+                            )}
+                        </Label>
+                        <Input
+                            type="number"
+                            min={1}
+                            max={stage.stage_number === 1 && typeof questMaxParticipants === 'number' && questMaxParticipants > 0 ? questMaxParticipants : undefined}
+                            disabled={disableStage1MaxSurvivors && stage.stage_number === 1}
+                            value={stage.max_survivors}
+                            onChange={(e) => {
+                                const raw = e.target.value === '' ? '' : parseInt(e.target.value, 10) || 1;
+                                let newMax = raw;
+                                if (stage.stage_number === 1 && typeof questMaxParticipants === 'number' && questMaxParticipants > 0 && typeof raw === 'number' && raw > questMaxParticipants) {
+                                    newMax = questMaxParticipants;
+                                }
+                                const finalMax = typeof newMax === 'number' ? newMax : 0;
+                                const currentMin = typeof stage.minimum_participants === 'number' ? stage.minimum_participants : 0;
+                                if (finalMax > 0 && currentMin > finalMax) {
+                                    onChange({
+                                        ...stage,
+                                        max_survivors: newMax as number | '',
+                                        minimum_participants: finalMax,
+                                    });
+                                } else {
+                                    update('max_survivors', newMax as number | '');
+                                }
+                            }}
+                            placeholder="e.g. 20"
+                        />
+                    </div>
+                    <div className="grid gap-2">
+                        <Label className="flex items-center gap-1.5">
+                            Start date
+                            <TooltipProvider>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Info className="size-4 text-muted-foreground cursor-help" aria-label="Info" />
+                                    </TooltipTrigger>
+                                    <TooltipContent side="top" className="max-w-xs">
+                                        {stage.stage_number === 1
+                                            ? 'First stage starts when the quest starts (quest start date).'
+                                            : 'Optional. Leave empty to have this stage open automatically. Set a date to lock the stage until that time (must be on or after the quest start date).'}
+                                    </TooltipContent>
+                                </Tooltip>
+                            </TooltipProvider>
+                        </Label>
+                        {stage.stage_number === 1 ? (
+                            <DateTimePicker
+                                value={questStartDate ?? ''}
+                                onChange={() => {}}
+                                placeholder="Quest start date"
+                                disabled
+                            />
+                        ) : (
+                            <div className="flex flex-wrap items-center gap-2">
+                                <DateTimePicker
+                                    value={stage.stage_start}
+                                    onChange={(val) => update('stage_start', val)}
+                                    placeholder="Leave empty to open automatically"
+                                    minDate={parseQuestDate(questStartDate ?? '')}
+                                    maxDate={
+                                        (() => {
+                                            const endDate = parseQuestDate((stage.stage_deadline || questEndDate) ?? '');
+                                            const questEnd = parseQuestDate(questEndDate ?? '');
+                                            if (endDate && questEnd) return endDate.getTime() < questEnd.getTime() ? endDate : questEnd;
+                                            return endDate ?? questEnd;
+                                        })()
+                                    }
+                                />
+                                {stage.stage_start ? (
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => update('stage_start', '')}
+                                        aria-label="Clear stage start date"
+                                    >
+                                        Clear
+                                    </Button>
+                                ) : null}
+                            </div>
+                        )}
+                    </div>
+                    <div className="grid gap-2">
+                        <Label className="flex items-center gap-1.5">
+                            End date
+                            <TooltipProvider>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Info className="size-4 text-muted-foreground cursor-help" aria-label="Info" />
+                                    </TooltipTrigger>
+                                    <TooltipContent side="top" className="max-w-xs">
+                                        {isLastStage
+                                            ? 'Last stage ends when the quest ends (quest end date).'
+                                            : 'Stage deadline. Must be within the quest start and end dates. If minimum participants is not met by this deadline, the stage will be marked failed or cancelled.'}
+                                    </TooltipContent>
+                                </Tooltip>
+                            </TooltipProvider>
+                        </Label>
+                        {isLastStage ? (
+                            <DateTimePicker
+                                value={questEndDate ?? ''}
+                                onChange={() => {}}
+                                placeholder="Quest end date"
+                                disabled
+                            />
+                        ) : (
+                            <DateTimePicker
+                                value={stage.stage_deadline}
+                                onChange={(val) => update('stage_deadline', val)}
+                                placeholder="Pick end date"
+                                minDate={minDateForStageEnd}
+                                maxDate={parseQuestDate(questEndDate ?? '')}
+                            />
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {/* Question type (read-only, set at quest level) */}
+            <div className="grid gap-2">
+                <Label>Question type</Label>
+                <p className="text-sm text-muted-foreground rounded-md border bg-muted/30 px-3 py-2">
+                    {effectiveQuestionType === 'qr_scan'
+                        ? 'QR scan only'
+                        : 'Multiple choice'}
+                    {isEnrollment && ' — enrollment quests use QR scan for all stages'}
+                </p>
+            </div>
+
+            {/* Stage start date + end date — non-elimination; same row */}
+            {!isElimination && (
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div className="grid gap-2">
                         <Label className="flex items-center gap-1.5">
                             Stage start date (optional)
                             <TooltipProvider>
@@ -216,7 +333,7 @@ export function StageForm({
                                 <DateTimePicker
                                     value={stage.stage_start}
                                     onChange={(val) => update('stage_start', val)}
-                                    placeholder="Leave empty to open automatically (always unlocked)"
+                                    placeholder="Leave empty to open automatically"
                                     minDate={parseQuestDate(questStartDate ?? '')}
                                     maxDate={
                                         (() => {
@@ -243,7 +360,7 @@ export function StageForm({
                     </div>
                     <div className="grid gap-2">
                         <Label className="flex items-center gap-1.5">
-                            Stage deadline
+                            Stage end date{isLastStage ? '' : ' (optional)'}
                             <TooltipProvider>
                                 <Tooltip>
                                     <TooltipTrigger asChild>
@@ -252,7 +369,7 @@ export function StageForm({
                                     <TooltipContent side="top" className="max-w-xs">
                                         {isLastStage
                                             ? 'Last stage ends when the quest ends (quest end date).'
-                                            : 'Must be within the quest start and end dates. If minimum participants is not met by this deadline, the stage will be marked failed or cancelled.'}
+                                            : 'When this stage ends; participants can only advance to the next stage after this time. If empty, the quest end date is used.'}
                                     </TooltipContent>
                                 </Tooltip>
                             </TooltipProvider>
@@ -268,117 +385,12 @@ export function StageForm({
                             <DateTimePicker
                                 value={stage.stage_deadline}
                                 onChange={(val) => update('stage_deadline', val)}
-                                placeholder="Pick deadline"
-                                minDate={parseQuestDate(questStartDate ?? '')}
+                                placeholder="Use quest end date"
+                                minDate={minDateForStageEnd}
                                 maxDate={parseQuestDate(questEndDate ?? '')}
                             />
                         )}
                     </div>
-                </div>
-            )}
-
-            {/* Question type (read-only, set at quest level) */}
-            <div className="grid gap-2">
-                <Label>Question type</Label>
-                <p className="text-sm text-muted-foreground rounded-md border bg-muted/30 px-3 py-2">
-                    {effectiveQuestionType === 'qr_scan'
-                        ? 'QR scan only'
-                        : 'Multiple choice'}
-                    {isEnrollment && ' — enrollment quests use QR scan for all stages'}
-                </p>
-            </div>
-
-            {/* Stage start date — non-elimination; stage 1 read-only (quest start), stage 2+ editable */}
-            {!isElimination && (
-                <div className="grid gap-2">
-                    <Label className="flex items-center gap-1.5">
-                        Stage start date (optional)
-                        <TooltipProvider>
-                            <Tooltip>
-                                <TooltipTrigger asChild>
-                                    <Info className="size-4 text-muted-foreground cursor-help" aria-label="Info" />
-                                </TooltipTrigger>
-                                <TooltipContent side="top" className="max-w-xs">
-                                    {stage.stage_number === 1
-                                        ? 'First stage starts when the quest starts (quest start date).'
-                                        : 'Leave empty to have this stage open automatically (always unlocked). Set a date to lock the stage until that time (must be on or after the quest start date). Stage can unlock before the previous stage ends.'}
-                                </TooltipContent>
-                            </Tooltip>
-                        </TooltipProvider>
-                    </Label>
-                    {stage.stage_number === 1 ? (
-                        <DateTimePicker
-                            value={questStartDate ?? ''}
-                            onChange={() => {}}
-                            placeholder="Quest start date"
-                            disabled
-                        />
-                    ) : (
-                        <div className="flex flex-wrap items-center gap-2">
-                            <DateTimePicker
-                                value={stage.stage_start}
-                                onChange={(val) => update('stage_start', val)}
-                                placeholder="Leave empty to open automatically (always unlocked)"
-                                minDate={parseQuestDate(questStartDate ?? '')}
-                                maxDate={
-                                    (() => {
-                                        const endDate = parseQuestDate((stage.stage_deadline || questEndDate) ?? '');
-                                        const questEnd = parseQuestDate(questEndDate ?? '');
-                                        if (endDate && questEnd) return endDate.getTime() < questEnd.getTime() ? endDate : questEnd;
-                                        return endDate ?? questEnd;
-                                    })()
-                                }
-                            />
-                            {stage.stage_start ? (
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => update('stage_start', '')}
-                                    aria-label="Clear stage start date"
-                                >
-                                    Clear
-                                </Button>
-                            ) : null}
-                        </div>
-                    )}
-                </div>
-            )}
-
-            {/* Stage end date (non-elimination only); last stage read-only (quest end) */}
-            {!isElimination && (
-                <div className="grid gap-2">
-                    <Label className="flex items-center gap-1.5">
-                        Stage end date{isLastStage ? '' : ' (optional)'}
-                        <TooltipProvider>
-                            <Tooltip>
-                                <TooltipTrigger asChild>
-                                    <Info className="size-4 text-muted-foreground cursor-help" aria-label="Info" />
-                                </TooltipTrigger>
-                                <TooltipContent side="top" className="max-w-xs">
-                                    {isLastStage
-                                        ? 'Last stage ends when the quest ends (quest end date).'
-                                        : 'When this stage ends; participants can only advance to the next stage after this time. If empty, the quest end date is used.'}
-                                </TooltipContent>
-                            </Tooltip>
-                        </TooltipProvider>
-                    </Label>
-                    {isLastStage ? (
-                        <DateTimePicker
-                            value={questEndDate ?? ''}
-                            onChange={() => {}}
-                            placeholder="Quest end date"
-                            disabled
-                        />
-                    ) : (
-                        <DateTimePicker
-                            value={stage.stage_deadline}
-                            onChange={(val) => update('stage_deadline', val)}
-                            placeholder="Use quest end date"
-                            minDate={parseQuestDate(questStartDate ?? '')}
-                            maxDate={parseQuestDate(questEndDate ?? '')}
-                        />
-                    )}
                 </div>
             )}
 

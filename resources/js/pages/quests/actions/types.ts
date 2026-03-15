@@ -42,6 +42,10 @@ export type CreateQuestFormData = {
     start_date: string;
     end_date: string;
     creation_cost_points: number | '';
+    /** When true, create/update an achievement for completing this quest. */
+    create_achievement: boolean;
+    achievement_name: string;
+    achievement_description: string;
 };
 
 export const INITIAL_TARGET: TargetGroup = {
@@ -66,6 +70,9 @@ export const INITIAL_FORM_DATA: CreateQuestFormData = {
     start_date: '',
     end_date: '',
     creation_cost_points: '',
+    create_achievement: false,
+    achievement_name: '',
+    achievement_description: '',
 };
 
 export function isSimpleQuestType(type: QuestType): boolean {

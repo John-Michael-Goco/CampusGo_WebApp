@@ -75,6 +75,12 @@ export function ActiveTable({ quests, onView, onEdit, onDelete, canManage = true
                                 Type
                             </th>
                             <th className={tableHeadClass}>
+                                Stages
+                            </th>
+                            <th className={tableHeadClass}>
+                                Mode
+                            </th>
+                            <th className={tableHeadClass}>
                                 Status
                             </th>
                             <th className={tableHeadClass}>
@@ -101,7 +107,7 @@ export function ActiveTable({ quests, onView, onEdit, onDelete, canManage = true
                         {quests.length === 0 ? (
                             <tr className={questsBodyRowClass}>
                                 <td
-                                    colSpan={9}
+                                    colSpan={11}
                                     className={tableEmptyClass}
                                 >
                                     No active quests found.
@@ -118,6 +124,14 @@ export function ActiveTable({ quests, onView, onEdit, onDelete, canManage = true
                                     </td>
                                     <td className={`${tableCellClass} capitalize`}>
                                         {quest.quest_type}
+                                    </td>
+                                    <td className={tableCellClass}>
+                                        {quest.stages_count}
+                                    </td>
+                                    <td className={tableCellClass}>
+                                        <Badge variant={quest.question_type === 'qr_scan' ? 'secondary' : 'outline'} className="capitalize whitespace-nowrap">
+                                            {quest.question_type === 'qr_scan' ? 'QR Scan' : 'MCQ'}
+                                        </Badge>
                                     </td>
                                     <td className={tableCellClass}>
                                         <Badge variant={STATUS_VARIANT[quest.status]} className="capitalize">

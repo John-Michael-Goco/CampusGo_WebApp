@@ -21,8 +21,10 @@ export type HistoryQuest = {
     id: number;
     title: string;
     quest_type: string;
+    question_type: string;
     status: string;
     approval_status: string;
+    stages_count: number;
     created_at: string;
     updated_at: string;
     creator?: { id: number; name: string } | null;

@@ -179,7 +179,9 @@ export default function QuestFormPage() {
     const isEdit = typeof questId === 'number';
     const defaultStartDate = useMemo(() => getDefaultStartDate(), []);
     const initialData = useMemo(() => {
-        const data = questData ? { ...questData } : { ...INITIAL_FORM_DATA, start_date: defaultStartDate };
+        const data = questData
+            ? { ...INITIAL_FORM_DATA, ...questData }
+            : { ...INITIAL_FORM_DATA, start_date: defaultStartDate };
         if (!isEdit && auth?.user?.role === 'professor' && !['custom', 'event'].includes(data.quest_type)) {
             data.quest_type = 'custom';
         }
@@ -213,6 +215,11 @@ export default function QuestFormPage() {
             }
         }
         if (typeof form.data.reward_points !== 'number' || form.data.reward_points < 1) e.reward_points = 'Reward points are required (1–150).';
+        const buyIn = form.data.buy_in_points;
+        const reward = typeof form.data.reward_points === 'number' ? form.data.reward_points : 0;
+        if (typeof buyIn === 'number' && buyIn > 0 && reward > 0 && buyIn >= reward) {
+            e.buy_in_points = 'Buy-in must be lower than reward points.';
+        }
         if (!form.data.start_date) e.start_date = 'Start date is required.';
         else if (!isEdit && new Date(form.data.start_date).getTime() < Date.now()) e.start_date = 'Start date must be today or in the future.';
         if (!form.data.end_date) e.end_date = 'End date is required.';
@@ -223,6 +230,9 @@ export default function QuestFormPage() {
             else if (endMs - startMs < 60 * 60 * 1000) e.end_date = 'End date must be at least 1 hour after start date.';
         }
         if (form.data.quest_type === 'enrollment' && !enrollmentSemester) e.quest_type = 'No available semester for enrollment quests.';
+        if (form.data.create_achievement && !form.data.achievement_name?.trim()) {
+            e.achievement_name = 'Achievement name is required when creating an achievement.';
+        }
         return e;
     };
 
