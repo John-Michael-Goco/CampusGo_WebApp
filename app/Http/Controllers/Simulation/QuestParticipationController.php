@@ -225,6 +225,10 @@ class QuestParticipationController extends Controller
             return redirect()->route('simulation.quests')->withErrors(['error' => 'Participation not found.']);
         }
 
+        $this->tryRunEliminationRankingIfReady($participant);
+        $participant->refresh();
+        $participant->load(['quest.stages' => fn ($q) => $q->orderBy('stage_number'), 'quest.stages.questions.choices', 'submissions']);
+
         $quest = $participant->quest;
         $stages = $quest->stages->sortBy('stage_number')->values();
         $currentStageNumber = $participant->current_stage;
@@ -525,16 +529,10 @@ class QuestParticipationController extends Controller
 
         $deadlinePassed = $currentStage->stage_deadline && now()->gte($currentStage->stage_deadline);
 
-        if ($awaitingCount >= $activeCount || $deadlinePassed) {
-            $this->runEliminationRanking($currentStage, $quest, $stages);
-            $participant->refresh();
-
-            return $this->buildRankingResult($participant, $correctCount, $totalCount, $quest, $user);
-        }
-
+        // Never run ranking in submit — always return awaiting_ranking. Ranking runs when they poll play/status or when the scheduler runs.
         return [
             'outcome' => 'awaiting_ranking',
-            'message' => "Submitted! You got {$correctCount}/{$totalCount} correct. Waiting for other participants...",
+            'message' => "Submitted! You got {$correctCount}/{$totalCount} correct. Waiting for other participants or the stage deadline...",
             'correct' => $correctCount,
             'total' => $totalCount,
         ];
@@ -693,106 +691,17 @@ class QuestParticipationController extends Controller
     /**
      * Mode B: Elimination + QR Scan
      *
-     * Last stage: first submitter wins immediately (winner = fastest to scan); every subsequent submitter is eliminated.
-     * Non-last stage: wait for all participants (or deadline), then rank by submission time; top max_survivors advance.
+     * All stages (including last): set awaiting_ranking and wait for all participants or deadline,
+     * then rank by submission time; top max_survivors advance (or win on last stage). Ranking runs on poll/scheduler.
      */
     private function handleElimQR(QuestParticipant $participant, $currentStage, Quest $quest, $stages, $user, bool $isLastStage, int $nextStageNumber): array
     {
-        if ($isLastStage) {
-            // Last stage QR elimination: first to submit wins, everyone else is eliminated.
-            $alreadyHasWinner = QuestParticipant::where('quest_id', $quest->id)
-                ->where('status', 'winner')
-                ->exists();
-
-            if (!$alreadyHasWinner) {
-                $participant->update(['status' => 'winner']);
-                $participant->refresh();
-                $this->awardWinner($participant, $quest);
-
-                $questTitle = $quest->title ?? 'Quest';
-                $fcm = app(FcmService::class);
-                $fcm->sendRankingResolved(
-                    $participant->id,
-                    $quest->id,
-                    $questTitle,
-                    'completed',
-                    "Quest completed! You were the fastest! You earned {$quest->reward_points} points!"
-                );
-
-                // Eliminate all other active/awaiting participants on this stage
-                $others = QuestParticipant::where('quest_id', $quest->id)
-                    ->where('id', '!=', $participant->id)
-                    ->where('current_stage', $currentStage->stage_number)
-                    ->whereIn('status', ['active', 'awaiting_ranking'])
-                    ->get();
-                $eliminatedCount = $others->count();
-                foreach ($others as $other) {
-                    $other->update(['status' => 'eliminated']);
-                    $fcm->sendRankingResolved(
-                        $other->id,
-                        $quest->id,
-                        $questTitle,
-                        'eliminated',
-                        'Too late! Another participant already completed this quest.'
-                    );
-                }
-                if ($eliminatedCount > 0) {
-                    Quest::where('id', $quest->id)->where('current_participants', '>=', $eliminatedCount)->decrement('current_participants', $eliminatedCount);
-                }
-
-                return [
-                    'outcome' => 'completed',
-                    'message' => "Quest completed! You were the fastest! You earned {$quest->reward_points} points!"
-                        . ($quest->quest_type === 'enrollment' ? ' You are now enrolled for this semester.' : ''),
-                    'correct' => 1,
-                    'total' => 1,
-                ];
-            }
-
-            // Someone already won — this participant is eliminated
-            $participant->update(['status' => 'eliminated']);
-            $participant->refresh();
-            $fcm = app(FcmService::class);
-            $fcm->sendRankingResolved(
-                $participant->id,
-                $quest->id,
-                $quest->title ?? 'Quest',
-                'eliminated',
-                'Too late! Another participant already completed this quest.'
-            );
-            return [
-                'outcome' => 'eliminated',
-                'message' => 'Too late! Another participant already completed this quest.',
-                'correct' => 1,
-                'total' => 1,
-            ];
-        }
-
-        // Non-last stage: use awaiting_ranking + batch ranking as before
-        $participant->update(['status' => 'awaiting_ranking']);
-
-        $activeCount = QuestParticipant::where('quest_id', $quest->id)
-            ->where('current_stage', $currentStage->stage_number)
-            ->whereIn('status', ['active', 'awaiting_ranking'])
-            ->count();
-
-        $awaitingCount = QuestParticipant::where('quest_id', $quest->id)
-            ->where('current_stage', $currentStage->stage_number)
-            ->where('status', 'awaiting_ranking')
-            ->count();
-
-        $deadlinePassed = $currentStage->stage_deadline && now()->gte($currentStage->stage_deadline);
-
-        if ($awaitingCount >= $activeCount || $deadlinePassed) {
-            $this->runEliminationRankingQR($currentStage, $quest, $stages);
-            $participant->refresh();
-
-            return $this->buildRankingResultQR($participant, $quest, $user);
-        }
-
+        // Never run ranking in submit — always return awaiting_ranking. Ranking runs when they poll play/status or when the scheduler runs.
         return [
             'outcome' => 'awaiting_ranking',
-            'message' => 'Stage submitted! Waiting for other participants to finish or the stage deadline.',
+            'message' => $isLastStage
+                ? 'Stage submitted! Waiting for other participants or the stage deadline. Then the top finisher(s) will win.'
+                : 'Stage submitted! Waiting for other participants to finish or the stage deadline.',
             'correct' => 1,
             'total' => 1,
         ];
@@ -885,6 +794,54 @@ class QuestParticipationController extends Controller
             ->update(['status' => 'eliminated']);
         if ($activeEliminatedCount > 0) {
             Quest::where('id', $quest->id)->where('current_participants', '>=', $activeEliminatedCount)->decrement('current_participants', $activeEliminatedCount);
+        }
+    }
+
+    /**
+     * If the participant is awaiting_ranking and ranking is ready (all submitted or deadline passed),
+     * run elimination ranking so the next play/status response returns the resolved outcome.
+     * Called from play() and status() so polling sees "Waiting for results" then gets advanced/eliminated.
+     */
+    public function tryRunEliminationRankingIfReady(QuestParticipant $participant): void
+    {
+        if ($participant->status !== 'awaiting_ranking') {
+            return;
+        }
+
+        $participant->load(['quest' => fn ($q) => $q->with(['stages' => fn ($sq) => $sq->orderBy('stage_number')])]);
+        $quest = $participant->quest;
+        if (!$quest || !$quest->is_elimination) {
+            return;
+        }
+
+        $stages = $quest->stages;
+        $currentStage = $stages->firstWhere('stage_number', $participant->current_stage);
+        if (!$currentStage) {
+            return;
+        }
+
+        $activeCount = QuestParticipant::where('quest_id', $quest->id)
+            ->where('current_stage', $currentStage->stage_number)
+            ->whereIn('status', ['active', 'awaiting_ranking'])
+            ->count();
+
+        $awaitingCount = QuestParticipant::where('quest_id', $quest->id)
+            ->where('current_stage', $currentStage->stage_number)
+            ->where('status', 'awaiting_ranking')
+            ->count();
+
+        $deadlinePassed = $currentStage->stage_deadline && now()->gte($currentStage->stage_deadline);
+
+        if ($awaitingCount < $activeCount && !$deadlinePassed) {
+            return;
+        }
+
+        $allStages = $quest->stages->sortBy('stage_number')->values();
+        if ($quest->question_type === 'qr_scan') {
+            $this->runEliminationRankingQR($currentStage, $quest, $allStages);
+        } else {
+            $quest->load('stages.questions.choices');
+            $this->runEliminationRanking($currentStage, $quest, $allStages);
         }
     }
 

@@ -37,6 +37,11 @@ class ParticipantController extends Controller
             return response()->json(['message' => 'Participation not found.'], 404);
         }
 
+        $simulation = app(SimulationQuestParticipationController::class);
+        $simulation->tryRunEliminationRankingIfReady($participant);
+        $participant->refresh();
+        $participant->load(['quest.stages' => fn ($q) => $q->orderBy('stage_number'), 'quest.stages.questions.choices', 'submissions']);
+
         return response()->json($this->buildPlayStatePayload($participant));
     }
 
@@ -58,6 +63,10 @@ class ParticipantController extends Controller
         if (!$participant) {
             return response()->json(['message' => 'Participation not found.'], 404);
         }
+
+        $simulation = app(SimulationQuestParticipationController::class);
+        $simulation->tryRunEliminationRankingIfReady($participant);
+        $participant->refresh();
 
         $payload = [
             'participant_id' => $participant->id,

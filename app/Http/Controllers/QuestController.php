@@ -660,9 +660,13 @@ class QuestController extends Controller
             $questData = json_decode((string) $request->query('questData', '{}'), true) ?: $questData;
         }
 
+        Quest::syncStatusesFromDates();
+        $quest->refresh();
+
         return Inertia::render('quests/actions/form', [
             'questId' => $quest->id,
             'questData' => $questData,
+            'questStatus' => $quest->status,
             'enrollmentSemester' => $this->getAvailableEnrollmentSemester($quest->id),
         ]);
     }
@@ -675,6 +679,19 @@ class QuestController extends Controller
         $quest->load('stages.questions.choices');
 
         $questData = json_decode((string) $request->query('questData', '{}'), true) ?: [];
+        if (empty($questData)) {
+            $questData = [
+                'title' => $quest->title,
+                'description' => $quest->description ?? '',
+                'quest_type' => $quest->quest_type,
+                'question_type' => $quest->question_type ?? 'multiple_choice',
+                'num_stages' => $quest->stages->count() ?: 1,
+                'is_elimination' => $quest->is_elimination,
+                'max_participants' => $quest->max_participants ?: '',
+                'start_date' => $quest->start_date ? $quest->start_date->format('Y-m-d\TH:i') : '',
+                'end_date' => $quest->end_date ? $quest->end_date->format('Y-m-d\TH:i') : '',
+            ];
+        }
 
         $stagesData = $quest->stages->sortBy('stage_number')->values()->map(function ($stage) {
             return [
@@ -781,7 +798,10 @@ class QuestController extends Controller
 
         $questQuestionType = $questInput['question_type'];
 
-        return DB::transaction(function () use ($quest, $questInput, $request, $semesterId, $questQuestionType) {
+        $isOngoing = $quest->status === 'ongoing';
+        $startDate = $isOngoing ? $quest->start_date : ($questInput['start_date'] ?: null);
+
+        return DB::transaction(function () use ($quest, $questInput, $request, $semesterId, $questQuestionType, $startDate) {
             $quest->update([
                 'title' => $questInput['title'],
                 'description' => $questInput['description'] ?? null,
@@ -792,7 +812,7 @@ class QuestController extends Controller
                 'reward_points' => (int) ($questInput['reward_points'] ?? 0),
                 'reward_custom_prize' => $questInput['reward_custom_prize'] ?? null,
                 'max_participants' => $questInput['max_participants'] ? (int) $questInput['max_participants'] : 0,
-                'start_date' => $questInput['start_date'] ?: null,
+                'start_date' => $startDate,
                 'end_date' => $questInput['end_date'] ?: null,
                 'semester_id' => $semesterId,
             ]);
@@ -1107,7 +1127,7 @@ class QuestController extends Controller
         }
 
         if (!$isElimination && $questionType === 'multiple_choice') {
-            $rules['stages.*.passing_score'] = 'nullable|integer|min:1';
+            $rules['stages.*.passing_score'] = 'required|integer|min:1';
         }
 
         if (!$isElimination) {

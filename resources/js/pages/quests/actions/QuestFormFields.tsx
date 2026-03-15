@@ -42,6 +42,8 @@ type Props = {
     enrollmentSemester?: EnrollmentSemester;
     /** When true (edit), start date may be in the past. When false (create), start must be today or future. */
     isEdit?: boolean;
+    /** When true, start date cannot be changed (quest is ongoing). */
+    isOngoing?: boolean;
 };
 
 const PROFESSOR_QUEST_TYPES: QuestType[] = ['custom', 'event'];
@@ -50,7 +52,7 @@ const questTypeOptionsForRole = (role: string) =>
         ? QUEST_TYPE_OPTIONS.filter((o) => PROFESSOR_QUEST_TYPES.includes(o.value))
         : QUEST_TYPE_OPTIONS;
 
-export function QuestFormFields({ data, errors, setData, enrollmentSemester, isEdit = false }: Props) {
+export function QuestFormFields({ data, errors, setData, enrollmentSemester, isEdit = false, isOngoing = false }: Props) {
     const { auth } = usePage().props;
     const isStudent = auth.user.role === 'student';
     const questTypeOptions = questTypeOptionsForRole(auth.user.role);
@@ -497,14 +499,18 @@ export function QuestFormFields({ data, errors, setData, enrollmentSemester, isE
                 <div className="grid gap-2">
                     <Label className="flex items-center gap-1.5">
                         Start date
+                        {isOngoing && (
+                            <span className="text-xs font-normal text-muted-foreground">(cannot be changed while quest is ongoing)</span>
+                        )}
                     </Label>
                     <DateTimePicker
                         value={data.start_date}
                         onChange={(val) => setData('start_date', val)}
                         placeholder="Pick start date & time"
                         minDate={isEdit ? undefined : new Date()}
+                        disabled={isOngoing}
                     />
-                    {isStartDateInPast && !errors.start_date && (
+                    {isStartDateInPast && !errors.start_date && !isOngoing && (
                         <p className="text-sm text-red-500 dark:text-red-400">
                             Start date must be today or in the future.
                         </p>

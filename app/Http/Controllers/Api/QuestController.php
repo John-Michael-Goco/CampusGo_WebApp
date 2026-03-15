@@ -568,12 +568,26 @@ class QuestController extends Controller
         $canJoin = false;
         $canPlay = false;
         $reason = null;
+        $participant = QuestParticipant::where('quest_id', $quest->id)->where('user_id', $user->id)->first();
 
         if ($stage->stage_number === 1) {
-            $participant = QuestParticipant::where('quest_id', $quest->id)->where('user_id', $user->id)->first();
             $quitDailyCanRejoin = $participant && $participant->status === 'quit' && ($quest->quest_type ?? '') === 'daily';
             if ($participant && !$quitDailyCanRejoin) {
-                $canPlay = in_array($participant->status, ['active', 'awaiting_ranking'], true) && $participant->current_stage === 1;
+                if (in_array($participant->status, ['active', 'awaiting_ranking'], true) && $participant->current_stage === 1) {
+                    $canPlay = true;
+                } elseif ($participant->status === 'eliminated') {
+                    $reason = 'You were eliminated from this quest.';
+                } elseif ($participant->status === 'completed') {
+                    $reason = 'You have already completed this quest.';
+                } elseif ($participant->status === 'winner') {
+                    $reason = 'You have already won this quest.';
+                } elseif ($participant->status === 'quit') {
+                    $reason = 'You have quit this quest.';
+                } elseif (in_array($participant->status, ['active', 'awaiting_ranking'], true)) {
+                    $reason = 'This is not your current stage. Your current stage is ' . $participant->current_stage . '.';
+                } else {
+                    $reason = 'You are no longer active in this quest.';
+                }
             } elseif ($quitDailyCanRejoin) {
                 $currentSemester = Semester::current();
                 $enrolledInCurrentSemester = $currentSemester !== null && Enrollment::where('user_id', $user->id)
@@ -626,15 +640,21 @@ class QuestController extends Controller
                 }
             }
         } else {
-            $participant = QuestParticipant::where('quest_id', $quest->id)->where('user_id', $user->id)->first();
             if (!$participant) {
                 $reason = 'You are not a participant in this quest. Join by scanning the first stage QR.';
+            } elseif ($participant->status === 'eliminated') {
+                $reason = 'You were eliminated from this quest.';
+            } elseif ($participant->status === 'completed') {
+                $reason = 'You have already completed this quest.';
+            } elseif ($participant->status === 'winner') {
+                $reason = 'You have already won this quest.';
+            } elseif ($participant->status === 'quit') {
+                $reason = 'You have quit this quest.';
             } elseif (!in_array($participant->status, ['active', 'awaiting_ranking'], true)) {
                 $reason = 'You are no longer active in this quest.';
             } elseif ($participant->current_stage !== $stage->stage_number) {
                 $reason = 'This is not your current stage. Your current stage is ' . $participant->current_stage . '.';
             } else {
-                // No stage_start = stage is always unlocked (open automatically)
                 $stageNotYetOpen = $stage->stage_start && now()->lt($stage->stage_start);
                 if ($stageNotYetOpen) {
                     $reason = 'This stage opens at ' . $stage->stage_start->toDateTimeString() . '.';
@@ -674,6 +694,10 @@ class QuestController extends Controller
             'question_type' => $quest->question_type ?? 'multiple_choice',
             'is_elimination' => (bool) $quest->is_elimination,
         ];
+        if ($participant) {
+            $payload['participant_id'] = $participant->id;
+            $payload['participant_status'] = $participant->status;
+        }
         if ($reason !== null) {
             $payload['reason'] = $reason;
         }

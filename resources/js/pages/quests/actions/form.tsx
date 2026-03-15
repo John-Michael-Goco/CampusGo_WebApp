@@ -18,6 +18,7 @@ import { INITIAL_FORM_DATA } from './types';
 type PageProps = {
     questId?: number;
     questData?: CreateQuestFormData | null;
+    questStatus?: string;
     enrollmentSemester?: EnrollmentSemester;
 };
 
@@ -174,7 +175,7 @@ function QuestTemplatesModal({ open, onOpenChange }: { open: boolean; onOpenChan
 }
 
 export default function QuestFormPage() {
-    const { questId, questData, enrollmentSemester } = usePage<PageProps>().props;
+    const { questId, questData, questStatus, enrollmentSemester } = usePage<PageProps>().props;
     const auth = (usePage().props as { auth?: { user?: { role?: string } } }).auth;
     const isEdit = typeof questId === 'number';
     const defaultStartDate = useMemo(() => getDefaultStartDate(), []);
@@ -304,6 +305,7 @@ export default function QuestFormPage() {
                         setData={form.setData}
                         enrollmentSemester={enrollmentSemester}
                         isEdit={isEdit}
+                        isOngoing={questStatus === 'ongoing'}
                     />
 
                     <div className="mt-8 flex items-center justify-end gap-3">

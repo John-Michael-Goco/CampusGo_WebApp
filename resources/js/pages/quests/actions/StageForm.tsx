@@ -397,12 +397,15 @@ export function StageForm({
             {/* Passing score (non-elimination + multiple choice only) */}
             {!isElimination && effectiveQuestionType === 'multiple_choice' && (
                 <div className="grid gap-2">
-                    <Label>Passing score</Label>
+                    <Label>
+                        Passing score <span className="text-destructive">*</span>
+                    </Label>
                     <Input
                         type="number"
                         min={1}
                         max={Math.max(1, stage.questions.length)}
                         value={stage.passing_score}
+                        required
                         onChange={(e) => {
                             const raw = e.target.value === '' ? '' : parseInt(e.target.value, 10) || 1;
                             const capped =
