@@ -1,9 +1,14 @@
 import { Head, Link, useForm, usePage, router } from '@inertiajs/react';
 import { addMinutes, format } from 'date-fns';
-import { ArrowLeft, ChevronDown, Lightbulb } from 'lucide-react';
+import { ArrowLeft, BookOpen, Lightbulb } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
 import AppLayout from '@/layouts/app-layout';
 import type { BreadcrumbItem } from '@/types';
 import { QuestFormFields } from './QuestFormFields';
@@ -62,6 +67,112 @@ function getDefaultStartDate(): string {
     return format(addMinutes(new Date(), 5), "yyyy-MM-dd'T'HH:mm");
 }
 
+const QUEST_TYPE_RULES = [
+    {
+        title: '1. Elimination + QR only',
+        items: [
+            { label: 'Join', text: 'Scan the first-stage QR to join. One QR per stage.' },
+            { label: 'Play', text: 'Go to each stage location and scan that stage\'s QR. No questions, no choices — scanning the correct QR completes the stage.' },
+            { label: 'Elimination', text: 'You are eliminated if the stage deadline has passed or max participants has already been hit. Your status becomes eliminated; you cannot continue to the next stage.' },
+            { label: 'Winning', text: 'First participant(s) to complete all stages (scan all QRs in order) within the rules win. Eliminated players are out.' },
+        ],
+    },
+    {
+        title: '2. Elimination + MCQ (multiple choice)',
+        items: [
+            { label: 'Join', text: 'Scan the first-stage QR to join. You may need to scan the stage QR to reveal the questions.' },
+            { label: 'Play', text: 'At each stage, answer all the multiple-choice questions. Wait for every participant to submit or for the stage to end to know if you are eliminated or proceed/win.' },
+            { label: 'Elimination', text: 'Highest score wins; time submitted is the tie breaker.' },
+            { label: 'Winning', text: 'First participant(s) to complete all stages with passing scores win. Eliminated players are out.' },
+        ],
+    },
+    {
+        title: '3. Non-elimination + QR only',
+        items: [
+            { label: 'Join', text: 'Scan the first-stage QR to join.' },
+            { label: 'Play', text: 'Go to each stage and scan that stage\'s QR. No questions — scanning the correct QR completes the stage.' },
+            { label: 'Winning / completion', text: 'Participants who complete all stages (scan all QRs in order) receive rewards. Leaderboard may still rank by completion time.' },
+        ],
+    },
+    {
+        title: '4. Non-elimination + MCQ',
+        items: [
+            { label: 'Join', text: 'Scan the first-stage QR to join.' },
+            { label: 'Play', text: 'At each stage, answer all multiple-choice questions. You need to meet the passing score to advance.' },
+            { label: 'Removal', text: 'Not meeting the passing score will get you removed from the quest. You cannot retry unless it is a daily quest.' },
+            { label: 'Winning / completion', text: 'Participants who pass all stages get completion rewards. Leaderboard may rank by score and/or time.' },
+        ],
+    },
+];
+
+function QuestTypeRulesModal({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
+    return (
+        <Dialog open={open} onOpenChange={onOpenChange}>
+            <DialogContent className="max-h-[90vh] max-w-4xl overflow-hidden flex flex-col">
+                <DialogHeader>
+                    <DialogTitle>Rules for quest types</DialogTitle>
+                </DialogHeader>
+                <p className="text-base text-muted-foreground -mt-2">
+                    Elimination vs non-elimination and QR-only vs MCQ (multiple choice).
+                </p>
+                <div className="overflow-y-auto flex-1 min-h-0 pr-2 -mr-2 space-y-6 mt-4">
+                    {QUEST_TYPE_RULES.map((section) => (
+                        <section key={section.title}>
+                            <h3 className="text-base font-semibold text-foreground mb-2">{section.title}</h3>
+                            <ul className="space-y-2">
+                                {section.items.map((item) => (
+                                    <li key={item.label} className="text-base text-muted-foreground leading-relaxed">
+                                        <span className="font-medium text-foreground">{item.label}:</span>{' '}
+                                        {item.text}
+                                    </li>
+                                ))}
+                            </ul>
+                        </section>
+                    ))}
+                </div>
+                <p className="text-sm text-muted-foreground mt-4 pt-3 border-t">
+                    These rules align with the API: <code className="bg-muted px-1 rounded">question_type</code> (
+                    <code className="bg-muted px-1 rounded">qr_scan</code> / <code className="bg-muted px-1 rounded">multiple_choice</code>) and{' '}
+                    <code className="bg-muted px-1 rounded">is_elimination</code> on quest and play responses.
+                </p>
+            </DialogContent>
+        </Dialog>
+    );
+}
+
+function QuestTemplatesModal({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
+    return (
+        <Dialog open={open} onOpenChange={onOpenChange}>
+            <DialogContent className="max-h-[90vh] max-w-[calc(100%-2rem)] sm:max-w-6xl overflow-hidden flex flex-col">
+                <DialogHeader>
+                    <DialogTitle>Quest templates &amp; setup guide</DialogTitle>
+                </DialogHeader>
+                <div className="overflow-y-auto flex-1 min-h-0 pr-2 -mr-2">
+                    <div className="grid gap-4 sm:grid-cols-2 mt-4">
+                        {QUEST_TEMPLATES.map((tpl) => (
+                            <div
+                                key={tpl.name}
+                                className="rounded-lg border bg-muted/30 dark:bg-zinc-900 p-5"
+                            >
+                                <h3 className="text-base font-semibold">{tpl.name}</h3>
+                                <p className="mt-2 text-sm text-muted-foreground leading-relaxed">{tpl.description}</p>
+                                <ul className="mt-3 space-y-1">
+                                    {tpl.settings.map((s, i) => (
+                                        <li key={i} className="flex items-start gap-2 text-sm text-muted-foreground leading-relaxed">
+                                            <span className="mt-1.5 block size-1.5 shrink-0 rounded-full bg-muted-foreground/50" />
+                                            {s}
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </DialogContent>
+        </Dialog>
+    );
+}
+
 export default function QuestFormPage() {
     const { questId, questData, enrollmentSemester } = usePage<PageProps>().props;
     const auth = (usePage().props as { auth?: { user?: { role?: string } } }).auth;
@@ -75,7 +186,8 @@ export default function QuestFormPage() {
         return data;
     }, [questData, isEdit, auth?.user?.role, defaultStartDate]);
     const form = useForm<CreateQuestFormData>(initialData);
-    const [guideOpen, setGuideOpen] = useState(false);
+    const [rulesModalOpen, setRulesModalOpen] = useState(false);
+    const [templatesModalOpen, setTemplatesModalOpen] = useState(false);
     const [clientErrors, setClientErrors] = useState<Record<string, string>>({});
 
     const breadcrumbs: BreadcrumbItem[] = [
@@ -145,41 +257,37 @@ export default function QuestFormPage() {
                             </Link>
                         </Button>
                         <h1 className="text-xl font-semibold">{isEdit ? 'Edit Quest' : 'Create Quest'}</h1>
+                        {!isEdit && (
+                            <>
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setTemplatesModalOpen(true)}
+                                    className="gap-2"
+                                >
+                                    <Lightbulb className="size-4" />
+                                    Quest templates
+                                </Button>
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setRulesModalOpen(true)}
+                                    className="gap-2"
+                                >
+                                    <BookOpen className="size-4" />
+                                    Quest type rules
+                                </Button>
+                            </>
+                        )}
                     </div>
                 </div>
 
-                <div className="mx-auto w-full max-w-4xl">
-                    {!isEdit && (
-                        <Collapsible open={guideOpen} onOpenChange={setGuideOpen} className="mb-6">
-                            <CollapsibleTrigger className="flex w-full items-center gap-2 rounded-lg border bg-muted/30 px-4 py-3 text-left transition-colors hover:bg-muted/50">
-                                <Lightbulb className="size-4 shrink-0 text-amber-500" />
-                                <span className="flex-1 text-sm font-medium">Quest templates &amp; setup guide</span>
-                                <ChevronDown className={`size-4 shrink-0 text-muted-foreground transition-transform ${guideOpen ? 'rotate-180' : ''}`} />
-                            </CollapsibleTrigger>
-                            <CollapsibleContent>
-                                <div className="mt-2 grid gap-3 sm:grid-cols-2">
-                                    {QUEST_TEMPLATES.map((tpl) => (
-                                        <div
-                                            key={tpl.name}
-                                            className="rounded-lg border bg-white dark:bg-zinc-900 p-4"
-                                        >
-                                            <h3 className="text-sm font-semibold">{tpl.name}</h3>
-                                            <p className="mt-1 text-xs text-muted-foreground">{tpl.description}</p>
-                                            <ul className="mt-2 space-y-0.5">
-                                                {tpl.settings.map((s, i) => (
-                                                    <li key={i} className="flex items-start gap-1.5 text-xs text-muted-foreground">
-                                                        <span className="mt-1 block size-1 shrink-0 rounded-full bg-muted-foreground/50" />
-                                                        {s}
-                                                    </li>
-                                                ))}
-                                            </ul>
-                                        </div>
-                                    ))}
-                                </div>
-                            </CollapsibleContent>
-                        </Collapsible>
-                    )}
+                <QuestTypeRulesModal open={rulesModalOpen} onOpenChange={setRulesModalOpen} />
+                <QuestTemplatesModal open={templatesModalOpen} onOpenChange={setTemplatesModalOpen} />
 
+                <div className="mx-auto w-full max-w-4xl">
                     <QuestFormFields
                         data={form.data}
                         errors={mergedErrors}

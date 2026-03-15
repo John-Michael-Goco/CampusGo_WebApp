@@ -1,10 +1,9 @@
 import { Head, Link } from '@inertiajs/react';
 import { ArrowLeft, Printer } from 'lucide-react';
-import { QRCodeSVG } from 'qrcode.react';
-import { useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import AppLayout from '@/layouts/app-layout';
 import type { BreadcrumbItem } from '@/types';
+import PrintQrContent from '@/pages/quests/print-qr/PrintQrContent';
 
 type Stage = { id: number; stage_number: number };
 
@@ -40,14 +39,6 @@ function buildListQuery(params: Record<string, string | undefined | null>): stri
     return s ? `?${s}` : '';
 }
 
-function chunk<T>(arr: T[], size: number): T[][] {
-    const out: T[][] = [];
-    for (let i = 0; i < arr.length; i += size) {
-        out.push(arr.slice(i, i + size));
-    }
-    return out;
-}
-
 export default function QuestPrintQrPage({
     quest,
     stages,
@@ -64,7 +55,6 @@ export default function QuestPrintQrPage({
     history_created_by_me: historyCreatedByMeProp,
     approval_status_filter: approvalStatusFilterProp,
 }: Props) {
-    const rows = useMemo(() => chunk(stages, 2), [stages]);
     const origin = typeof window !== 'undefined' ? window.location.origin : '';
     const searchParams = typeof window !== 'undefined' ? new URL(window.location.href).searchParams : null;
 
@@ -167,16 +157,8 @@ export default function QuestPrintQrPage({
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title={`Print QR codes – ${quest.title}`} />
-            <style>{`
-                @media print {
-                    .print\\:hidden { display: none !important; }
-                    .print\\:block { display: block !important; }
-                    .print-qr-row { page-break-after: always; }
-                    .print-qr-row:last-child { page-break-after: auto; }
-                }
-            `}</style>
-            <div className="flex h-full flex-1 flex-col gap-6 rounded-xl p-4">
-                <div className="print:hidden flex flex-wrap items-center justify-between gap-4">
+            <div className="print-qr-wrapper flex w-full min-w-0 flex-1 flex-col gap-6 rounded-xl p-4">
+                <div className="print-qr-toolbar flex flex-wrap items-center justify-between gap-4">
                     <div className="flex items-center gap-3">
                         <Button variant="ghost" size="icon" asChild>
                             <Link href={backHref} aria-label={backLabel}>
@@ -185,41 +167,25 @@ export default function QuestPrintQrPage({
                         </Button>
                         <h1 className="text-xl font-semibold">Print QR codes – {quest.title}</h1>
                     </div>
-                    <Button type="button" onClick={() => window.print()}>
+                    <Button
+                        type="button"
+                        onClick={() => {
+                            const prevTitle = document.title;
+                            document.title = '';
+                            window.print();
+                            const restore = () => {
+                                document.title = prevTitle;
+                                window.removeEventListener('afterprint', restore);
+                            };
+                            window.addEventListener('afterprint', restore);
+                        }}
+                    >
                         <Printer className="mr-2 size-4" />
                         Print
                     </Button>
                 </div>
 
-                <div className="space-y-8 print:space-y-0">
-                    {rows.map((row, rowIdx) => (
-                        <div
-                            key={rowIdx}
-                            className="print-qr-row grid grid-cols-1 gap-8 sm:grid-cols-2 print:grid-cols-2 print:gap-12 print:min-h-[calc(100vh-2rem)]"
-                        >
-                            {row.map((stage) => (
-                                <div
-                                    key={stage.id}
-                                    className="flex flex-col items-center justify-center rounded-lg border bg-card p-6 print:p-8 print:border print:rounded"
-                                >
-                                    <p className="mb-3 text-sm font-medium print:text-base">
-                                        {quest.title} – Stage {stage.stage_number}
-                                    </p>
-                                    <QRCodeSVG
-                                        value={`${origin}/quests/${quest.id}/stages/${stage.id}`}
-                                        size={200}
-                                        level="M"
-                                        includeMargin
-                                        className="rounded print:[width:200px] print:[height:200px]"
-                                    />
-                                </div>
-                            ))}
-                            {row.length === 1 && (
-                                <div className="hidden sm:block print:block print:border print:rounded print:min-h-[200px]" aria-hidden />
-                            )}
-                        </div>
-                    ))}
-                </div>
+                <PrintQrContent quest={quest} stages={stages} origin={origin} />
             </div>
         </AppLayout>
     );
