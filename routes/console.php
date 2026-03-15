@@ -9,5 +9,6 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 Schedule::command('leaderboard:populate')->hourly();
-Schedule::command('quests:update-statuses')->everyMinute(); // also sends FCM "quest_started" when transitioning upcoming → ongoing
+// Quest status (upcoming→ongoing→completed) and FCM: quest_started + quest_ended. Run scheduler every minute: * * * * * php artisan schedule:run
+Schedule::command('quests:update-statuses')->everyMinute();
 Schedule::command('fcm:check-stage-unlocks')->everyMinute();

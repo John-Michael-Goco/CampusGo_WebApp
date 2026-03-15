@@ -34,11 +34,17 @@ class UpdateQuestStatusesCommand extends Command
         }
         $toOngoing = $toOngoingQuests->count();
 
-        $toCompleted = Quest::query()
+        $toCompletedQuests = Quest::query()
             ->whereIn('status', ['upcoming', 'ongoing'])
             ->whereNotNull('end_date')
             ->where('end_date', '<=', $now)
-            ->update(['status' => 'completed']);
+            ->get();
+
+        foreach ($toCompletedQuests as $quest) {
+            $quest->update(['status' => 'completed']);
+            app(FcmService::class)->sendQuestEnded($quest);
+        }
+        $toCompleted = $toCompletedQuests->count();
 
         $this->info("Transitioned {$toOngoing} quest(s) to ongoing, {$toCompleted} quest(s) to completed.");
 

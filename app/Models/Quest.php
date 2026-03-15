@@ -93,5 +93,28 @@ class Quest extends Model
     {
         return $this->belongsTo(User::class, 'created_by');
     }
+
+    /**
+     * Sync quest status from start/end dates (upcoming → ongoing → completed).
+     * Call this from API/web so lists show current status; the scheduler command also runs this and sends FCM.
+     */
+    public static function syncStatusesFromDates(): void
+    {
+        $now = now();
+
+        self::query()
+            ->where('status', 'upcoming')
+            ->where('approval_status', 'approved')
+            ->whereNotNull('start_date')
+            ->where('start_date', '<=', $now)
+            ->where(fn ($q) => $q->whereNull('end_date')->orWhere('end_date', '>', $now))
+            ->update(['status' => 'ongoing']);
+
+        self::query()
+            ->whereIn('status', ['upcoming', 'ongoing'])
+            ->whereNotNull('end_date')
+            ->where('end_date', '<=', $now)
+            ->update(['status' => 'completed']);
+    }
 }
 

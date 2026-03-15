@@ -18,12 +18,53 @@ use Illuminate\Support\Facades\DB;
 
 class QuestController extends Controller
 {
+    /** Max length for description in list endpoint when included (0 = omit from list to minimize payload). */
+    private const QUEST_LIST_DESCRIPTION_MAX_LENGTH = 0;
+
+    /**
+     * Ensure string is valid UTF-8 and safe for JSON (no control chars that could break parsing).
+     */
+    private static function stringForJson(?string $value, ?int $maxLength = null): ?string
+    {
+        if ($value === null || $value === '') {
+            return $value;
+        }
+        $clean = mb_convert_encoding($value, 'UTF-8', 'UTF-8');
+        if ($clean === false || $clean === '') {
+            return '';
+        }
+        $clean = preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/u', '', $clean);
+        if ($maxLength !== null && mb_strlen($clean) > $maxLength) {
+            $clean = mb_substr($clean, 0, $maxLength);
+        }
+        return $clean;
+    }
+
     /**
      * List quests the authenticated user can join (approved, upcoming/ongoing,
      * not already joined, target-group and enrollment rules applied).
+     *
+     * If the app shows "End of input" / JSON parse error at path $.quests, the response
+     * is being truncated. Ensure: PHP output_buffering and max_execution_time are adequate;
+     * no ob_flush() or early exit before the response; web server (nginx client_max_body_size,
+     * Apache LimitRequestBody) and any proxy buffer limits are large enough for the full JSON.
+     * This endpoint caps description length to avoid oversized payloads.
      */
     public function index(Request $request): JsonResponse
     {
+        $request->validate([
+            'page' => ['nullable', 'integer', 'min:1'],
+            'per_page' => ['nullable', 'integer', 'min:1', 'max:50'],
+        ]);
+
+        $perPage = min(50, max(1, (int) $request->input('per_page', 15)));
+
+        try {
+            Quest::syncStatusesFromDates();
+        } catch (\Throwable $e) {
+            // Don't fail the whole request if sync fails; list will still be consistent on next run
+        }
+
         $user = $request->user();
 
         // Only exclude quests where user is currently in (active/awaiting_ranking). Quit/completed/eliminated can re-join daily.
@@ -43,7 +84,7 @@ class QuestController extends Controller
 
         $master = $user->masterUser;
 
-        $quests = Quest::query()
+        $query = Quest::query()
             ->where('approval_status', 'approved')
             ->whereIn('status', ['upcoming', 'ongoing'])
             ->where(function ($q) use ($master) {
@@ -88,32 +129,49 @@ class QuestController extends Controller
             })
             ->with(['stages' => fn ($q) => $q->orderBy('stage_number')->limit(1)])
             ->withCount('stages')
-            ->orderByDesc('start_date')
-            ->get()
-            ->map(function (Quest $q) {
-                $firstStage = $q->stages->first();
-                return [
-                    'id' => $q->id,
-                    'title' => $q->title,
-                    'description' => $q->description,
-                    'quest_type' => $q->quest_type,
-                    'question_type' => $q->question_type ?? 'multiple_choice',
-                    'is_elimination' => (bool) $q->is_elimination,
-                    'reward_points' => (int) $q->reward_points,
-                    'reward_custom_prize' => $q->reward_custom_prize,
-                    'buy_in_points' => (int) ($q->buy_in_points ?? 0),
-                    'max_participants' => (int) ($q->max_participants ?? 0),
-                    'current_participants' => (int) ($q->current_participants ?? 0),
-                    'stages_count' => (int) $q->stages_count,
-                    'status' => $q->status,
-                    'start_date' => $q->start_date?->toDateTimeString(),
-                    'end_date' => $q->end_date?->toDateTimeString(),
-                    'first_stage_id' => $firstStage?->id,
-                    'first_stage_location_hint' => $q->status === 'upcoming' ? null : $firstStage?->location_hint,
-                ];
-            });
+            ->orderByDesc('start_date');
 
-        return response()->json(['quests' => $quests->values()->all()]);
+        $paginator = $query->paginate($perPage);
+
+        $quests = $paginator->getCollection()->map(function (Quest $q) {
+            $firstStage = $q->stages->first();
+            $item = [
+                'id' => $q->id,
+                'title' => self::stringForJson($q->title),
+                'quest_type' => $q->quest_type,
+                'question_type' => $q->question_type ?? 'multiple_choice',
+                'is_elimination' => (bool) $q->is_elimination,
+                'reward_points' => (int) $q->reward_points,
+                'reward_custom_prize' => self::stringForJson($q->reward_custom_prize),
+                'buy_in_points' => (int) ($q->buy_in_points ?? 0),
+                'max_participants' => (int) ($q->max_participants ?? 0),
+                'current_participants' => (int) ($q->current_participants ?? 0),
+                'stages_count' => (int) $q->stages_count,
+                'status' => $q->status,
+                'start_date' => $q->start_date?->toDateTimeString(),
+                'end_date' => $q->end_date?->toDateTimeString(),
+                'first_stage_id' => $firstStage?->id,
+                'first_stage_location_hint' => $q->status === 'upcoming' ? null : self::stringForJson($firstStage?->location_hint),
+            ];
+            if (self::QUEST_LIST_DESCRIPTION_MAX_LENGTH > 0) {
+                $item['description'] = self::stringForJson($q->description, self::QUEST_LIST_DESCRIPTION_MAX_LENGTH);
+            }
+            return $item;
+        })->values()->all();
+
+        $payload = [
+            'quests' => $quests,
+            'pagination' => [
+                'current_page' => $paginator->currentPage(),
+                'per_page' => $paginator->perPage(),
+                'total' => $paginator->total(),
+                'last_page' => $paginator->lastPage(),
+            ],
+        ];
+        $response = response()->json($payload);
+        $response->setEncodingOptions(JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE);
+
+        return $response;
     }
 
     /**
@@ -122,6 +180,8 @@ class QuestController extends Controller
      */
     public function participating(Request $request): JsonResponse
     {
+        Quest::syncStatusesFromDates();
+
         $user = $request->user();
 
         $participations = QuestParticipant::where('user_id', $user->id)
@@ -222,7 +282,7 @@ class QuestController extends Controller
             $item = [
                 'participant_id' => $p->id,
                 'quest_id' => $p->quest_id,
-                'quest_title' => $quest?->title ?? 'Unknown',
+                'quest_title' => self::stringForJson($quest?->title) ?? 'Unknown',
                 'quest_type' => $quest?->quest_type ?? null,
                 'current_stage' => $p->current_stage,
                 'status' => $p->status,
@@ -235,14 +295,19 @@ class QuestController extends Controller
             return $item;
         })->values()->all();
 
-        return response()->json([
+        $payload = [
             'history' => $history,
             'pagination' => [
                 'current_page' => $paginator->currentPage(),
                 'per_page' => $paginator->perPage(),
                 'total' => $paginator->total(),
+                'last_page' => $paginator->lastPage(),
             ],
-        ]);
+        ];
+        $response = response()->json($payload);
+        $response->setEncodingOptions(JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE);
+
+        return $response;
     }
 
     /**

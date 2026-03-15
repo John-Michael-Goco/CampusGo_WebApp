@@ -161,7 +161,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Quests — professor: create (custom/event), Created Quests, cancel own pending; admin: full + Approval
     Route::get('quests/active', [QuestController::class, 'active'])->name('quests.active');
     Route::get('quests/approval', [QuestController::class, 'pending'])->middleware('admin')->name('quests.approval');
+    Route::get('quests/pending-notifications', [QuestController::class, 'pendingNotifications'])->middleware('auth')->name('quests.pending-notifications');
     Route::get('quests/created', [QuestController::class, 'createdByMe'])->middleware('admin_or_professor')->name('quests.created');
+    Route::get('quests/created/updates', [QuestController::class, 'createdUpdates'])->middleware('auth')->name('quests.created.updates');
     Route::get('quests/history', [QuestController::class, 'history'])->middleware('admin_or_professor')->name('quests.history');
     Route::get('quests/create', [QuestController::class, 'create'])->middleware('admin_or_professor')->name('quests.create');
     Route::get('quests/create/stages', [QuestController::class, 'stages'])->middleware('admin_or_professor')->name('quests.create.stages');

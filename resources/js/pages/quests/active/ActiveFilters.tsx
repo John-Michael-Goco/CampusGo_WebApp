@@ -16,6 +16,8 @@ type Props = {
     onSearchChange: (value: string) => void;
     filters: FiltersType;
     onFiltersChange: (updates: Partial<FiltersType>) => void;
+    /** When true (admin), show Create quest button. Professors see Create on the Approval (Created) page instead. */
+    showCreateButton?: boolean;
 };
 
 export function ActiveFilters({
@@ -23,15 +25,18 @@ export function ActiveFilters({
     onSearchChange,
     filters,
     onFiltersChange,
+    showCreateButton = false,
 }: Props) {
     return (
         <div className="flex flex-wrap items-center gap-3">
-            <Button type="button" asChild>
-                <Link href="/quests/create">
-                    <Plus className="mr-2 size-4" />
-                    Create quest
-                </Link>
-            </Button>
+            {showCreateButton && (
+                <Button type="button" asChild>
+                    <Link href="/quests/create">
+                        <Plus className="mr-2 size-4" />
+                        Create quest
+                    </Link>
+                </Button>
+            )}
             <div className="relative flex-1 min-w-[200px]">
                 <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
                 <Input

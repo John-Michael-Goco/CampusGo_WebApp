@@ -18,8 +18,9 @@ export default function ActiveQuestsPage({
     quests,
     filters,
 }: ActiveQuestsPageProps) {
-    const pageProps = usePage().props as { auth?: { canManageQuests?: boolean; user?: { id: number } } };
+    const pageProps = usePage().props as { auth?: { canManageQuests?: boolean; isAdmin?: boolean; user?: { id: number } } };
     const canManageQuests = pageProps.auth?.canManageQuests ?? false;
+    const isAdmin = pageProps.auth?.isAdmin ?? false;
     const currentUserId = pageProps.auth?.user?.id;
     const questItems = quests.data ?? [];
     const [search, setSearch] = useState(filters.search);
@@ -110,6 +111,7 @@ export default function ActiveQuestsPage({
                     onSearchChange={setSearch}
                     filters={filters}
                     onFiltersChange={applyFilters}
+                    showCreateButton={isAdmin}
                 />
 
                 <ActiveTable

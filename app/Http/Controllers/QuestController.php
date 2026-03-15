@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\QuestApprovalUpdated;
+use App\Events\QuestSubmittedForApproval;
 use App\Models\Achievement;
 use App\Models\ActivityLog;
 use App\Models\MasterUser;
@@ -54,6 +56,33 @@ class QuestController extends Controller
     }
 
     /**
+     * JSON endpoint for admin: list pending quests for real-time notification (polling).
+     */
+    public function pendingNotifications(Request $request): JsonResponse
+    {
+        if (! $request->user() || $request->user()->role !== 'admin') {
+            return response()->json(['pending_quests' => []], 403);
+        }
+
+        $quests = Quest::query()
+            ->where('approval_status', 'pending')
+            ->with(['creator:id,name'])
+            ->orderByDesc('created_at')
+            ->limit(20)
+            ->get(['id', 'title', 'quest_type', 'created_at', 'created_by']);
+
+        $data = $quests->map(fn (Quest $q) => [
+            'id' => $q->id,
+            'title' => $q->title,
+            'quest_type' => $q->quest_type,
+            'created_at' => $q->created_at?->format('Y-m-d\TH:i:s'),
+            'creator' => $q->creator ? ['id' => $q->creator->id, 'name' => $q->creator->name] : null,
+        ]);
+
+        return response()->json(['pending_quests' => $data]);
+    }
+
+    /**
      * Show quests created by the current user (gamemaster: "Created Quests" / professor "Approval"). Filter by approval status via dropdown.
      */
     public function createdByMe(Request $request): Response
@@ -82,6 +111,33 @@ class QuestController extends Controller
             'quests' => $quests,
             'filters' => ['search' => $search, 'status' => $status],
         ]);
+    }
+
+    /**
+     * JSON endpoint for polling: quests created by the current user (id, title, approval_status, updated_at).
+     * Used to detect when admin approves/rejects so the creator sees real-time updates.
+     */
+    public function createdUpdates(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        if (! $user) {
+            return response()->json(['quests' => []], 401);
+        }
+
+        $quests = Quest::query()
+            ->where('created_by', $user->id)
+            ->orderByDesc('updated_at')
+            ->limit(50)
+            ->get(['id', 'title', 'approval_status', 'updated_at']);
+
+        $data = $quests->map(fn (Quest $q) => [
+            'id' => $q->id,
+            'title' => $q->title,
+            'approval_status' => $q->approval_status,
+            'updated_at' => $q->updated_at?->format('Y-m-d\TH:i:s'),
+        ]);
+
+        return response()->json(['quests' => $data]);
     }
 
     /**
@@ -365,6 +421,10 @@ class QuestController extends Controller
 
             if ($quest->approval_status === 'approved') {
                 app(FcmService::class)->sendNewQuest($quest->load('targetGroups'));
+            }
+
+            if ($quest->approval_status === 'pending') {
+                broadcast(new QuestSubmittedForApproval($quest->load('creator')))->toOthers();
             }
 
             if ($request->input('quest.create_achievement')) {
@@ -915,6 +975,8 @@ class QuestController extends Controller
             app(FcmService::class)->sendNewQuest($quest->fresh());
         }
 
+        broadcast(new QuestApprovalUpdated($quest))->toOthers();
+
         $referer = $request->header('Referer', '');
         if (str_contains($referer, 'from=approval')) {
             return redirect()->route('quests.approval')->with('success', 'Quest ' . $action . '.');
@@ -1258,21 +1320,7 @@ class QuestController extends Controller
      */
     private function syncQuestStatusesFromDates(): void
     {
-        $now = now();
-
-        Quest::query()
-            ->where('status', 'upcoming')
-            ->where('approval_status', 'approved')
-            ->whereNotNull('start_date')
-            ->where('start_date', '<=', $now)
-            ->where(fn ($q) => $q->whereNull('end_date')->orWhere('end_date', '>', $now))
-            ->update(['status' => 'ongoing']);
-
-        Quest::query()
-            ->whereIn('status', ['upcoming', 'ongoing'])
-            ->whereNotNull('end_date')
-            ->where('end_date', '<=', $now)
-            ->update(['status' => 'completed']);
+        Quest::syncStatusesFromDates();
     }
 }
 

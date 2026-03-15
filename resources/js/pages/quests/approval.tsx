@@ -46,13 +46,14 @@ export default function QuestApprovalPage({ quests, filters = {} }: Props) {
         (filters.status as StatusFilter) || 'pending'
     );
     const isInitialMount = useRef(true);
+    const searchRef = useRef(search);
+    const statusFilterRef = useRef(statusFilter);
+    searchRef.current = search;
+    statusFilterRef.current = statusFilter;
 
     useEffect(() => {
-        // Sync props to local state when filters change (e.g. from navigation)
-         
         setSearch(filters.search ?? '');
         setStatusFilter((filters.status as StatusFilter) || 'pending');
-         
     }, [filters.search, filters.status]);
 
     const getParams = (overrides?: { search?: string; status?: StatusFilter }) => ({
@@ -69,9 +70,25 @@ export default function QuestApprovalPage({ quests, filters = {} }: Props) {
             router.get('/quests/approval', getParams(), { preserveState: true });
         }, 300);
         return () => clearTimeout(t);
-        // Intentionally only when search changes to avoid request loops
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [search]);
+
+    // Listen for new quest submissions via Echo and refresh the table
+    useEffect(() => {
+        if (!window.Echo) return;
+
+        const channel = window.Echo.private('admin.quests');
+        channel.listen('.QuestSubmittedForApproval', () => {
+            router.get('/quests/approval', {
+                search: (searchRef.current || undefined) as string | undefined,
+                status: statusFilterRef.current,
+            }, { preserveScroll: true, preserveState: true });
+        });
+
+        return () => {
+            channel.stopListening('.QuestSubmittedForApproval');
+        };
+    }, []);
 
     const handleStatusChange = (value: string) => {
         const newStatus = (value === 'all' ? 'all' : value) as StatusFilter;

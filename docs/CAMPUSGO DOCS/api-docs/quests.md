@@ -7,6 +7,14 @@
 
 Returns quests the authenticated user can join: approved, upcoming or ongoing, not already joined, and passing target-group and enrollment rules. Quests whose **first stage has already ended** (first stage’s `stage_deadline` in the past) are excluded, so users only see quests they can still join by scanning stage 1.
 
+**Query parameters** (optional)
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| page | int | 1 | Page number (1-based). |
+| per_page | int | 15 | Items per page (min 1, max 50). |
+
+Pagination keeps each response small to avoid truncation; use `page` and `per_page` to load more.
+
 - **If the user is not enrolled in the current semester** (or there is no current semester): only **enrollment** quests for the **current semester** are returned (enrollment quests for other semesters are hidden). If there is no current semester, no quests are returned. The user must complete the current semester’s enrollment quest before they can see or join other quest types.
 - **If the user is enrolled in the current semester:** non-enrollment quests (daily, event, custom) are shown, plus enrollment quests only for semesters they are not yet enrolled in. The *current semester* is the one whose date range includes today.
 
@@ -17,7 +25,6 @@ Returns quests the authenticated user can join: approved, upcoming or ongoing, n
     {
       "id": 1,
       "title": "Campus Hunt",
-      "description": "Find all QR codes...",
       "quest_type": "event",
       "question_type": "multiple_choice",
       "is_elimination": false,
@@ -33,15 +40,27 @@ Returns quests the authenticated user can join: approved, upcoming or ongoing, n
       "first_stage_id": 10,
       "first_stage_location_hint": "Near the library"
     }
-  ]
+  ],
+  "pagination": {
+    "current_page": 1,
+    "per_page": 15,
+    "total": 42,
+    "last_page": 3
+  }
 }
 ```
-- `quests` is an array; may be empty if none are available.
+- `quests` is an array for the current page; may be empty.
+- `pagination`: `current_page`, `per_page`, `total` (total number of quests), `last_page` (total pages). Use `page=2`, `page=3`, … to fetch more.
+- **Description** is omitted from the list to keep the payload small; use **GET /api/quests/{id}** for full details (including `description` and `achievement`).
 - `first_stage_id` and `first_stage_location_hint` refer to stage 1 (for QR/location display). When the quest status is `upcoming`, `first_stage_location_hint` is `null` so the app can show that the quest is not yet started without revealing the exact location; once the quest is `ongoing`, the hint is included.
 - **Max participants:** The response includes `current_participants` and `max_participants`. The app typically hides quests from Discover when `max_participants > 0` and `current_participants >= max_participants` (quest is full).
 
 **Errors**
 - `401` — Missing or invalid token.
+
+**Troubleshooting — "End of input" / JSON parse error on the app**
+
+If the mobile app shows a JSON parsing error (e.g. "End of input at line 1 column … path $.quests"), the response body is being **truncated**. See [api-response-limits.md](api-response-limits.md) for PHP (`output_buffering`, `max_execution_time`) and web server/proxy buffer settings. The list endpoint omits `description` to keep the payload small; use **GET /api/quests/{id}** for full quest details.
 
 ---
 
@@ -225,10 +244,12 @@ Returns the user’s **past** quest participations only: status is **not** `acti
   "pagination": {
     "current_page": 1,
     "per_page": 20,
-    "total": 45
+    "total": 45,
+    "last_page": 3
   }
 }
 ```
+- `pagination`: `current_page`, `per_page`, `total`, `last_page`. Use `page` and `per_page` to keep each response small and avoid truncation.
 - Every history item includes **at least one** of:
   - **`updated_at`**: Last time the participation record was updated (`YYYY-MM-DD HH:MM:SS`). Always present.
   - **`last_submission_at`**: Time of the participant’s last submit (from submissions), same format. Present when the participant has at least one submission; otherwise the app can use `updated_at` or "—".

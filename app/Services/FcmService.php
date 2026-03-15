@@ -219,7 +219,7 @@ class FcmService
     }
 
     /**
-     * Send quest_started to target users.
+     * Send quest_started to target users (eligible to join).
      */
     public function sendQuestStarted(\App\Models\Quest $quest): void
     {
@@ -238,6 +238,35 @@ class FcmService
         $body = "{$quest->title} has started! Go scan the first QR.";
 
         FcmToken::whereIn('user_id', $userIds)->chunk(500, function ($tokens) use ($data, $title, $body) {
+            foreach ($tokens as $fcmToken) {
+                $this->send($fcmToken->fcm_token, $data, $title, $body, $fcmToken->id);
+            }
+        });
+    }
+
+    /**
+     * Send quest_ended to participants (users who joined this quest).
+     */
+    public function sendQuestEnded(\App\Models\Quest $quest): void
+    {
+        $participantUserIds = \App\Models\QuestParticipant::where('quest_id', $quest->id)
+            ->distinct()
+            ->pluck('user_id')
+            ->all();
+        if ($participantUserIds === []) {
+            return;
+        }
+
+        $data = [
+            'type' => 'quest_ended',
+            'quest_id' => (string) $quest->id,
+            'quest_title' => $quest->title,
+        ];
+
+        $title = 'Quest Ended';
+        $body = "{$quest->title} has ended.";
+
+        FcmToken::whereIn('user_id', $participantUserIds)->chunk(500, function ($tokens) use ($data, $title, $body) {
             foreach ($tokens as $fcmToken) {
                 $this->send($fcmToken->fcm_token, $data, $title, $body, $fcmToken->id);
             }
