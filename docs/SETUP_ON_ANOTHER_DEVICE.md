@@ -55,7 +55,7 @@ composer install
 
 ### 3.2 Environment file
 
-Create `.env` from the example (if it doesn’t exist):
+Create `.env` from the example (if it doesn't exist):
 
 **Windows (PowerShell):**
 
@@ -91,7 +91,7 @@ Run migrations with seed data (recommended for a fresh setup):
 php artisan migrate:fresh --seed
 ```
 
-> `migrate:fresh` drops all tables and re-runs every migration, then `--seed` fills the database with default/demo data.  
+> `migrate:fresh` drops all tables and re-runs every migration, then `--seed` fills the database with default/demo data.
 > If you just want to migrate without wiping existing data use `php artisan migrate` instead.
 
 **Using MySQL instead**
@@ -138,7 +138,7 @@ Starts PHP server, queue worker, and Vite dev server together:
 composer dev
 ```
 
-Then open: **http://localhost:8000**  
+Then open: **http://localhost:8000**
 Vite usually runs on port 5173; the Laravel app will load assets from it automatically.
 
 ---
@@ -164,7 +164,7 @@ Then update your `.env` so Reverb is reachable from those devices too:
 
 ```env
 REVERB_HOST=0.0.0.0
-VITE_REVERB_HOST=192.168.1.x   # ← replace with your actual local IP
+VITE_REVERB_HOST=192.168.1.x   # replace with your actual local IP
 ```
 
 Now open **5 separate terminals** and run each command:
@@ -243,7 +243,7 @@ composer install
 cp -n .env.example .env
 php artisan key:generate
 
-# 3. Create SQLite DB file (skip if using MySQL — configure .env instead)
+# 3. Create SQLite DB file (skip if using MySQL -- configure .env instead)
 #    Windows PowerShell:
 New-Item -ItemType File -Path database\database.sqlite -Force
 #    macOS / Linux:
@@ -305,8 +305,11 @@ If you use Inertia SSR:
 
 ## 8. API (for mobile / other clients)
 
-- Base URL (local): `http://localhost:8000/api` (or `http://YOUR_IP:8000/api` from another device).
-- From Android emulator use `http://10.0.2.2:8000/api` to reach the host machine’s Laravel server.
+- Base URL (local): `http://localhost:8000/api`
+- Base URL (from another device on the same network): `http://YOUR_LOCAL_IP:8000/api`
+- Android emulator: `http://10.0.2.2:8000/api` to reach the host machine's Laravel server.
+
+Make sure the server was started with `php artisan serve --host=0.0.0.0` and that `VITE_REVERB_HOST` in `.env` is set to your machine's local IP (not `localhost`) so WebSocket connections work from other devices.
 
 ---
 
@@ -314,18 +317,22 @@ If you use Inertia SSR:
 
 | Issue | What to try |
 |-------|---------------------|
-| `composer install` fails | Check PHP version (`php -v` ≥ 8.2) and required PHP extensions. |
+| `composer install` fails | Check PHP version (`php -v` >= 8.2) and required PHP extensions. |
 | `npm install` / `npm run build` fails | Use Node 18+ and run again; delete `node_modules` and `package-lock.json` then `npm install` if needed. |
-| “Permission denied” on storage or cache | Fix permissions: `storage` and `bootstrap/cache` must be writable (e.g. `chmod -R 775 storage bootstrap/cache` on Linux/macOS). |
-| “No application encryption key” | Run `php artisan key:generate`. |
+| "Permission denied" on storage or cache | Fix permissions: `storage` and `bootstrap/cache` must be writable (e.g. `chmod -R 775 storage bootstrap/cache` on Linux/macOS). |
+| "No application encryption key" | Run `php artisan key:generate`. |
 | Database errors | For SQLite, ensure `database/database.sqlite` exists. For MySQL, check `.env` and that the DB server is running. |
 | Blank or broken frontend | Run `npm run build` and/or `npm run dev`, and `php artisan wayfinder:generate`. |
-| API returns 500 “Rate limiter [api] is not defined” | Already fixed in this codebase (API rate limiter registered in `AppServiceProvider`). If you see it, pull latest or re-apply that change. |
+| API returns 500 "Rate limiter [api] is not defined" | Already fixed in this codebase (API rate limiter registered in `AppServiceProvider`). If you see it, pull latest or re-apply that change. |
+| Can't connect from another device on the network | Ensure `php artisan serve --host=0.0.0.0` is used and your firewall allows ports 8000 (Laravel) and 8080 (Reverb). |
+| WebSockets not working from another device | Set `VITE_REVERB_HOST` to your machine's local IP in `.env`, rebuild Vite assets (`npm run build`), and restart Reverb. |
+| Scheduled tasks not running | Run `php artisan schedule:run` manually, or use `php artisan schedule:work` to auto-run every minute in development. |
 
 ---
 
 ## 10. Summary
 
 - **PHP 8.2+**, **Composer**, **Node 18+**, and a **database** (SQLite or MySQL) are required.
-- After getting the code: `composer install` → copy `.env` and `key:generate` → create DB file (SQLite) or configure MySQL → `php artisan migrate` → `npm install` → `npm run build` → `php artisan wayfinder:generate`.
-- Run the app with `composer dev` and open http://localhost:8000.
+- After getting the code: `composer install` → copy `.env` and `key:generate` → create DB file (SQLite) or configure MySQL → `php artisan migrate:fresh --seed` → `npm install` → `npm run build` → `php artisan wayfinder:generate`.
+- For local-only use, run `composer dev` and open http://localhost:8000.
+- For network access from other devices, start 5 services in separate terminals: `serve --host=0.0.0.0`, `npm run dev`, `queue:work`, `reverb:start --debug`, and `schedule:run`.
