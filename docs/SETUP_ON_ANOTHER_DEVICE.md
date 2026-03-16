@@ -1,5 +1,10 @@
 # CampusGo Web – Setup on Another Computer
 
+/ php artisan migrate:fresh --seed
+/ php artisan schedule:run
+/ php artisan serve --host=0.0.0.0
+
+
 Use this guide to get the CampusGo Laravel + Inertia (React) app running on a new machine.
 
 ---
