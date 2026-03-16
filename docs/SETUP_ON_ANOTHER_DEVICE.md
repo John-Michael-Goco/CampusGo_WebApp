@@ -85,11 +85,14 @@ New-Item -ItemType File -Path database\database.sqlite -Force
 touch database/database.sqlite
 ```
 
-Run migrations:
+Run migrations with seed data (recommended for a fresh setup):
 
 ```bash
-php artisan migrate
+php artisan migrate:fresh --seed
 ```
+
+> `migrate:fresh` drops all tables and re-runs every migration, then `--seed` fills the database with default/demo data.  
+> If you just want to migrate without wiping existing data use `php artisan migrate` instead.
 
 **Using MySQL instead**
 
@@ -105,7 +108,7 @@ php artisan migrate
    ```
 3. Run:
    ```bash
-   php artisan migrate
+   php artisan migrate:fresh --seed
    ```
 
 ### 3.4 Node dependencies and frontend build
@@ -127,7 +130,7 @@ php artisan wayfinder:generate
 
 ## 4. Run the Application
 
-### Option A – One command (recommended for development)
+### Option A – Local only (same machine)
 
 Starts PHP server, queue worker, and Vite dev server together:
 
@@ -135,30 +138,82 @@ Starts PHP server, queue worker, and Vite dev server together:
 composer dev
 ```
 
-Then open: **http://localhost:8000** (or the URL shown in the terminal).  
+Then open: **http://localhost:8000**  
 Vite usually runs on port 5173; the Laravel app will load assets from it automatically.
 
-### Option B – Manual (separate terminals)
+---
 
-**Terminal 1 – Laravel:**
+### Option B – Accessible from other devices on the network (recommended for cross-device testing)
 
-```bash
-php artisan serve
+Use `--host=0.0.0.0` so the server listens on all network interfaces, making it reachable from phones, tablets, or other computers on the same Wi-Fi/LAN.
+
+First, find this machine's local IP address:
+
+**Windows (PowerShell):**
+```powershell
+ipconfig
+# Look for "IPv4 Address" under your active adapter, e.g. 192.168.1.x
 ```
 
-**Terminal 2 – Vite (frontend):**
+**macOS / Linux:**
+```bash
+hostname -I
+```
+
+Then update your `.env` so Reverb is reachable from those devices too:
+
+```env
+REVERB_HOST=0.0.0.0
+VITE_REVERB_HOST=192.168.1.x   # ← replace with your actual local IP
+```
+
+Now open **5 separate terminals** and run each command:
+
+**Terminal 1 – Laravel server (network-accessible):**
+
+```bash
+php artisan serve --host=0.0.0.0
+```
+
+**Terminal 2 – Vite (frontend assets):**
 
 ```bash
 npm run dev
 ```
 
-**Terminal 3 – Queue (for jobs):**
+**Terminal 3 – Queue worker (broadcasting & jobs):**
 
 ```bash
-php artisan queue:listen --tries=1
+php artisan queue:work
 ```
 
-Then open **http://localhost:8000**.
+**Terminal 4 – Reverb WebSocket server (real-time broadcasting):**
+
+```bash
+php artisan reverb:start --debug
+```
+
+**Terminal 5 – Scheduler (runs periodic tasks):**
+
+```bash
+php artisan schedule:run
+```
+
+> `schedule:run` executes any due scheduled tasks once. For continuous scheduling during development keep running it every minute, or use `php artisan schedule:work` to run it automatically in a loop.
+
+Other devices on the same network can now access the app at:
+
+```
+http://192.168.1.x:8000
+```
+
+And the API at:
+
+```
+http://192.168.1.x:8000/api
+```
+
+> Android emulator specifically: use `http://10.0.2.2:8000` to reach the host machine.
 
 ---
 
@@ -181,20 +236,53 @@ Or with Pest directly:
 Run these in order on a **new machine** after cloning or copying the project:
 
 ```bash
+# 1. Install PHP dependencies
 composer install
+
+# 2. Set up environment
 cp -n .env.example .env
 php artisan key:generate
-# If SQLite: create database/database.sqlite (see step 3.3)
-php artisan migrate
+
+# 3. Create SQLite DB file (skip if using MySQL — configure .env instead)
+#    Windows PowerShell:
+New-Item -ItemType File -Path database\database.sqlite -Force
+#    macOS / Linux:
+touch database/database.sqlite
+
+# 4. Migrate and seed the database
+php artisan migrate:fresh --seed
+
+# 5. Install and build frontend
 npm install
 npm run build
+
+# 6. Generate route helpers
 php artisan wayfinder:generate
 ```
 
-Then start the app:
+Then start the app (local only):
 
 ```bash
 composer dev
+```
+
+Or for **network access from other devices** open 5 terminals and run:
+
+```bash
+# Terminal 1
+php artisan serve --host=0.0.0.0
+
+# Terminal 2
+npm run dev
+
+# Terminal 3
+php artisan queue:work
+
+# Terminal 4
+php artisan reverb:start --debug
+
+# Terminal 5
+php artisan schedule:run
 ```
 
 ---
